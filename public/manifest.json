@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "前端研发专用调试增强器",
+  "version": "1.0",
+  "description": "让前端工程师在浏览器里完成「调试 + 环境切换 + 真机采样」三位一体的私有外挂，无需 Charles、无需 root、一套插件即插即用。",
+  "permissions": ["storage"],
+  "side_panel": {
+    "default_path": "index.html"
+  },
+  "action": {
+    "default_title": "点击打开调试增强器",
+    "default_icon": "./sources/tabs128.png"
+  },
+  "icons": {
+    "48": "sources/tabs64.png",
+    "128": "sources/tabs128.png",
+    "256": "sources/tabs256.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": ["http://*/*", "https://*/*"]
+}
