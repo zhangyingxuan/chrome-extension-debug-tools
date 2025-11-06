@@ -12,7 +12,11 @@
   "dependencies": {
     "@vitejs/plugin-vue-jsx": "^4.1.2",
     "vite-svg-loader": "^5.1.0",
-    "vue": "^3.4.21"
+    "vue": "^3.4.21",
+    "echarts": "^5.4.3",
+    "vue-echarts": "^6.6.1",
+    "tdesign-icons-vue-next": "^0.3.6",
+    "tdesign-vue-next": "^1.13.2"
   },
   "devDependencies": {
     "lodash-es": "^4.17.21",
