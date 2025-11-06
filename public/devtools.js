@@ -16,6 +16,6 @@
 //   }
 // );
 
-chrome.devtools.panels.create("前端调试", "icon.png", "index.html", () => {
+chrome.devtools.panels.create("dev panel", "icon.png", "index.html", () => {
   console.log("user switched to this panel");
 });

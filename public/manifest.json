@@ -10,5 +10,8 @@
     "128": "sources/tabs128.png",
     "256": "sources/tabs256.png"
   },
+  "background": {
+    "service_worker": "background.js"
+  },
   "devtools_page": "devtools.html"
 }

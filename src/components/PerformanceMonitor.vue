@@ -23,29 +23,6 @@
       </div>
     </div>
 
-    <!-- 进程/线程信息 -->
-    <div class="process-section">
-      <h4>进程信息</h4>
-      <div class="process-list">
-        <div
-          v-for="process in processInfo"
-          :key="process.pid"
-          class="process-item"
-        >
-          <div class="process-name">{{ process.name }}</div>
-          <div class="process-stats">
-            <span class="cpu">CPU: {{ process.cpu.toFixed(1) }}%</span>
-            <span class="memory">内存: {{ formatMemory(process.memory) }}</span>
-            <span class="type">{{ process.type }}</span>
-          </div>
-        </div>
-
-        <div v-if="processInfo.length === 0" class="empty-state">
-          暂无进程信息
-        </div>
-      </div>
-    </div>
-
     <!-- 性能指标概览 -->
     <div class="metrics-overview">
       <div class="metric-card">
@@ -63,6 +40,29 @@
       <div class="metric-card">
         <div class="metric-value">{{ currentEventListeners }}</div>
         <div class="metric-label">事件监听器</div>
+      </div>
+    </div>
+
+    <!-- 进程/线程信息 -->
+    <div class="process-section">
+      <h4>进程信息</h4>
+      <div class="process-list">
+        <div
+          v-for="process in props.processInfo"
+          :key="process.pid"
+          class="process-item"
+        >
+          <div class="process-name">{{ process.name }}</div>
+          <div class="process-stats">
+            <span class="cpu">CPU: {{ process.cpu.toFixed(1) }}%</span>
+            <span class="memory">内存: {{ formatMemory(process.memory) }}</span>
+            <span class="type">{{ process.type }}</span>
+          </div>
+        </div>
+
+        <div v-if="props.processInfo.length === 0" class="empty-state">
+          暂无进程信息
+        </div>
       </div>
     </div>
   </div>
@@ -288,6 +288,32 @@ const handleResize = () => {
     }
   }
 
+  .metrics-overview {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+
+    .metric-card {
+      background: #fff;
+      border: 1px solid #e8e8e8;
+      border-radius: 4px;
+      padding: 12px;
+      text-align: center;
+
+      .metric-value {
+        font-size: 18px;
+        font-weight: bold;
+        color: #1890ff;
+      }
+
+      .metric-label {
+        font-size: 11px;
+        color: #666;
+        margin-top: 4px;
+      }
+    }
+  }
+
   .process-section {
     flex: 1;
     background: #fafafa;
@@ -344,32 +370,6 @@ const handleResize = () => {
         padding: 20px;
         color: #999;
         font-size: 12px;
-      }
-    }
-  }
-
-  .metrics-overview {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-
-    .metric-card {
-      background: #fff;
-      border: 1px solid #e8e8e8;
-      border-radius: 4px;
-      padding: 12px;
-      text-align: center;
-
-      .metric-value {
-        font-size: 18px;
-        font-weight: bold;
-        color: #1890ff;
-      }
-
-      .metric-label {
-        font-size: 11px;
-        color: #666;
-        margin-top: 4px;
       }
     }
   }

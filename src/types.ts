@@ -53,6 +53,6 @@ export interface StorageData {
 
 // Chrome API 事件类型
 export interface ChromeMessage {
-  type: 'NETWORK_REQUEST' | 'PERFORMANCE_DATA' | 'UPDATE_RULES' | 'TOGGLE_ENABLED' | 'GET_RULES';
+  type: 'NETWORK_REQUEST' | 'PERFORMANCE_DATA' | 'UPDATE_RULES' | 'TOGGLE_ENABLED' | 'GET_RULES' | 'START_PERFORMANCE_MONITOR' | 'STOP_PERFORMANCE_MONITOR' | 'GET_PERFORMANCE_DATA';
   data?: any;
 }

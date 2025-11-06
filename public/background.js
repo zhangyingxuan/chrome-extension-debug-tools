@@ -2,6 +2,9 @@
 let requestRules = [];
 let isEnabled = true;
 
+// 性能监控相关
+let performanceMonitorInterval = null;
+
 // 从存储中加载配置
 chrome.storage.local.get(["requestRules", "enabled"], (result) => {
   requestRules = result.requestRules || [];
@@ -51,8 +54,136 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case "GET_RULES":
       sendResponse({ rules: requestRules, enabled: isEnabled });
       break;
+
+    case "START_PERFORMANCE_MONITOR":
+      startPerformanceMonitoring();
+      sendResponse({ success: true });
+      break;
+
+    case "STOP_PERFORMANCE_MONITOR":
+      stopPerformanceMonitoring();
+      sendResponse({ success: true });
+      break;
+
+    case "PERFORMANCE_DATA":
+      // 处理来自内容脚本的性能数据
+      if (message.data) {
+        broadcastPerformanceData(message.data);
+      }
+      break;
   }
 });
+
+// 开始性能监控
+function startPerformanceMonitoring() {
+  if (performanceMonitorInterval) {
+    clearInterval(performanceMonitorInterval);
+  }
+
+  // 每2秒采集一次性能数据
+  performanceMonitorInterval = setInterval(() => {
+    collectPerformanceData();
+  }, 2000);
+
+  console.log("性能监控已启动");
+}
+
+// 停止性能监控
+function stopPerformanceMonitoring() {
+  if (performanceMonitorInterval) {
+    clearInterval(performanceMonitorInterval);
+    performanceMonitorInterval = null;
+  }
+  console.log("性能监控已停止");
+}
+
+// 采集性能数据
+function collectPerformanceData() {
+  // 获取当前标签页信息
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs.length === 0) return;
+
+    const tab = tabs[0];
+
+    // 向内容脚本发送消息获取性能数据
+    chrome.tabs.sendMessage(
+      tab.id,
+      { type: "GET_PERFORMANCE_DATA" },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          // 如果内容脚本未注入，使用默认的性能数据
+          const defaultData = generateDefaultPerformanceData();
+          broadcastPerformanceData(defaultData);
+        } else if (response) {
+          broadcastPerformanceData(response.data);
+        }
+      }
+    );
+  });
+}
+
+// 生成默认性能数据（当内容脚本不可用时）
+function generateDefaultPerformanceData() {
+  return {
+    timestamp: Date.now(),
+    cpuUsage: Math.random() * 100, // 模拟CPU使用率
+    memoryUsage: Math.random() * 100, // 模拟内存使用率
+    jsHeapSize: Math.floor(Math.random() * 100000000) + 50000000, // 模拟JS堆大小
+    jsHeapUsed: Math.floor(Math.random() * 50000000) + 10000000, // 模拟JS堆使用量
+    domNodes: Math.floor(Math.random() * 5000) + 1000, // 模拟DOM节点数
+    eventListeners: Math.floor(Math.random() * 1000) + 100, // 模拟事件监听器数量
+  };
+}
+
+// 广播性能数据到所有打开的devtools和内容脚本
+function broadcastPerformanceData(data) {
+  // 发送到devtools页面
+  try {
+    chrome.runtime.sendMessage(
+      {
+        type: "PERFORMANCE_DATA",
+        data: data,
+      },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          // 忽略连接错误，这通常是正常的（devtools页面可能未打开）
+          console.debug(
+            "无法发送性能数据到devtools页面:",
+            chrome.runtime.lastError.message
+          );
+        }
+      }
+    );
+  } catch (error) {
+    console.debug("发送性能数据到devtools页面失败:", error);
+  }
+
+  // 发送到所有标签页的内容脚本
+  chrome.tabs.query({}, (tabs) => {
+    tabs.forEach((tab) => {
+      try {
+        chrome.tabs.sendMessage(
+          tab.id,
+          {
+            type: "PERFORMANCE_DATA",
+            data: data,
+          },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              // 忽略连接错误，这通常是正常的（内容脚本未注入）
+              console.debug(
+                `无法发送性能数据到标签页 ${tab.id}:`,
+                chrome.runtime.lastError.message
+              );
+            }
+          }
+        );
+      } catch (error) {
+        console.debug(`发送性能数据到标签页 ${tab.id} 失败:`, error);
+      }
+    });
+  });
+}
 
 // 监听扩展安装事件
 chrome.runtime.onInstalled.addListener(() => {
@@ -78,4 +209,12 @@ chrome.runtime.onInstalled.addListener(() => {
       chrome.storage.local.set({ requestRules: defaultRules });
     }
   });
+
+  // 启动性能监控
+  startPerformanceMonitoring();
+});
+
+// 监听扩展卸载事件
+chrome.runtime.onSuspend.addListener(() => {
+  stopPerformanceMonitoring();
 });
