@@ -2,7 +2,7 @@
   <div class="debug-tool">
     <!-- 顶部工具栏 -->
     <div class="toolbar">
-      <h1>前端调试增强器</h1>
+      <h3>前端调试增强器</h3>
       <div class="toolbar-controls">
         <t-switch
           v-model="isEnabled"
@@ -19,11 +19,28 @@
       </div>
     </div>
 
+    <!-- Tab切换 -->
+    <div class="tab-header">
+      <div
+        class="tab-item"
+        :class="{ active: activeTab === 'network' }"
+        @click="activeTab = 'network'"
+      >
+        网络请求拦截
+      </div>
+      <div
+        class="tab-item"
+        :class="{ active: activeTab === 'performance' }"
+        @click="activeTab = 'performance'"
+      >
+        性能监控
+      </div>
+    </div>
+
     <!-- 主内容区域 -->
     <div class="main-content">
       <!-- 网络调试面板 -->
-      <div class="panel">
-        <h2>网络请求拦截</h2>
+      <div class="panel" v-show="activeTab === 'network'">
         <div class="panel-content">
           <RequestInterceptor
             :rules="requestRules"
@@ -35,8 +52,7 @@
       </div>
 
       <!-- 性能监控面板 -->
-      <div class="panel">
-        <h2>性能监控</h2>
+      <div class="panel" v-show="activeTab === 'performance'">
         <div class="panel-content">
           <PerformanceMonitor
             :performance-data="performanceData"
@@ -62,6 +78,7 @@ import PerformanceMonitor from "./components/PerformanceMonitor.vue";
 // 响应式数据
 const isEnabled = ref(true);
 const isMonitoring = ref(false);
+const activeTab = ref<"network" | "performance">("network");
 const requestRules = ref<RequestRule[]>([]);
 const performanceData = ref<PerformanceData[]>([]);
 const processInfo = ref<ProcessInfo[]>([]);
@@ -239,15 +256,15 @@ const exportData = () => {
 
   .toolbar {
     background: #fff;
-    padding: 16px 24px;
+    padding: 8px;
     border-bottom: 1px solid #e8e8e8;
     display: flex;
     justify-content: space-between;
     align-items: center;
 
-    h1 {
+    h3 {
       margin: 0;
-      font-size: 18px;
+      font-size: 16px;
       color: #333;
     }
 
@@ -258,32 +275,44 @@ const exportData = () => {
     }
   }
 
+  .tab-header {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e8e8e8;
+
+    .tab-item {
+      padding: 12px 24px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.3s;
+      font-size: 14px;
+      color: #666;
+
+      &:hover {
+        color: #1890ff;
+      }
+
+      &.active {
+        color: #1890ff;
+        border-bottom-color: #1890ff;
+        font-weight: 500;
+      }
+    }
+  }
+
   .main-content {
     flex: 1;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    padding: 16px;
+    padding: 0;
     overflow: auto;
 
     .panel {
       background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      height: 100%;
       overflow: hidden;
-
-      h2 {
-        margin: 0;
-        padding: 16px 24px;
-        background: #fafafa;
-        border-bottom: 1px solid #e8e8e8;
-        font-size: 16px;
-        color: #333;
-      }
 
       .panel-content {
         padding: 16px;
-        height: 400px;
+        height: calc(100vh - 160px);
         overflow: auto;
       }
     }

@@ -1,5 +1,25 @@
 <template>
   <div class="performance-monitor">
+    <!-- 性能指标概览 -->
+    <div class="metrics-overview">
+      <div class="metric-card">
+        <div class="metric-value">{{ currentCPU.toFixed(2) }}%</div>
+        <div class="metric-label">当前CPU</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value">{{ currentMemory.toFixed(2) }}%</div>
+        <div class="metric-label">内存使用率</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value">{{ currentDomNodes }}</div>
+        <div class="metric-label">DOM节点</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value">{{ currentEventListeners }}</div>
+        <div class="metric-label">事件监听器</div>
+      </div>
+    </div>
+
     <!-- 实时性能图表 -->
     <div class="charts-section">
       <div class="chart-container">
@@ -22,27 +42,6 @@
         <div ref="eventChart" class="chart"></div>
       </div>
     </div>
-
-    <!-- 性能指标概览 -->
-    <div class="metrics-overview">
-      <div class="metric-card">
-        <div class="metric-value">{{ currentCPU }}%</div>
-        <div class="metric-label">当前CPU</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-value">{{ currentMemory }}%</div>
-        <div class="metric-label">内存使用率</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-value">{{ currentDomNodes }}</div>
-        <div class="metric-label">DOM节点</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-value">{{ currentEventListeners }}</div>
-        <div class="metric-label">事件监听器</div>
-      </div>
-    </div>
-
     <!-- 进程/线程信息 -->
     <div class="process-section">
       <h4>进程信息</h4>
@@ -267,22 +266,26 @@ const handleResize = () => {
 
   .charts-section {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    flex: 1;
 
     .chart-container {
-      background: #fafafa;
-      border-radius: 4px;
+      background: #fff;
+      border: 1px solid #e8e8e8;
+      border-radius: 6px;
       padding: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 
       h4 {
-        margin: 0 0 8px 0;
-        font-size: 12px;
-        color: #666;
+        margin: 0 0 12px 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: #333;
       }
 
       .chart {
-        height: 120px;
+        height: 160px;
         width: 100%;
       }
     }
@@ -291,14 +294,15 @@ const handleResize = () => {
   .metrics-overview {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
+    gap: 12px;
 
     .metric-card {
       background: #fff;
       border: 1px solid #e8e8e8;
-      border-radius: 4px;
+      border-radius: 6px;
       padding: 12px;
       text-align: center;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 
       .metric-value {
         font-size: 18px;
@@ -307,23 +311,25 @@ const handleResize = () => {
       }
 
       .metric-label {
-        font-size: 11px;
+        font-size: 12px;
         color: #666;
-        margin-top: 4px;
+        margin-top: 6px;
       }
     }
   }
 
   .process-section {
-    flex: 1;
-    background: #fafafa;
-    border-radius: 4px;
-    padding: 12px;
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 6px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 
     h4 {
       margin: 0 0 8px 0;
-      font-size: 12px;
-      color: #666;
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
     }
 
     .process-list {
@@ -332,7 +338,7 @@ const handleResize = () => {
         justify-content: space-between;
         align-items: center;
         padding: 8px;
-        border-bottom: 1px solid #e8e8e8;
+        border-bottom: 1px solid #f0f0f0;
 
         &:last-child {
           border-bottom: none;
@@ -340,34 +346,38 @@ const handleResize = () => {
 
         .process-name {
           font-weight: 500;
-          font-size: 12px;
+          font-size: 13px;
+          color: #333;
         }
 
         .process-stats {
           display: flex;
           gap: 12px;
-          font-size: 11px;
+          font-size: 12px;
           color: #666;
 
           .cpu {
             color: #f56c6c;
+            font-weight: 500;
           }
           .memory {
             color: #409eff;
+            font-weight: 500;
           }
           .type {
             background: #e8f4ff;
             color: #409eff;
-            padding: 2px 6px;
-            border-radius: 2px;
-            font-size: 10px;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
           }
         }
       }
 
       .empty-state {
         text-align: center;
-        padding: 20px;
+        padding: 18px;
         color: #999;
         font-size: 12px;
       }

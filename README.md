@@ -102,7 +102,6 @@ src/
 ├── types.ts            # TypeScript 类型定义
 ├── utils/              # 工具函数
 │   └── index.ts        # 通用工具方法
-├── background.ts       # 背景脚本（网络拦截）
 ├── content.ts          # 内容脚本（性能收集）
 ├── tdesign.ts          # TDesign Vue Next 配置
 └── main.ts            # 应用入口
