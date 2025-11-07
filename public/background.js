@@ -2,18 +2,26 @@
 let requestRules = [];
 let isEnabled = true;
 
+// 拦截历史记录
+let interceptionHistory = [];
+
 // 性能监控相关
 let performanceMonitorInterval = null;
 
 // 从存储中加载配置
-chrome.storage.local.get(["requestRules", "enabled"], (result) => {
-  requestRules = result.requestRules || [];
-  isEnabled = result.enabled !== false;
-});
+chrome.storage.local.get(
+  ["requestRules", "enabled", "interceptionHistory"],
+  (result) => {
+    requestRules = result.requestRules || [];
+    isEnabled = result.enabled !== false;
+    interceptionHistory = result.interceptionHistory || [];
+  }
+);
 
 // 网络请求拦截 - Manifest V3不再支持阻塞式请求
 chrome.webRequest.onBeforeRequest.addListener(
   (details) => {
+    console.log(details.url, isEnabled, details);
     if (!isEnabled) return;
 
     const matchedRule = requestRules.find(
@@ -55,6 +63,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ rules: requestRules, enabled: isEnabled });
       break;
 
+    case "INTERCEPTION_RECORD":
+      // 处理拦截记录
+      handleInterceptionRecord(message.data);
+      break;
+
+    case "GET_INTERCEPTION_HISTORY":
+      // 获取拦截历史
+      sendResponse({ history: interceptionHistory });
+      break;
+
+    case "CLEAR_INTERCEPTION_HISTORY":
+      // 清空拦截历史
+      interceptionHistory = [];
+      chrome.storage.local.set({ interceptionHistory: [] });
+      sendResponse({ success: true });
+      break;
+
     case "START_PERFORMANCE_MONITOR":
       startPerformanceMonitoring();
       sendResponse({ success: true });
@@ -73,6 +98,46 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       break;
   }
 });
+
+// 处理拦截记录
+function handleInterceptionRecord(record) {
+  // 添加到历史记录
+  interceptionHistory.push(record);
+
+  // 限制历史记录数量，避免内存溢出
+  if (interceptionHistory.length > 1000) {
+    interceptionHistory = interceptionHistory.slice(-500);
+  }
+
+  // 保存到存储
+  chrome.storage.local.set({ interceptionHistory });
+
+  // 广播拦截记录到devtools页面
+  broadcastInterceptionRecord(record);
+}
+
+// 广播拦截记录到devtools页面
+function broadcastInterceptionRecord(record) {
+  try {
+    chrome.runtime.sendMessage(
+      {
+        type: "INTERCEPTION_RECORD",
+        data: record,
+      },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          // 忽略连接错误，这通常是正常的（devtools页面可能未打开）
+          console.debug(
+            "无法发送拦截记录到devtools页面:",
+            chrome.runtime.lastError.message
+          );
+        }
+      }
+    );
+  } catch (error) {
+    console.debug("发送拦截记录到devtools页面失败:", error);
+  }
+}
 
 // 开始性能监控
 function startPerformanceMonitoring() {

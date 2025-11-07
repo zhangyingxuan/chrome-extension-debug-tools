@@ -1,4 +1,4 @@
-import { PerformanceData, ChromeMessage, RequestRule } from './types'
+import { PerformanceData, ChromeMessage, RequestRule, InterceptionRecord } from './types'
 
 // 网络请求拦截器
 class RequestInterceptor {
@@ -40,6 +40,14 @@ class RequestInterceptor {
 
       const matchedRule = this.findMatchingRule(url, method)
       if (matchedRule) {
+        this.recordInterception({
+          url,
+          method,
+          matchedRule: matchedRule.id,
+          responseStatus: matchedRule.response.status,
+          delay: matchedRule.delay,
+          error: undefined
+        })
         return this.createMockResponse(matchedRule)
       }
 
@@ -69,6 +77,14 @@ class RequestInterceptor {
 
         const matchedRule = this.interceptor.findMatchingRule(this.url, this.method)
         if (matchedRule) {
+          this.interceptor.recordInterception({
+            url: this.url,
+            method: this.method,
+            matchedRule: matchedRule.id,
+            responseStatus: matchedRule.response.status,
+            delay: matchedRule.delay,
+            error: undefined
+          })
           this.handleMockResponse(matchedRule)
           return
         }
@@ -114,6 +130,29 @@ class RequestInterceptor {
       private get interceptor(): RequestInterceptor {
         return (window as any).__requestInterceptor
       }
+    }
+  }
+
+  // 记录拦截信息
+  private recordInterception(record: Omit<InterceptionRecord, 'id' | 'timestamp'>) {
+    const interceptionRecord: InterceptionRecord = {
+      id: `intercept_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+      timestamp: Date.now(),
+      ...record
+    }
+
+    // 发送拦截记录到背景脚本
+    try {
+      chrome.runtime.sendMessage({
+        type: 'INTERCEPTION_RECORD',
+        data: interceptionRecord
+      } as ChromeMessage, (response) => {
+        if (chrome.runtime.lastError) {
+          console.debug('发送拦截记录失败:', chrome.runtime.lastError.message)
+        }
+      })
+    } catch (error) {
+      console.debug('发送拦截记录失败:', error)
     }
   }
 

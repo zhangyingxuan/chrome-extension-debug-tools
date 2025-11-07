@@ -1,56 +1,118 @@
 <template>
   <div class="request-interceptor">
-    <!-- 规则管理 -->
-    <div class="rules-section">
-      <div class="section-header">
-        <h3>拦截规则</h3>
-        <div class="header-actions">
-          <t-button size="small" @click="importRules">导入规则</t-button>
-          <t-button size="small" @click="exportRules">导出规则</t-button>
-          <t-button
-            theme="primary"
-            size="small"
-            @click="showAddRuleDialog = true"
-          >
-            添加规则
-          </t-button>
+    <!-- 左右分栏布局 -->
+    <div class="interceptor-layout">
+      <!-- 左侧：规则管理 -->
+      <div class="rules-panel">
+        <div class="rules-section">
+          <div class="section-header">
+            <h3>拦截规则</h3>
+            <div class="header-actions">
+              <t-button size="small" @click="importRules">导入规则</t-button>
+              <t-button size="small" @click="exportRules">导出规则</t-button>
+              <t-button
+                theme="primary"
+                size="small"
+                @click="showAddRuleDialog = true"
+              >
+                添加规则
+              </t-button>
+            </div>
+          </div>
+
+          <div class="rules-list">
+            <div
+              v-for="rule in rules"
+              :key="rule.id"
+              class="rule-item"
+              :class="{ disabled: !rule.enabled }"
+            >
+              <div class="rule-info">
+                <div class="rule-header">
+                  <t-switch
+                    v-model="rule.enabled"
+                    size="small"
+                    @change="updateRule(rule)"
+                  />
+                  <span class="rule-method">{{ rule.method }}</span>
+                  <span class="rule-url">{{ rule.urlPattern }}</span>
+                  <span v-if="rule.delay > 0" class="rule-delay"
+                    >延迟: {{ rule.delay }}ms</span
+                  >
+                </div>
+                <div class="rule-response">
+                  响应: {{ rule.response.status }} -
+                  {{ truncate(rule.response.body) }}
+                </div>
+              </div>
+              <div class="rule-actions">
+                <t-button size="small" @click="editRule(rule)">编辑</t-button>
+                <t-button
+                  size="small"
+                  theme="danger"
+                  @click="deleteRule(rule.id)"
+                  >删除</t-button
+                >
+              </div>
+            </div>
+
+            <div v-if="rules.length === 0" class="empty-state">
+              暂无拦截规则
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="rules-list">
-        <div
-          v-for="rule in rules"
-          :key="rule.id"
-          class="rule-item"
-          :class="{ disabled: !rule.enabled }"
-        >
-          <div class="rule-info">
-            <div class="rule-header">
+      <!-- 右侧：拦截历史 -->
+      <div class="history-panel">
+        <div class="history-section">
+          <div class="section-header">
+            <h3>拦截历史</h3>
+            <div class="header-actions">
+              <t-button size="small" @click="clearHistory">清空历史</t-button>
               <t-switch
-                v-model="rule.enabled"
+                v-model="autoScroll"
                 size="small"
-                @change="updateRule(rule)"
+                :label="['自动滚动', '固定']"
               />
-              <span class="rule-method">{{ rule.method }}</span>
-              <span class="rule-url">{{ rule.urlPattern }}</span>
-              <span v-if="rule.delay > 0" class="rule-delay"
-                >延迟: {{ rule.delay }}ms</span
-              >
-            </div>
-            <div class="rule-response">
-              响应: {{ rule.response.status }} -
-              {{ truncate(rule.response.body) }}
             </div>
           </div>
-          <div class="rule-actions">
-            <t-button size="small" @click="editRule(rule)">编辑</t-button>
-            <t-button size="small" theme="danger" @click="deleteRule(rule.id)"
-              >删除</t-button
+
+          <div class="history-list" ref="historyList">
+            <div
+              v-for="record in interceptionHistory"
+              :key="record.id"
+              class="history-item"
+              :class="getHistoryItemClass(record)"
             >
+              <div class="history-header">
+                <span class="history-method">{{ record.method }}</span>
+                <span class="history-url">{{ record.url }}</span>
+                <span class="history-time">{{
+                  formatTime(record.timestamp)
+                }}</span>
+              </div>
+              <div class="history-details">
+                <div class="history-rule">
+                  匹配规则: {{ record.matchedRule || "无匹配" }}
+                </div>
+                <div class="history-status">
+                  状态码: {{ record.responseStatus }}
+                  <span v-if="record.delay > 0" class="history-delay">
+                    (延迟: {{ record.delay }}ms)
+                  </span>
+                </div>
+                <div v-if="record.error" class="history-error">
+                  错误: {{ record.error }}
+                </div>
+              </div>
+            </div>
+
+            <div v-if="interceptionHistory.length === 0" class="empty-state">
+              暂无拦截记录
+            </div>
           </div>
         </div>
-
-        <div v-if="rules.length === 0" class="empty-state">暂无拦截规则</div>
       </div>
     </div>
 
@@ -143,9 +205,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from "vue";
+import {
+  ref,
+  reactive,
+  computed,
+  watch,
+  nextTick,
+  onMounted,
+  onUnmounted,
+} from "vue";
 import { DialogProps, ButtonProps } from "tdesign-vue-next";
-import { RequestRule } from "../types";
+import { RequestRule, InterceptionRecord } from "../types";
 
 interface Props {
   rules: RequestRule[];
@@ -166,6 +236,11 @@ const editingRule = ref<RequestRule | null>(null);
 const headersText = ref("");
 const responseBodyText = ref("");
 const responseType = ref<"json" | "text">("json");
+const autoScroll = ref(true);
+const historyList = ref<HTMLElement>();
+
+// 拦截历史记录
+const interceptionHistory = ref<InterceptionRecord[]>([]);
 
 // 新规则模板
 const newRule = ref<RequestRule>({
@@ -191,6 +266,100 @@ const urlPatternStatus = computed(() => {
     return "error";
   }
 });
+
+// 组件挂载时
+onMounted(() => {
+  // 加载拦截历史记录
+  loadInterceptionHistory();
+
+  // 监听拦截记录消息
+  chrome.runtime.onMessage.addListener(handleRuntimeMessage);
+});
+
+// 组件卸载时
+onUnmounted(() => {
+  chrome.runtime.onMessage.removeListener(handleRuntimeMessage);
+});
+
+// 处理运行时消息
+function handleRuntimeMessage(message: any, sender: any, sendResponse: any) {
+  if (message.type === "INTERCEPTION_RECORD") {
+    // 添加新的拦截记录
+    interceptionHistory.value.push(message.data);
+
+    // 限制历史记录数量
+    if (interceptionHistory.value.length > 1000) {
+      interceptionHistory.value = interceptionHistory.value.slice(-500);
+    }
+
+    return true;
+  }
+}
+
+// 加载拦截历史记录
+const loadInterceptionHistory = () => {
+  chrome.runtime.sendMessage(
+    { type: "GET_INTERCEPTION_HISTORY" },
+    (response) => {
+      if (response && response.history) {
+        interceptionHistory.value = response.history;
+      }
+    }
+  );
+};
+
+// 清空拦截历史
+const clearHistory = () => {
+  if (confirm("确定要清空所有拦截历史记录吗？")) {
+    chrome.runtime.sendMessage(
+      { type: "CLEAR_INTERCEPTION_HISTORY" },
+      (response) => {
+        if (response && response.success) {
+          interceptionHistory.value = [];
+        }
+      }
+    );
+  }
+};
+
+// 监听拦截历史变化，实现自动滚动
+watch(
+  interceptionHistory,
+  () => {
+    if (autoScroll.value) {
+      nextTick(() => {
+        const list = historyList.value;
+        if (list) {
+          list.scrollTop = list.scrollHeight;
+        }
+      });
+    }
+  },
+  { deep: true }
+);
+
+// 格式化时间
+const formatTime = (timestamp: number): string => {
+  return new Date(timestamp).toLocaleTimeString("zh-CN", {
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+};
+
+// 获取历史记录项样式类
+const getHistoryItemClass = (record: InterceptionRecord) => {
+  const classes = [];
+  if (record.error) {
+    classes.push("error");
+  } else if (record.responseStatus >= 400) {
+    classes.push("warning");
+  } else {
+    classes.push("success");
+  }
+  return classes;
+};
 
 // 过滤器：截断长文本
 const truncate = (value: any) => {
@@ -395,7 +564,28 @@ const importRules = () => {
 .request-interceptor {
   height: 100%;
 
-  .rules-section {
+  .interceptor-layout {
+    display: flex;
+    height: 100%;
+    gap: 16px;
+
+    .rules-panel {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .history-panel {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  .rules-section,
+  .history-section {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+
     .section-header {
       display: flex;
       justify-content: space-between;
@@ -411,75 +601,183 @@ const importRules = () => {
       .header-actions {
         display: flex;
         gap: 8px;
+        align-items: center;
       }
     }
 
-    .rules-list {
-      .rule-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px;
-        border: 1px solid #e8e8e8;
-        border-radius: 4px;
-        margin-bottom: 8px;
+    .rules-list,
+    .history-list {
+      flex: 1;
+      overflow-y: auto;
+      border: 1px solid #e8e8e8;
+      border-radius: 4px;
+      background: #fff;
+    }
+  }
+
+  .rules-list {
+    .rule-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      border-bottom: 1px solid #f0f0f0;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &.disabled {
+        opacity: 0.6;
         background: #fafafa;
+      }
 
-        &.disabled {
-          opacity: 0.6;
-          background: #f0f0f0;
-        }
+      .rule-info {
+        flex: 1;
 
-        .rule-info {
-          flex: 1;
+        .rule-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 4px;
 
-          .rule-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 4px;
-
-            .rule-method {
-              padding: 2px 6px;
-              background: #1890ff;
-              color: white;
-              border-radius: 2px;
-              font-size: 12px;
-            }
-
-            .rule-url {
-              font-family: monospace;
-              font-size: 12px;
-              color: #666;
-            }
-
-            .rule-delay {
-              font-size: 12px;
-              color: #999;
-              background: #f0f0f0;
-              padding: 2px 6px;
-              border-radius: 2px;
-            }
+          .rule-method {
+            padding: 2px 6px;
+            background: #1890ff;
+            color: white;
+            border-radius: 2px;
+            font-size: 12px;
+            font-weight: 500;
           }
 
-          .rule-response {
+          .rule-url {
+            font-family: monospace;
             font-size: 12px;
+            color: #666;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+
+          .rule-delay {
+            font-size: 12px;
+            color: #999;
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 2px;
+          }
+        }
+
+        .rule-response {
+          font-size: 12px;
+          color: #999;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
+
+      .rule-actions {
+        display: flex;
+        gap: 8px;
+      }
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 0;
+      color: #999;
+      font-size: 14px;
+    }
+  }
+
+  .history-list {
+    .history-item {
+      padding: 12px;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      transition: background-color 0.2s;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &:hover {
+        background-color: #f8f9fa;
+      }
+
+      &.success {
+        border-left: 3px solid #52c41a;
+      }
+
+      &.warning {
+        border-left: 3px solid #faad14;
+      }
+
+      &.error {
+        border-left: 3px solid #f5222d;
+      }
+
+      .history-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+
+        .history-method {
+          padding: 2px 6px;
+          background: #1890ff;
+          color: white;
+          border-radius: 2px;
+          font-size: 11px;
+          font-weight: 500;
+        }
+
+        .history-url {
+          font-family: monospace;
+          font-size: 12px;
+          color: #333;
+          flex: 1;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .history-time {
+          font-size: 11px;
+          color: #999;
+        }
+      }
+
+      .history-details {
+        font-size: 12px;
+        color: #666;
+
+        .history-rule {
+          margin-bottom: 2px;
+        }
+
+        .history-status {
+          margin-bottom: 2px;
+
+          .history-delay {
             color: #999;
           }
         }
 
-        .rule-actions {
-          display: flex;
-          gap: 8px;
+        .history-error {
+          color: #f5222d;
+          font-weight: 500;
         }
       }
+    }
 
-      .empty-state {
-        text-align: center;
-        padding: 40px 0;
-        color: #999;
-        font-size: 14px;
-      }
+    .empty-state {
+      text-align: center;
+      padding: 40px 0;
+      color: #999;
+      font-size: 14px;
     }
   }
 }

@@ -12,6 +12,18 @@ export interface RequestRule {
   };
 }
 
+// 拦截记录类型
+export interface InterceptionRecord {
+  id: string;
+  timestamp: number;
+  url: string;
+  method: string;
+  matchedRule?: string;
+  responseStatus: number;
+  delay: number;
+  error?: string;
+}
+
 // 性能监控数据类型
 export interface PerformanceData {
   timestamp: number;
@@ -49,6 +61,7 @@ export interface NetworkRequest {
 export interface StorageData {
   requestRules: RequestRule[];
   performanceHistory: PerformanceData[];
+  interceptionHistory: InterceptionRecord[];
   enabled: boolean;
 }
 
