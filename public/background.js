@@ -196,6 +196,7 @@ chrome.runtime.onInstalled.addListener(() => {
       enabled: false,
       urlPattern: ".*/api/example",
       method: "GET",
+      delay: 0,
       response: {
         status: 200,
         headers: { "Content-Type": "application/json" },

@@ -4,6 +4,7 @@ export interface RequestRule {
   enabled: boolean;
   urlPattern: string;
   method: string;
+  delay: number;
   response: {
     status: number;
     headers: Record<string, string>;
@@ -51,8 +52,8 @@ export interface StorageData {
   enabled: boolean;
 }
 
-// Chrome API 事件类型
+// Chrome消息类型
 export interface ChromeMessage {
-  type: 'NETWORK_REQUEST' | 'PERFORMANCE_DATA' | 'UPDATE_RULES' | 'TOGGLE_ENABLED' | 'GET_RULES' | 'START_PERFORMANCE_MONITOR' | 'STOP_PERFORMANCE_MONITOR' | 'GET_PERFORMANCE_DATA';
+  type: string;
   data?: any;
 }

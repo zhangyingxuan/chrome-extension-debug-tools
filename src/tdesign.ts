@@ -9,7 +9,11 @@ import {
   Input,
   Select,
   Option,
-  InputNumber
+  InputNumber,
+  RadioGroup,
+  Radio,
+  Message,
+  Notification
 } from 'tdesign-vue-next'
 
 // 导出TDesign Vue Next组件
@@ -25,7 +29,11 @@ export {
   Input,
   Select,
   Option,
-  InputNumber
+  InputNumber,
+  RadioGroup,
+  Radio,
+  Message,
+  Notification
 }
 
 // TDesign配置

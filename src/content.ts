@@ -1,4 +1,188 @@
-import { PerformanceData, ChromeMessage } from './types'
+import { PerformanceData, ChromeMessage, RequestRule } from './types'
+
+// 网络请求拦截器
+class RequestInterceptor {
+  private rules: RequestRule[] = []
+  private isEnabled = true
+
+  // 初始化拦截器
+  initialize() {
+    this.loadRules()
+    this.interceptFetch()
+    this.interceptXMLHttpRequest()
+    this.setupMessageListener()
+  }
+
+  // 从背景脚本加载规则
+  private loadRules() {
+    chrome.runtime.sendMessage(
+      { type: "GET_RULES" } as ChromeMessage,
+      (response) => {
+        if (response) {
+          this.rules = response.rules
+          this.isEnabled = response.enabled
+        }
+      }
+    )
+  }
+
+  // 拦截fetch请求
+  private interceptFetch() {
+    const originalFetch = window.fetch
+
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      if (!this.isEnabled) {
+        return originalFetch(input, init)
+      }
+
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      const method = init?.method || 'GET'
+
+      const matchedRule = this.findMatchingRule(url, method)
+      if (matchedRule) {
+        return this.createMockResponse(matchedRule)
+      }
+
+      return originalFetch(input, init)
+    }
+  }
+
+  // 拦截XMLHttpRequest
+  private interceptXMLHttpRequest() {
+    const OriginalXHR = window.XMLHttpRequest
+
+    window.XMLHttpRequest = class extends OriginalXHR {
+      private url: string = ''
+      private method: string = 'GET'
+
+      open(method: string, url: string, async?: boolean, username?: string, password?: string): void {
+        this.url = url
+        this.method = method
+        super.open(method, url, async ?? true, username, password)
+      }
+
+      send(body?: Document | XMLHttpRequestBodyInit | null): void {
+        if (!this.interceptor.isEnabled) {
+          super.send(body)
+          return
+        }
+
+        const matchedRule = this.interceptor.findMatchingRule(this.url, this.method)
+        if (matchedRule) {
+          this.handleMockResponse(matchedRule)
+          return
+        }
+
+        super.send(body)
+      }
+
+      private handleMockResponse(rule: RequestRule) {
+        this.readyState = OriginalXHR.HEADERS_RECEIVED
+        this.status = rule.response.status
+        this.statusText = this.getStatusText(rule.response.status)
+
+        // 设置响应头
+        Object.entries(rule.response.headers).forEach(([key, value]) => {
+          this.setRequestHeader(key, value)
+        })
+
+        // 设置响应体
+        this.readyState = OriginalXHR.DONE
+        this.responseText = typeof rule.response.body === 'string'
+          ? rule.response.body
+          : JSON.stringify(rule.response.body)
+
+        // 触发事件
+        this.dispatchEvent(new Event('readystatechange'))
+        this.dispatchEvent(new Event('load'))
+        this.dispatchEvent(new Event('loadend'))
+      }
+
+      private getStatusText(status: number): string {
+        const statusTexts: Record<number, string> = {
+          200: 'OK',
+          201: 'Created',
+          400: 'Bad Request',
+          401: 'Unauthorized',
+          403: 'Forbidden',
+          404: 'Not Found',
+          500: 'Internal Server Error'
+        }
+        return statusTexts[status] || 'Unknown'
+      }
+
+      private get interceptor(): RequestInterceptor {
+        return (window as any).__requestInterceptor
+      }
+    }
+  }
+
+  // 查找匹配的规则
+  private findMatchingRule(url: string, method: string): RequestRule | null {
+    return this.rules.find(rule =>
+      rule.enabled &&
+      new RegExp(rule.urlPattern).test(url) &&
+      rule.method.toUpperCase() === method.toUpperCase()
+    ) || null
+  }
+
+  // 创建mock响应
+  private async createMockResponse(rule: RequestRule): Promise<Response> {
+    // 应用延迟
+    if (rule.delay > 0) {
+      await this.delay(rule.delay);
+    }
+
+    const body = typeof rule.response.body === 'string'
+      ? rule.response.body
+      : JSON.stringify(rule.response.body)
+
+    return new Response(body, {
+      status: rule.response.status,
+      statusText: this.getStatusText(rule.response.status),
+      headers: new Headers(rule.response.headers)
+    })
+  }
+
+  // 延迟函数
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private getStatusText(status: number): string {
+    const statusTexts: Record<number, string> = {
+      200: 'OK',
+      201: 'Created',
+      400: 'Bad Request',
+      401: 'Unauthorized',
+      403: 'Forbidden',
+      404: 'Not Found',
+      500: 'Internal Server Error'
+    }
+    return statusTexts[status] || 'Unknown'
+  }
+
+  // 设置消息监听器
+  private setupMessageListener() {
+    chrome.runtime.onMessage.addListener((message: ChromeMessage, sender, sendResponse) => {
+      switch (message.type) {
+        case 'UPDATE_RULES':
+          this.rules = message.data.rules
+          this.isEnabled = message.data.enabled
+          break
+
+        case 'TOGGLE_ENABLED':
+          this.isEnabled = message.data.enabled
+          break
+
+        case 'GET_RULES':
+          sendResponse({ rules: this.rules, enabled: this.isEnabled })
+          break
+      }
+      return true
+    })
+  }
+}
 
 // 性能数据收集
 class PerformanceCollector {
@@ -157,6 +341,13 @@ class PerformanceCollector {
 // 初始化性能收集器
 const collector = new PerformanceCollector()
 
+// 初始化请求拦截器
+const requestInterceptor = new RequestInterceptor()
+requestInterceptor.initialize()
+
+  // 将拦截器暴露给全局，方便调试
+  (window as any).__requestInterceptor = requestInterceptor
+
 // 监听来自背景脚本的消息
 chrome.runtime.onMessage.addListener((message: ChromeMessage, sender, sendResponse) => {
   switch (message.type) {
@@ -206,14 +397,4 @@ document.addEventListener('visibilitychange', () => {
   } else {
     collector.startCollecting()
   }
-})
-
-// 页面加载完成后开始收集性能数据
-document.addEventListener('DOMContentLoaded', () => {
-  collector.startCollecting()
-})
-
-// 页面卸载时停止收集
-window.addEventListener('beforeunload', () => {
-  collector.stopCollecting()
 })
