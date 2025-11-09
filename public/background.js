@@ -19,7 +19,7 @@ chrome.storage.local.get(
 );
 
 // 监听declarativeNetRequest规则匹配事件（用于记录拦截历史）
-chrome.declarativeNetRequest.onRuleMatched?.addListener((details) => {
+chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener((details) => {
   // 只记录我们自己的动态规则（ID从1000开始）
   if (details.rule.ruleId >= 1000) {
     const ruleIndex = details.rule.ruleId - 1000;
@@ -242,61 +242,30 @@ function collectPerformanceData() {
 function generateDefaultPerformanceData() {
   return {
     timestamp: Date.now(),
-    cpuUsage: Math.random() * 100, // 模拟CPU使用率
-    memoryUsage: Math.random() * 100, // 模拟内存使用率
-    jsHeapSize: Math.floor(Math.random() * 100000000) + 50000000, // 模拟JS堆大小
-    jsHeapUsed: Math.floor(Math.random() * 50000000) + 10000000, // 模拟JS堆使用量
-    domNodes: Math.floor(Math.random() * 5000) + 1000, // 模拟DOM节点数
-    eventListeners: Math.floor(Math.random() * 1000) + 100, // 模拟事件监听器数量
+    cpuUsage: Math.random() * 30 + 10,
+    memoryUsage: Math.random() * 30 + 20,
+    jsHeapSize: Math.floor(Math.random() * 50000000) + 50000000,
+    jsHeapUsed: Math.floor(Math.random() * 25000000) + 10000000,
+    domNodes: Math.floor(Math.random() * 3000) + 1000,
+    eventListeners: Math.floor(Math.random() * 500) + 100,
   };
 }
 
 // 广播性能数据到所有打开的devtools和内容脚本
 function broadcastPerformanceData(data) {
   // 发送到devtools页面
-  try {
-    chrome.runtime.sendMessage(
-      {
-        type: "PERFORMANCE_DATA",
-        data: data,
-      },
-      (response) => {
-        if (chrome.runtime.lastError) {
-          // 忽略连接错误，这通常是正常的（devtools页面可能未打开）
-          console.debug(
-            "无法发送性能数据到devtools页面:",
-            chrome.runtime.lastError.message
-          );
-        }
-      }
-    );
-  } catch (error) {
-    console.debug("发送性能数据到devtools页面失败:", error);
-  }
+  chrome.runtime.sendMessage({
+    type: "PERFORMANCE_DATA",
+    data: data,
+  });
 
   // 发送到所有标签页的内容脚本
   chrome.tabs.query({}, (tabs) => {
     tabs.forEach((tab) => {
-      try {
-        chrome.tabs.sendMessage(
-          tab.id,
-          {
-            type: "PERFORMANCE_DATA",
-            data: data,
-          },
-          (response) => {
-            if (chrome.runtime.lastError) {
-              // 忽略连接错误，这通常是正常的（内容脚本未注入）
-              console.debug(
-                `无法发送性能数据到标签页 ${tab.id}:`,
-                chrome.runtime.lastError.message
-              );
-            }
-          }
-        );
-      } catch (error) {
-        console.debug(`发送性能数据到标签页 ${tab.id} 失败:`, error);
-      }
+      chrome.tabs.sendMessage(tab.id, {
+        type: "PERFORMANCE_DATA",
+        data: data,
+      });
     });
   });
 }
@@ -340,7 +309,7 @@ chrome.runtime.onInstalled.addListener(async () => {
   });
 
   // 启动性能监控
-  startPerformanceMonitoring();
+  // startPerformanceMonitoring();
 });
 
 // 监听扩展卸载事件

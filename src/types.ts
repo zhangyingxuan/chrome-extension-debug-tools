@@ -44,27 +44,6 @@ export interface ProcessInfo {
   type: 'main' | 'renderer' | 'worker' | 'other';
 }
 
-// 网络请求数据
-export interface NetworkRequest {
-  id: string;
-  url: string;
-  method: string;
-  status: number;
-  startTime: number;
-  endTime: number;
-  duration: number;
-  size: number;
-  type: string;
-}
-
-// 存储的数据结构
-export interface StorageData {
-  requestRules: RequestRule[];
-  performanceHistory: PerformanceData[];
-  interceptionHistory: InterceptionRecord[];
-  enabled: boolean;
-}
-
 // Chrome消息类型
 export interface ChromeMessage {
   type: string;

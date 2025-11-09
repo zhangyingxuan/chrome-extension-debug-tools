@@ -84,21 +84,13 @@ const performanceData = ref<PerformanceData[]>([]);
 const processInfo = ref<ProcessInfo[]>([]);
 
 // 监听来自背景脚本的消息
-const messageListener = (
-  message: ChromeMessage,
-  sender: any,
-  sendResponse: any
-) => {
+const messageListener = (message: ChromeMessage) => {
   if (message.type === "PERFORMANCE_DATA") {
-    // 添加新的性能数据
     performanceData.value.push(message.data);
-
-    // 只保留最近100条数据，避免内存溢出
+    // 只保留最近100条数据
     if (performanceData.value.length > 100) {
       performanceData.value = performanceData.value.slice(-100);
     }
-
-    // 更新进程信息（模拟数据）
     updateProcessInfo(message.data);
   }
 };
@@ -194,28 +186,18 @@ const toggleEnabled = (enabled: boolean) => {
 
 // 开始性能监控
 const startPerformanceMonitoring = () => {
-  chrome.runtime.sendMessage(
-    { type: "START_PERFORMANCE_MONITOR" } as ChromeMessage,
-    (response) => {
-      if (response && response.success) {
-        isMonitoring.value = true;
-        console.log("性能监控已启动");
-      }
-    }
-  );
+  chrome.runtime.sendMessage({
+    type: "START_PERFORMANCE_MONITOR",
+  } as ChromeMessage);
+  isMonitoring.value = true;
 };
 
 // 停止性能监控
 const stopPerformanceMonitoring = () => {
-  chrome.runtime.sendMessage(
-    { type: "STOP_PERFORMANCE_MONITOR" } as ChromeMessage,
-    (response) => {
-      if (response && response.success) {
-        isMonitoring.value = false;
-        console.log("性能监控已停止");
-      }
-    }
-  );
+  chrome.runtime.sendMessage({
+    type: "STOP_PERFORMANCE_MONITOR",
+  } as ChromeMessage);
+  isMonitoring.value = false;
 };
 
 // 切换性能监控状态

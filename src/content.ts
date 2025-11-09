@@ -158,18 +158,10 @@ class RequestInterceptor {
     }
 
     // 发送拦截记录到背景脚本
-    try {
-      chrome.runtime.sendMessage({
-        type: 'INTERCEPTION_RECORD',
-        data: interceptionRecord
-      } as ChromeMessage, (response) => {
-        if (chrome.runtime.lastError) {
-          console.debug('发送拦截记录失败:', chrome.runtime.lastError.message)
-        }
-      })
-    } catch (error) {
-      console.debug('发送拦截记录失败:', error)
-    }
+    chrome.runtime.sendMessage({
+      type: 'INTERCEPTION_RECORD',
+      data: interceptionRecord
+    } as ChromeMessage)
   }
 
   // 查找匹配的规则
@@ -299,36 +291,21 @@ class PerformanceCollector {
   }
 
   private calculateCPUUsage(): number {
-    // 使用Performance API获取更准确的CPU使用率
-    if ('performance' in window && 'now' in performance) {
-      const now = performance.now();
-      const timeSinceLastCall = now - this.lastCpuTime;
-
-      if (timeSinceLastCall > 100) { // 至少100ms间隔
-        // 模拟CPU使用率计算（实际浏览器环境限制）
-        const usage = Math.min(100, Math.max(0,
-          Math.random() * 30 + 10 + Math.sin(Date.now() / 1000) * 20
-        ));
-        this.lastCpuTime = now;
-        return Math.round(usage * 10) / 10; // 保留一位小数
-      }
+    // 使用performance.memory作为CPU使用率的参考
+    const performanceMemory = (window.performance as any).memory;
+    if (performanceMemory && performanceMemory.totalJSHeapSize > 0) {
+      const usage = (performanceMemory.usedJSHeapSize / performanceMemory.totalJSHeapSize) * 100;
+      return Math.min(100, Math.max(0, usage));
     }
-
-    // 备用方案：基于内存使用率估算
-    const memoryUsage = this.calculateMemoryUsage();
-    return Math.min(100, memoryUsage * 0.8 + Math.random() * 20);
+    return Math.random() * 30 + 10; // 备用方案
   }
 
   private calculateMemoryUsage(): number {
-    // 检查performance.memory是否存在（Chrome特有API）
     const performanceMemory = (window.performance as any).memory;
     if (performanceMemory && performanceMemory.totalJSHeapSize > 0) {
       return (performanceMemory.usedJSHeapSize / performanceMemory.totalJSHeapSize) * 100;
     }
-
-    // 备用方案：基于DOM节点数估算内存使用
-    const domNodes = this.countDOMNodes();
-    return Math.min(100, (domNodes / 10000) * 30 + Math.random() * 20);
+    return Math.random() * 30 + 20; // 备用方案
   }
 
   private getJSHeapSize(): number {
@@ -350,37 +327,8 @@ class PerformanceCollector {
   }
 
   private countEventListeners(): number {
-    let count = 0;
-
-    try {
-      // 获取所有元素的事件监听器（仅限可访问的元素）
-      const allElements = document.querySelectorAll('*');
-
-      allElements.forEach(element => {
-        // 尝试获取元素的事件监听器数量
-        // 注意：由于浏览器安全限制，无法直接获取所有事件监听器
-        // 这里使用估算方法
-        const tagName = element.tagName.toLowerCase();
-
-        // 根据元素类型估算事件监听器数量
-        if (['button', 'a', 'input', 'select', 'textarea'].includes(tagName)) {
-          count += 2; // 交互元素通常有更多监听器
-        } else if (['div', 'span', 'p'].includes(tagName)) {
-          count += 1; // 普通元素
-        }
-      });
-
-      // 添加全局事件监听器估算
-      count += Object.keys(window).filter(key =>
-        key.startsWith('on') && typeof (window as any)[key] === 'function'
-      ).length;
-
-    } catch (error) {
-      // 如果无法访问某些元素，使用基于DOM节点数的估算
-      count = Math.floor(this.countDOMNodes() * 0.3);
-    }
-
-    return Math.max(1, count);
+    // 简化事件监听器计数，基于DOM节点数估算
+    return Math.max(1, Math.floor(this.countDOMNodes() * 0.5));
   }
 
   getPerformanceData(): PerformanceData[] {

@@ -6,7 +6,6 @@
   "permissions": [
     "storage",
     "declarativeNetRequest",
-    "declarativeNetRequestWithHostAccess",
     "declarativeNetRequestFeedback"
   ],
   "host_permissions": ["http://*/*", "https://*/*"],
