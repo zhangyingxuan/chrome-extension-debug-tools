@@ -18,28 +18,75 @@ chrome.storage.local.get(
   }
 );
 
-// 网络请求拦截 - Manifest V3不再支持阻塞式请求
-chrome.webRequest.onBeforeRequest.addListener(
-  (details) => {
-    console.log(details.url, isEnabled, details);
-    if (!isEnabled) return;
+// 监听declarativeNetRequest规则匹配事件（用于记录拦截历史）
+chrome.declarativeNetRequest.onRuleMatched?.addListener((details) => {
+  // 只记录我们自己的动态规则（ID从1000开始）
+  if (details.rule.ruleId >= 1000) {
+    const ruleIndex = details.rule.ruleId - 1000;
+    const matchedRule = requestRules[ruleIndex];
 
-    const matchedRule = requestRules.find(
-      (rule) =>
-        rule.enabled &&
-        new RegExp(rule.urlPattern).test(details.url) &&
-        rule.method.toUpperCase() === details.method.toUpperCase()
-    );
+    if (matchedRule && matchedRule.enabled) {
+      const record = {
+        timestamp: Date.now(),
+        url: details.request.url,
+        method: details.request.method,
+        ruleId: matchedRule.id,
+        ruleName: matchedRule.name || `规则${matchedRule.id}`,
+        response: matchedRule.response,
+        tabId: details.request.tabId,
+      };
 
-    if (matchedRule) {
-      // 在Manifest V3中，无法直接阻塞请求，需要采用其他方式
-      console.log(`请求被拦截: ${details.url}`);
-      // 这里可以记录拦截信息，但无法直接重定向
+      // 记录拦截历史
+      handleInterceptionRecord(record);
+      console.log(`请求被declarativeNetRequest拦截: ${details.request.url}`);
     }
-  },
-  { urls: ["<all_urls>"] }
-  // 移除了blocking参数
-);
+  }
+});
+
+// 将规则转换为declarativeNetRequest格式
+function convertToDNRRule(rule, ruleId) {
+  return {
+    id: ruleId,
+    priority: 1,
+    action: {
+      type: "redirect",
+      redirect: {
+        url: `data:application/json;charset=utf-8,${encodeURIComponent(
+          JSON.stringify(rule.response.body)
+        )}`,
+      },
+    },
+    condition: {
+      urlFilter: rule.urlPattern,
+      resourceTypes: ["xmlhttprequest"],
+      requestMethods: [rule.method.toLowerCase()],
+    },
+  };
+}
+
+// 更新declarativeNetRequest规则
+async function updateDNRRules() {
+  if (!isEnabled) {
+    // 如果禁用，移除所有动态规则
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: requestRules.map((rule, index) => index + 1000),
+    });
+    return;
+  }
+
+  const enabledRules = requestRules.filter((rule) => rule.enabled);
+  const dnrRules = enabledRules.map((rule, index) =>
+    convertToDNRRule(rule, index + 1000)
+  );
+
+  // 先移除旧规则，再添加新规则
+  await chrome.declarativeNetRequest.updateDynamicRules({
+    removeRuleIds: requestRules.map((rule, index) => index + 1000),
+    addRules: dnrRules,
+  });
+
+  console.log(`已更新 ${dnrRules.length} 条declarativeNetRequest规则`);
+}
 
 // 监听来自内容脚本和devtools的消息
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -52,11 +99,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         requestRules,
         enabled: isEnabled,
       });
+      // 更新declarativeNetRequest规则
+      updateDNRRules();
       break;
 
     case "TOGGLE_ENABLED":
       isEnabled = message.data.enabled;
       chrome.storage.local.set({ enabled: isEnabled });
+      // 更新declarativeNetRequest规则
+      updateDNRRules();
       break;
 
     case "GET_RULES":
@@ -251,7 +302,7 @@ function broadcastPerformanceData(data) {
 }
 
 // 监听扩展安装事件
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
   console.log("前端调试增强器已安装");
 
   // 初始化默认规则
@@ -270,9 +321,21 @@ chrome.runtime.onInstalled.addListener(() => {
     },
   ];
 
-  chrome.storage.local.get(["requestRules"], (result) => {
+  chrome.storage.local.get(["requestRules", "enabled"], (result) => {
     if (!result.requestRules) {
-      chrome.storage.local.set({ requestRules: defaultRules });
+      chrome.storage.local.set({
+        requestRules: defaultRules,
+        enabled: true,
+      });
+      requestRules = defaultRules;
+      isEnabled = true;
+      // 更新declarativeNetRequest规则
+      updateDNRRules();
+    } else {
+      requestRules = result.requestRules;
+      isEnabled = result.enabled !== false;
+      // 更新declarativeNetRequest规则
+      updateDNRRules();
     }
   });
 

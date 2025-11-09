@@ -398,10 +398,10 @@ const collector = new PerformanceCollector()
 
 // 初始化请求拦截器
 const requestInterceptor = new RequestInterceptor()
-requestInterceptor.initialize();
+requestInterceptor.initialize()
 
-// 将拦截器暴露给全局，方便调试
-(window as any).__requestInterceptor = requestInterceptor
+  // 将拦截器暴露给全局，方便调试
+  (window as any).__requestInterceptor = requestInterceptor
 
 // 监听来自背景脚本的消息
 chrome.runtime.onMessage.addListener((message: ChromeMessage, sender, sendResponse) => {

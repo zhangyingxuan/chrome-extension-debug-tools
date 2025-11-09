@@ -3,8 +3,22 @@
   "name": "前端研发专用调试增强器",
   "version": "1.0",
   "description": "让前端工程师在浏览器里完成「调试 + 环境切换 + 真机采样」三位一体的私有外挂，无需 Charles、无需 root、一套插件即插即用。",
-  "permissions": ["storage", "webRequest"],
+  "permissions": [
+    "storage",
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess",
+    "declarativeNetRequestFeedback"
+  ],
   "host_permissions": ["http://*/*", "https://*/*"],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "ruleset_1",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
   "icons": {
     "48": "sources/tabs64.png",
     "128": "sources/tabs128.png",
