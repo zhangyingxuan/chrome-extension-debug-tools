@@ -94,14 +94,15 @@
               </div>
               <div class="history-details">
                 <div class="history-rule">
-                  匹配规则: {{ record.matchedRule || "无匹配" }}
-                </div>
-                <div class="history-status">
-                  状态码: {{ record.responseStatus }}
-                  <span v-if="record.delay > 0" class="history-delay">
-                    (延迟: {{ record.delay }}ms)
+                  <span> 匹配规则: {{ record.matchedRule || "无匹配" }} </span>
+                  <span class="history-status">
+                    状态码: {{ record.responseStatus }}
+                    <span v-if="record.delay > 0" class="history-delay">
+                      (延迟: {{ record.delay }}ms)
+                    </span>
                   </span>
                 </div>
+
                 <div v-if="record.error" class="history-error">
                   错误: {{ record.error }}
                 </div>
@@ -117,13 +118,12 @@
     </div>
 
     <!-- 添加/编辑规则对话框 -->
-    <!-- v-model:visible="true" -->
     <!-- v-if="showAddRuleDialog" -->
     <t-dialog
       :visible="showAddRuleDialog"
       :header="editingRule ? '编辑规则' : '添加规则'"
       @close="showAddRuleDialog = false"
-      width="700px"
+      width="720px"
     >
       <t-form :model="newRule" label-width="120px">
         <t-form-item label="URL模式" required>
@@ -131,68 +131,125 @@
             v-model="newRule.urlPattern"
             placeholder="例如: .*/api/users.*"
             :status="urlPatternStatus"
-          />
-          <div class="form-tip">
-            支持正则表达式，如: ^https://api\.example\.com/.*
-          </div>
-        </t-form-item>
-
-        <t-form-item label="请求方法">
-          <t-select v-model="newRule.method">
-            <t-option label="GET" value="GET" />
-            <t-option label="POST" value="POST" />
-            <t-option label="PUT" value="PUT" />
-            <t-option label="DELETE" value="DELETE" />
-            <t-option label="PATCH" value="PATCH" />
-            <t-option label="OPTIONS" value="OPTIONS" />
-            <t-option label="HEAD" value="HEAD" />
-          </t-select>
-        </t-form-item>
-
-        <t-form-item label="响应延迟">
-          <t-input-number
-            v-model="newRule.delay"
-            :min="0"
-            :max="10000"
-            placeholder="延迟时间(毫秒)"
-          />
-          <div class="form-tip">模拟网络延迟，0表示立即响应</div>
-        </t-form-item>
-
-        <t-form-item label="响应状态码">
-          <t-input-number
-            v-model="newRule.response.status"
-            :min="100"
-            :max="599"
+            tips="支持正则表达式，如: ^https://api\.example\.com/.*"
           />
         </t-form-item>
-
-        <t-form-item label="响应体类型">
-          <t-radio-group v-model="responseType">
-            <t-radio value="json">JSON</t-radio>
-            <t-radio value="text">文本</t-radio>
-          </t-radio-group>
-        </t-form-item>
-
+        <t-row :gutter="[24, 24]" style="padding: 12px 0">
+          <t-col :span="6">
+            <t-form-item label="请求方法" name="method">
+              <t-select v-model="newRule.method">
+                <t-option label="GET" value="GET" />
+                <t-option label="POST" value="POST" />
+                <t-option label="PUT" value="PUT" />
+                <t-option label="DELETE" value="DELETE" />
+                <t-option label="PATCH" value="PATCH" />
+                <t-option label="OPTIONS" value="OPTIONS" />
+                <t-option label="HEAD" value="HEAD" />
+              </t-select>
+            </t-form-item>
+          </t-col>
+          <t-col :span="6">
+            <t-form-item label="响应延迟">
+              <t-input-number
+                v-model="newRule.delay"
+                :min="0"
+                :max="10000"
+                placeholder="延迟时间(毫秒)"
+                tips="0表示立即响应"
+              />
+            </t-form-item>
+          </t-col>
+        </t-row>
+        <t-row :gutter="[24, 24]" style="padding: 24px 0">
+          <t-col :span="6">
+            <t-form-item label="响应状态码">
+              <t-input-number
+                v-model="newRule.response.status"
+                :min="100"
+                :max="599"
+              />
+            </t-form-item>
+          </t-col>
+          <t-col :span="6">
+            <t-form-item label="响应体类型">
+              <t-radio-group v-model="responseType">
+                <t-radio value="json">JSON</t-radio>
+                <t-radio value="text">文本</t-radio>
+              </t-radio-group>
+            </t-form-item>
+          </t-col>
+        </t-row>
         <t-form-item label="响应头">
           <t-input
             v-model="headersText"
             type="textarea"
             :rows="3"
             placeholder="Content-Type: application/json"
+            tips="每行一个响应头，格式: Key: Value"
           />
-          <div class="form-tip">每行一个响应头，格式: Key: Value</div>
         </t-form-item>
-
         <t-form-item label="响应体">
-          <t-input
-            v-model="responseBodyText"
-            type="textarea"
-            :rows="6"
-            :placeholder="
-              responseType === 'json' ? 'JSON格式的响应体' : '文本响应体'
-            "
-          />
+          <div class="response-body-container">
+            <div v-if="responseType === 'json'" class="json-editor-actions">
+              <t-button
+                size="small"
+                @click="formatJson"
+                :disabled="!responseBodyText"
+              >
+                格式化JSON
+              </t-button>
+              <t-button
+                size="small"
+                @click="validateJson"
+                :disabled="!responseBodyText"
+              >
+                验证JSON
+              </t-button>
+              <t-button
+                size="small"
+                @click="togglePreview"
+                :disabled="!responseBodyText"
+              >
+                {{ showPreview ? "隐藏预览" : "显示预览" }}
+              </t-button>
+            </div>
+            <textarea
+              v-model="responseBodyText"
+              class="response-textarea"
+              :rows="showPreview ? 4 : 8"
+              :placeholder="
+                responseType === 'json' ? 'JSON格式的响应体' : '文本响应体'
+              "
+              @blur="onResponseBodyBlur"
+              @keydown.ctrl.enter="formatJson"
+              @keydown.ctrl.shift.enter="validateJson"
+            />
+            <div
+              v-if="responseType === 'json' && responseBodyText && showPreview"
+              class="json-preview"
+            >
+              <div class="preview-header">JSON预览</div>
+              <pre class="preview-content">{{
+                formatJsonForPreview(responseBodyText)
+              }}</pre>
+            </div>
+            <div
+              v-if="responseType === 'json' && responseBodyText"
+              class="json-status"
+            >
+              <span
+                v-if="responseBodyStatus === 'success'"
+                class="status-success"
+                >✓ JSON格式正确</span
+              >
+              <span v-if="responseBodyStatus === 'error'" class="status-error"
+                >✗ JSON格式错误</span
+              >
+              <span class="status-tip">
+                （快捷键：Ctrl+Enter 格式化，Ctrl+Shift+Enter 验证）
+              </span>
+            </div>
+          </div>
         </t-form-item>
       </t-form>
 
@@ -205,16 +262,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  ref,
-  reactive,
-  computed,
-  watch,
-  nextTick,
-  onMounted,
-  onUnmounted,
-} from "vue";
-import { DialogProps, ButtonProps } from "tdesign-vue-next";
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from "vue";
 import { RequestRule, InterceptionRecord } from "../types";
 
 interface Props {
@@ -238,6 +286,7 @@ const responseBodyText = ref("");
 const responseType = ref<"json" | "text">("json");
 const autoScroll = ref(true);
 const historyList = ref<HTMLElement>();
+const showPreview = ref(false);
 
 // 拦截历史记录
 const interceptionHistory = ref<InterceptionRecord[]>([]);
@@ -266,6 +315,67 @@ const urlPatternStatus = computed(() => {
     return "error";
   }
 });
+
+// 响应体验证状态
+const responseBodyStatus = ref("");
+
+// 格式化JSON
+const formatJson = () => {
+  if (!responseBodyText.value) return;
+
+  try {
+    const parsed = JSON.parse(responseBodyText.value);
+    responseBodyText.value = JSON.stringify(parsed, null, 2);
+    responseBodyStatus.value = "success";
+  } catch (error) {
+    responseBodyStatus.value = "error";
+    alert("JSON格式错误，无法格式化");
+  }
+};
+
+// 验证JSON
+const validateJson = () => {
+  if (!responseBodyText.value) return;
+
+  try {
+    JSON.parse(responseBodyText.value);
+    responseBodyStatus.value = "success";
+    alert("JSON格式正确");
+  } catch (error) {
+    responseBodyStatus.value = "error";
+    const errorMessage = error instanceof Error ? error.message : "未知错误";
+    alert(`JSON格式错误: ${errorMessage}`);
+  }
+};
+
+// 响应体失去焦点时自动验证
+const onResponseBodyBlur = () => {
+  if (responseType.value === "json" && responseBodyText.value) {
+    try {
+      JSON.parse(responseBodyText.value);
+      responseBodyStatus.value = "success";
+    } catch {
+      responseBodyStatus.value = "error";
+    }
+  } else {
+    responseBodyStatus.value = "";
+  }
+};
+
+// 切换预览显示
+const togglePreview = () => {
+  showPreview.value = !showPreview.value;
+};
+
+// 格式化JSON用于预览显示
+const formatJsonForPreview = (jsonText: string): string => {
+  try {
+    const parsed = JSON.parse(jsonText);
+    return JSON.stringify(parsed, null, 2);
+  } catch (error) {
+    return jsonText;
+  }
+};
 
 // 组件挂载时
 onMounted(() => {
@@ -389,11 +499,14 @@ watch(responseType, (newType) => {
   if (newType === "json") {
     try {
       newRule.value.response.body = JSON.parse(responseBodyText.value || "{}");
+      responseBodyStatus.value = "success";
     } catch {
       newRule.value.response.body = {};
+      responseBodyStatus.value = "error";
     }
   } else {
     newRule.value.response.body = responseBodyText.value;
+    responseBodyStatus.value = "";
   }
 });
 
@@ -402,11 +515,14 @@ watch(responseBodyText, (newText) => {
   if (responseType.value === "json") {
     try {
       newRule.value.response.body = JSON.parse(newText || "{}");
+      responseBodyStatus.value = "success";
     } catch {
       // 保持原值，JSON格式错误时显示错误状态
+      responseBodyStatus.value = "error";
     }
   } else {
     newRule.value.response.body = newText;
+    responseBodyStatus.value = "";
   }
 });
 
@@ -433,9 +549,11 @@ const editRule = (rule: RequestRule) => {
   if (typeof rule.response.body === "string") {
     responseType.value = "text";
     responseBodyText.value = rule.response.body;
+    responseBodyStatus.value = "";
   } else {
     responseType.value = "json";
     responseBodyText.value = JSON.stringify(rule.response.body, null, 2);
+    responseBodyStatus.value = "success";
   }
 
   showAddRuleDialog.value = true;
@@ -454,6 +572,16 @@ const saveRule = () => {
   } catch (error) {
     alert("URL模式格式错误，请输入有效的正则表达式");
     return;
+  }
+
+  // 验证JSON格式（如果是JSON类型）
+  if (responseType.value === "json" && responseBodyText.value) {
+    try {
+      JSON.parse(responseBodyText.value);
+    } catch (error) {
+      alert("JSON格式错误，请检查响应体格式");
+      return;
+    }
   }
 
   // 生成唯一ID
@@ -620,7 +748,7 @@ const importRules = () => {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px;
+      padding: 4px;
       border-bottom: 1px solid #f0f0f0;
 
       &:last-child {
@@ -694,7 +822,7 @@ const importRules = () => {
 
   .history-list {
     .history-item {
-      padding: 12px;
+      padding: 4px;
       border-bottom: 1px solid #f0f0f0;
       cursor: pointer;
       transition: background-color 0.2s;
@@ -723,7 +851,7 @@ const importRules = () => {
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-bottom: 6px;
+        margin-bottom: 2px;
 
         .history-method {
           padding: 2px 6px;
@@ -755,12 +883,13 @@ const importRules = () => {
         color: #666;
 
         .history-rule {
+          display: flex;
+          justify-content: space-between;
           margin-bottom: 2px;
         }
 
         .history-status {
-          margin-bottom: 2px;
-
+          min-width: 100px;
           .history-delay {
             color: #999;
           }
@@ -786,5 +915,83 @@ const importRules = () => {
   font-size: 12px;
   color: #999;
   margin-top: 4px;
+}
+
+.response-body-container {
+  .json-editor-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .response-textarea {
+    width: 500px;
+    min-height: 120px;
+    max-height: 300px;
+    padding: 8px 12px;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+    font-family: "Courier New", monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    resize: vertical;
+    transition: border-color 0.2s;
+
+    &:focus {
+      outline: none;
+      border-color: #1890ff;
+      box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+    }
+
+    &:hover {
+      border-color: #40a9ff;
+    }
+  }
+
+  .json-preview {
+    margin-top: 8px;
+    border: 1px solid #e8e8e8;
+    border-radius: 4px;
+    background: #fafafa;
+
+    .preview-header {
+      padding: 6px 12px;
+      background: #f0f0f0;
+      border-bottom: 1px solid #e8e8e8;
+      font-size: 12px;
+      font-weight: 500;
+      color: #666;
+    }
+
+    .preview-content {
+      margin: 0;
+      padding: 12px;
+      max-height: 200px;
+      overflow: auto;
+      font-family: "Courier New", monospace;
+      font-size: 13px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+  }
+
+  .json-status {
+    margin-top: 4px;
+    font-size: 12px;
+
+    .status-success {
+      color: #52c41a;
+    }
+
+    .status-error {
+      color: #f5222d;
+    }
+
+    .status-tip {
+      color: #999;
+      margin-left: 8px;
+    }
+  }
 }
 </style>

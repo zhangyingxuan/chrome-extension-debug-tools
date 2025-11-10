@@ -5,9 +5,6 @@ let isEnabled = true;
 // 拦截历史记录
 let interceptionHistory = [];
 
-// 性能监控相关
-let performanceMonitorInterval = null;
-
 // 从存储中加载配置
 chrome.storage.local.get(
   ["requestRules", "enabled", "interceptionHistory"],
@@ -38,7 +35,11 @@ chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener((details) => {
 
       // 记录拦截历史
       handleInterceptionRecord(record);
-      console.log(`请求被declarativeNetRequest拦截: ${details.request.url}`);
+      console.log(
+        `请求被declarativeNetRequest拦截: ${
+          details.request.url
+        }；${JSON.stringify(details)}`
+      );
     }
   }
 });
@@ -130,23 +131,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       chrome.storage.local.set({ interceptionHistory: [] });
       sendResponse({ success: true });
       break;
-
-    case "START_PERFORMANCE_MONITOR":
-      startPerformanceMonitoring();
-      sendResponse({ success: true });
-      break;
-
-    case "STOP_PERFORMANCE_MONITOR":
-      stopPerformanceMonitoring();
-      sendResponse({ success: true });
-      break;
-
-    case "PERFORMANCE_DATA":
-      // 处理来自内容脚本的性能数据
-      if (message.data) {
-        broadcastPerformanceData(message.data);
-      }
-      break;
   }
 });
 
@@ -190,86 +174,6 @@ function broadcastInterceptionRecord(record) {
   }
 }
 
-// 开始性能监控
-function startPerformanceMonitoring() {
-  if (performanceMonitorInterval) {
-    clearInterval(performanceMonitorInterval);
-  }
-
-  // 每2秒采集一次性能数据
-  performanceMonitorInterval = setInterval(() => {
-    collectPerformanceData();
-  }, 2000);
-
-  console.log("性能监控已启动");
-}
-
-// 停止性能监控
-function stopPerformanceMonitoring() {
-  if (performanceMonitorInterval) {
-    clearInterval(performanceMonitorInterval);
-    performanceMonitorInterval = null;
-  }
-  console.log("性能监控已停止");
-}
-
-// 采集性能数据
-function collectPerformanceData() {
-  // 获取当前标签页信息
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs.length === 0) return;
-
-    const tab = tabs[0];
-
-    // 向内容脚本发送消息获取性能数据
-    chrome.tabs.sendMessage(
-      tab.id,
-      { type: "GET_PERFORMANCE_DATA" },
-      (response) => {
-        if (chrome.runtime.lastError) {
-          // 如果内容脚本未注入，使用默认的性能数据
-          const defaultData = generateDefaultPerformanceData();
-          broadcastPerformanceData(defaultData);
-        } else if (response) {
-          broadcastPerformanceData(response.data);
-        }
-      }
-    );
-  });
-}
-
-// 生成默认性能数据（当内容脚本不可用时）
-function generateDefaultPerformanceData() {
-  return {
-    timestamp: Date.now(),
-    cpuUsage: Math.random() * 30 + 10,
-    memoryUsage: Math.random() * 30 + 20,
-    jsHeapSize: Math.floor(Math.random() * 50000000) + 50000000,
-    jsHeapUsed: Math.floor(Math.random() * 25000000) + 10000000,
-    domNodes: Math.floor(Math.random() * 3000) + 1000,
-    eventListeners: Math.floor(Math.random() * 500) + 100,
-  };
-}
-
-// 广播性能数据到所有打开的devtools和内容脚本
-function broadcastPerformanceData(data) {
-  // 发送到devtools页面
-  chrome.runtime.sendMessage({
-    type: "PERFORMANCE_DATA",
-    data: data,
-  });
-
-  // 发送到所有标签页的内容脚本
-  chrome.tabs.query({}, (tabs) => {
-    tabs.forEach((tab) => {
-      chrome.tabs.sendMessage(tab.id, {
-        type: "PERFORMANCE_DATA",
-        data: data,
-      });
-    });
-  });
-}
-
 // 监听扩展安装事件
 chrome.runtime.onInstalled.addListener(async () => {
   console.log("前端调试增强器已安装");
@@ -307,12 +211,4 @@ chrome.runtime.onInstalled.addListener(async () => {
       updateDNRRules();
     }
   });
-
-  // 启动性能监控
-  // startPerformanceMonitoring();
-});
-
-// 监听扩展卸载事件
-chrome.runtime.onSuspend.addListener(() => {
-  stopPerformanceMonitoring();
 });

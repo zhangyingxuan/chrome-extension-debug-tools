@@ -10,12 +10,6 @@
           @change="toggleEnabled"
         />
         <t-button theme="primary" @click="exportData">导出数据</t-button>
-        <t-button
-          :theme="isMonitoring ? 'danger' : 'primary'"
-          @click="togglePerformanceMonitoring"
-        >
-          {{ isMonitoring ? "停止监控" : "开始监控" }}
-        </t-button>
       </div>
     </div>
 
@@ -27,13 +21,6 @@
         @click="activeTab = 'network'"
       >
         网络请求拦截
-      </div>
-      <div
-        class="tab-item"
-        :class="{ active: activeTab === 'performance' }"
-        @click="activeTab = 'performance'"
-      >
-        性能监控
       </div>
     </div>
 
@@ -50,117 +37,54 @@
           />
         </div>
       </div>
-
-      <!-- 性能监控面板 -->
-      <div class="panel" v-show="activeTab === 'performance'">
-        <div class="panel-content">
-          <PerformanceMonitor
-            :performance-data="performanceData"
-            :process-info="processInfo"
-          />
-        </div>
-      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
-import {
-  RequestRule,
-  PerformanceData,
-  ProcessInfo,
-  ChromeMessage,
-} from "./types";
+import { RequestRule, ChromeMessage } from "./types";
 import RequestInterceptor from "./components/RequestInterceptor.vue";
-import PerformanceMonitor from "./components/PerformanceMonitor.vue";
 
 // 响应式数据
 const isEnabled = ref(true);
-const isMonitoring = ref(false);
-const activeTab = ref<"network" | "performance">("network");
+const activeTab = ref("network");
 const requestRules = ref<RequestRule[]>([]);
-const performanceData = ref<PerformanceData[]>([]);
-const processInfo = ref<ProcessInfo[]>([]);
-
-// 监听来自背景脚本的消息
-const messageListener = (message: ChromeMessage) => {
-  if (message.type === "PERFORMANCE_DATA") {
-    performanceData.value.push(message.data);
-    // 只保留最近100条数据
-    if (performanceData.value.length > 100) {
-      performanceData.value = performanceData.value.slice(-100);
-    }
-    updateProcessInfo(message.data);
-  }
-};
-
-// 更新进程信息
-const updateProcessInfo = (performanceData: PerformanceData) => {
-  // 模拟进程信息数据
-  processInfo.value = [
-    {
-      pid: 1,
-      name: "主进程",
-      cpu: performanceData.cpuUsage * 0.8,
-      memory: performanceData.jsHeapUsed,
-      type: "main",
-    },
-    {
-      pid: 2,
-      name: "渲染进程",
-      cpu: performanceData.cpuUsage * 0.2,
-      memory: performanceData.jsHeapUsed * 0.5,
-      type: "renderer",
-    },
-    {
-      pid: 3,
-      name: "网络进程",
-      cpu: Math.random() * 10,
-      memory: Math.random() * 1000000,
-      type: "worker",
-    },
-  ];
-};
 
 // 组件挂载时
 onMounted(() => {
-  // 添加消息监听器
-  chrome.runtime.onMessage.addListener(messageListener);
-
   // 从存储中加载规则
   loadRules();
-
-  // 自动启动性能监控
-  startPerformanceMonitoring();
-});
-
-// 组件卸载时
-onUnmounted(() => {
-  chrome.runtime.onMessage.removeListener(messageListener);
-  stopPerformanceMonitoring();
 });
 
 // 加载规则
 const loadRules = () => {
-  chrome.runtime.sendMessage(
-    { type: "GET_RULES" } as ChromeMessage,
-    (response) => {
-      if (response) {
-        requestRules.value = response.rules;
-        isEnabled.value = response.enabled;
+  try {
+    chrome.runtime.sendMessage(
+      { type: "GET_RULES" } as ChromeMessage,
+      (response) => {
+        if (response) {
+          requestRules.value = response.rules;
+          isEnabled.value = response.enabled;
+        }
       }
-    }
-  );
+    );
+  } catch (error) {
+    console.debug("无法加载规则:", error);
+  }
 };
 
 // 更新规则
 const updateRules = (rules: RequestRule[]) => {
   requestRules.value = rules;
-  chrome.runtime.sendMessage({
-    type: "UPDATE_RULES",
-    data: { rules, enabled: isEnabled.value },
-  } as ChromeMessage);
+  try {
+    chrome.runtime.sendMessage({
+      type: "UPDATE_RULES",
+      data: { rules, enabled: isEnabled.value },
+    } as ChromeMessage);
+  } catch (error) {
+    console.debug("无法更新规则:", error);
+  }
 };
 
 // 添加规则
@@ -178,34 +102,13 @@ const deleteRule = (ruleId: string) => {
 // 切换启用状态
 const toggleEnabled = (enabled: boolean) => {
   isEnabled.value = enabled;
-  chrome.runtime.sendMessage({
-    type: "TOGGLE_ENABLED",
-    data: { enabled },
-  } as ChromeMessage);
-};
-
-// 开始性能监控
-const startPerformanceMonitoring = () => {
-  chrome.runtime.sendMessage({
-    type: "START_PERFORMANCE_MONITOR",
-  } as ChromeMessage);
-  isMonitoring.value = true;
-};
-
-// 停止性能监控
-const stopPerformanceMonitoring = () => {
-  chrome.runtime.sendMessage({
-    type: "STOP_PERFORMANCE_MONITOR",
-  } as ChromeMessage);
-  isMonitoring.value = false;
-};
-
-// 切换性能监控状态
-const togglePerformanceMonitoring = () => {
-  if (isMonitoring.value) {
-    stopPerformanceMonitoring();
-  } else {
-    startPerformanceMonitoring();
+  try {
+    chrome.runtime.sendMessage({
+      type: "TOGGLE_ENABLED",
+      data: { enabled },
+    } as ChromeMessage);
+  } catch (error) {
+    console.debug("无法切换启用状态:", error);
   }
 };
 
@@ -213,7 +116,6 @@ const togglePerformanceMonitoring = () => {
 const exportData = () => {
   const data = {
     requestRules: requestRules.value,
-    performanceData: performanceData.value,
     exportTime: new Date().toISOString(),
   };
 

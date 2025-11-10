@@ -11,7 +11,7 @@ export default defineConfig({
       input: {
         main: 'index.html',
         background: 'public/background.js',
-        content: 'src/content.ts',
+        // content: 'src/content.ts',
         devtools: 'public/devtools.html'
       },
       output: {
