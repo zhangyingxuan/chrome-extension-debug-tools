@@ -10,16 +10,7 @@ export interface RequestRule {
     headers: Record<string, string>;
     body: any;
   };
-  groupId?: string; // 新增分组ID字段
-}
-
-// 规则分组类型
-export interface RuleGroup {
-  id: string;
-  name: string;
-  enabled: boolean;
-  expanded: boolean; // 是否展开分组
-  order: number; // 分组排序
+  expanded?: boolean;
 }
 
 // 拦截记录类型

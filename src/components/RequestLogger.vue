@@ -3,19 +3,22 @@
     <!-- 控制区域 -->
     <div class="control-section">
       <div class="control-header">
-        <h3>网络请求记录</h3>
-        <div class="control-actions">
+        <h3>
+          网络请求记录
           <t-switch
             v-model="isRecording"
             :label="['记录中', '已停止']"
             size="small"
             @change="toggleRecording"
           />
+          &nbsp;
           <t-switch
             v-model="showUrlParams"
             :label="['显示参数', '隐藏参数']"
             size="small"
           />
+        </h3>
+        <div class="control-actions">
           <t-button size="small" @click="clearLogs" theme="default">
             清空记录
           </t-button>

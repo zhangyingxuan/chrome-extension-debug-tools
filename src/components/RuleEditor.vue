@@ -1,155 +1,165 @@
 <template>
-  <t-dialog
+  <t-drawer
     :visible="visible"
     :header="editingRule ? '编辑规则' : '添加规则'"
     @close="$emit('close')"
-    width="720px"
+    @confirm="saveRule"
+    size="70%"
+    placement="right"
+    class="rule-editor-drawer"
   >
-    <t-form :model="rule" label-width="120px">
-      <t-form-item label="URL模式" required>
-        <t-input
-          v-model="rule.urlPattern"
-          placeholder="例如: .*/api/users.*"
-          :status="urlPatternStatus"
-          tips="支持正则表达式，如: ^https://api\.example\.com/.*，不能包含中文等非ASCII字符"
-        />
-        <div v-if="urlPatternStatus === 'error'" class="validation-message">
-          <span
-            v-if="rule.urlPattern && /[^\x00-\x7F]/.test(rule.urlPattern)"
-            class="error-text"
-          >
-            ✗ URL模式不能包含中文等非ASCII字符
-          </span>
-          <span v-else-if="rule.urlPattern" class="error-text">
-            ✗ URL模式格式错误，请输入有效的正则表达式
-          </span>
-        </div>
-        <div v-if="urlPatternStatus === 'success'" class="validation-message">
-          <span class="success-text">✓ URL模式格式正确</span>
-        </div>
-      </t-form-item>
-      <t-row :gutter="[24, 24]" style="padding: 12px 0">
-        <t-col :span="6">
-          <t-form-item label="请求方法" name="method">
-            <t-select v-model="rule.method">
-              <t-option label="GET" value="GET" />
-              <t-option label="POST" value="POST" />
-              <t-option label="PUT" value="PUT" />
-              <t-option label="DELETE" value="DELETE" />
-              <t-option label="PATCH" value="PATCH" />
-              <t-option label="OPTIONS" value="OPTIONS" />
-              <t-option label="HEAD" value="HEAD" />
-            </t-select>
-          </t-form-item>
-        </t-col>
-        <t-col :span="6">
-          <t-form-item label="响应延迟">
-            <t-input-number
-              v-model="rule.delay"
-              :min="0"
-              :max="10000"
-              placeholder="延迟时间(毫秒)"
-              tips="0表示立即响应"
-            />
-          </t-form-item>
-        </t-col>
-      </t-row>
-      <t-row :gutter="[24, 24]" style="padding: 24px 0">
-        <t-col :span="6">
-          <t-form-item label="响应状态码">
-            <t-input-number
-              v-model="rule.response.status"
-              :min="100"
-              :max="599"
-            />
-          </t-form-item>
-        </t-col>
-        <t-col :span="6">
-          <t-form-item label="响应体类型">
-            <t-radio-group v-model="responseType">
-              <t-radio value="json">JSON</t-radio>
-              <t-radio value="text">文本</t-radio>
-            </t-radio-group>
-          </t-form-item>
-        </t-col>
-      </t-row>
-      <t-form-item label="响应头">
-        <t-input
-          v-model="headersText"
-          type="textarea"
-          :rows="3"
-          placeholder="Content-Type: application/json"
-          tips="每行一个响应头，格式: Key: Value"
-        />
-      </t-form-item>
-      <t-form-item label="响应体">
-        <div class="response-body-container">
-          <div v-if="responseType === 'json'" class="json-editor-actions">
-            <t-button
-              size="small"
-              @click="formatJson"
-              :disabled="!responseBodyText"
-            >
-              格式化JSON
-            </t-button>
-            <t-button
-              size="small"
-              @click="validateJson"
-              :disabled="!responseBodyText"
-            >
-              验证JSON
-            </t-button>
-            <t-button
-              size="small"
-              @click="togglePreview"
-              :disabled="!responseBodyText"
-            >
-              {{ showPreview ? "隐藏预览" : "显示预览" }}
-            </t-button>
-          </div>
-          <textarea
-            v-model="responseBodyText"
-            class="response-textarea"
-            :rows="showPreview ? 4 : 8"
-            :placeholder="
-              responseType === 'json' ? 'JSON格式的响应体' : '文本响应体'
-            "
-            @blur="onResponseBodyBlur"
-            @keydown.ctrl.enter="formatJson"
-            @keydown.ctrl.shift.enter="validateJson"
+    <div class="drawer-content">
+      <t-form :model="rule" label-width="120px">
+        <t-form-item label="URL模式" required>
+          <t-input
+            v-model="rule.urlPattern"
+            placeholder="例如: .*/api/users.*"
+            :status="urlPatternStatus"
+            tips="支持正则表达式，如: ^https://api\.example\.com/.*，不能包含中文等非ASCII字符"
           />
-          <div
-            v-if="responseType === 'json' && responseBodyText && showPreview"
-            class="json-preview"
-          >
-            <div class="preview-header">JSON预览</div>
-            <pre class="preview-content">{{
-              formatJsonForPreview(responseBodyText)
-            }}</pre>
-          </div>
-          <div
-            v-if="responseType === 'json' && responseBodyText"
-            class="json-status"
-          >
-            <span v-if="responseBodyStatus === 'success'" class="status-success"
-              >✓ JSON格式正确</span
+          <div v-if="urlPatternStatus === 'error'" class="validation-message">
+            <span
+              v-if="rule.urlPattern && /[^\x00-\x7F]/.test(rule.urlPattern)"
+              class="error-text"
             >
-            <span v-if="responseBodyStatus === 'error'" class="status-error"
-              >✗ JSON格式错误</span
-            >
-            <span class="status-tip">
-              （快捷键：Ctrl+Enter 格式化，Ctrl+Shift+Enter 验证）
+              ✗ URL模式不能包含中文等非ASCII字符
+            </span>
+            <span v-else-if="rule.urlPattern" class="error-text">
+              ✗ URL模式格式错误，请输入有效的正则表达式
             </span>
           </div>
-        </div>
-      </t-form-item>
-    </t-form>
-
-    <template #footer>
-      <t-button @click="$emit('close')">取消</t-button>
-      <t-button theme="primary" @click="saveRule">保存</t-button>
-    </template>
-  </t-dialog>
+          <div v-if="urlPatternStatus === 'success'" class="validation-message">
+            <span class="success-text">✓ URL模式格式正确</span>
+          </div>
+          <div v-if="validationErrors.urlPattern" class="validation-error">
+            <span class="error-text">✗ {{ validationErrors.urlPattern }}</span>
+          </div>
+        </t-form-item>
+        <t-row :gutter="[24, 24]" style="padding: 12px 0">
+          <t-col :span="6">
+            <t-form-item label="请求方法" name="method">
+              <t-select v-model="rule.method">
+                <t-option label="GET" value="GET" />
+                <t-option label="POST" value="POST" />
+                <t-option label="PUT" value="PUT" />
+                <t-option label="DELETE" value="DELETE" />
+                <t-option label="PATCH" value="PATCH" />
+                <t-option label="OPTIONS" value="OPTIONS" />
+                <t-option label="HEAD" value="HEAD" />
+              </t-select>
+            </t-form-item>
+          </t-col>
+          <t-col :span="6">
+            <t-form-item label="响应延迟">
+              <t-input-number
+                v-model="rule.delay"
+                :min="0"
+                :max="10000"
+                placeholder="延迟时间(毫秒)"
+                tips="0表示立即响应"
+              />
+            </t-form-item>
+          </t-col>
+        </t-row>
+        <t-row :gutter="[24, 24]" style="padding: 24px 0">
+          <t-col :span="6">
+            <t-form-item label="响应状态码">
+              <t-input-number
+                v-model="rule.response.status"
+                :min="100"
+                :max="599"
+              />
+            </t-form-item>
+          </t-col>
+          <t-col :span="6">
+            <t-form-item label="响应体类型">
+              <t-radio-group v-model="responseType">
+                <t-radio value="json">JSON</t-radio>
+                <t-radio value="text">文本</t-radio>
+              </t-radio-group>
+            </t-form-item>
+          </t-col>
+        </t-row>
+        <t-form-item label="响应头">
+          <t-input
+            v-model="headersText"
+            type="textarea"
+            :rows="3"
+            placeholder="Content-Type: application/json"
+            tips="每行一个响应头，格式: Key: Value"
+          />
+        </t-form-item>
+        <t-form-item label="响应体">
+          <div class="response-body-container">
+            <div v-if="responseType === 'json'" class="json-editor-actions">
+              <t-button
+                size="small"
+                @click="formatJson"
+                :disabled="!responseBodyText"
+              >
+                格式化JSON
+              </t-button>
+              <t-button
+                size="small"
+                @click="validateJson"
+                :disabled="!responseBodyText"
+              >
+                验证JSON
+              </t-button>
+              <t-button
+                size="small"
+                @click="togglePreview"
+                :disabled="!responseBodyText"
+              >
+                {{ showPreview ? "隐藏预览" : "显示预览" }}
+              </t-button>
+            </div>
+            <textarea
+              v-model="responseBodyText"
+              class="response-textarea"
+              :rows="showPreview ? 4 : 8"
+              :placeholder="
+                responseType === 'json' ? 'JSON格式的响应体' : '文本响应体'
+              "
+              @blur="onResponseBodyBlur"
+              @keydown.ctrl.enter="formatJson"
+              @keydown.ctrl.shift.enter="validateJson"
+            />
+            <div
+              v-if="responseType === 'json' && responseBodyText && showPreview"
+              class="json-preview"
+            >
+              <div class="preview-header">JSON预览</div>
+              <pre class="preview-content">{{
+                formatJsonForPreview(responseBodyText)
+              }}</pre>
+            </div>
+            <div
+              v-if="responseType === 'json' && responseBodyText"
+              class="json-status"
+            >
+              <span
+                v-if="responseBodyStatus === 'success'"
+                class="status-success"
+                >✓ JSON格式正确</span
+              >
+              <span v-if="responseBodyStatus === 'error'" class="status-error"
+                >✗ JSON格式错误</span
+              >
+              <span class="status-tip">
+                （快捷键：Ctrl+Enter 格式化，Ctrl+Shift+Enter 验证）
+              </span>
+            </div>
+            <div v-if="validationErrors.responseBody" class="validation-error">
+              <span class="error-text"
+                >✗ {{ validationErrors.responseBody }}</span
+              >
+            </div>
+          </div>
+        </t-form-item>
+      </t-form>
+    </div>
+  </t-drawer>
 </template>
 
 <script setup lang="ts">
@@ -159,7 +169,6 @@ import { RequestRule } from "../types";
 interface Props {
   visible: boolean;
   editingRule?: RequestRule | null;
-  groupId?: string | null;
 }
 
 interface Emits {
@@ -189,6 +198,12 @@ const responseBodyText = ref("");
 const responseType = ref<"json" | "text">("json");
 const showPreview = ref(false);
 const responseBodyStatus = ref("");
+
+// 表单校验错误信息
+const validationErrors = ref({
+  urlPattern: "",
+  responseBody: "",
+});
 
 // URL模式验证状态
 const urlPatternStatus = computed(() => {
@@ -324,25 +339,35 @@ const formatJsonForPreview = (jsonText: string) => {
 
 // 保存规则
 const saveRule = () => {
+  // 清空之前的错误信息
+  validationErrors.value = {
+    urlPattern: "",
+    responseBody: "",
+  };
+
+  let hasError = false;
+
   // 检查URL模式是否为空
   if (!rule.value.urlPattern || !rule.value.urlPattern.trim()) {
-    alert("URL模式不能为空，请输入有效的URL模式");
-    return;
+    validationErrors.value.urlPattern = "URL模式不能为空，请输入有效的URL模式";
+    hasError = true;
   }
 
   // 验证URL模式是否包含非ASCII字符
   const hasNonAscii = /[^\x00-\x7F]/.test(rule.value.urlPattern);
   if (hasNonAscii) {
-    alert("URL模式不能包含中文等非ASCII字符，请使用英文或ASCII字符");
-    return;
+    validationErrors.value.urlPattern =
+      "URL模式不能包含中文等非ASCII字符，请使用英文或ASCII字符";
+    hasError = true;
   }
 
   // 验证URL模式
   try {
     new RegExp(rule.value.urlPattern);
   } catch (error) {
-    alert("URL模式格式错误，请输入有效的正则表达式");
-    return;
+    validationErrors.value.urlPattern =
+      "URL模式格式错误，请输入有效的正则表达式";
+    hasError = true;
   }
 
   // 验证JSON格式（如果是JSON类型）
@@ -350,9 +375,14 @@ const saveRule = () => {
     try {
       JSON.parse(responseBodyText.value);
     } catch (error) {
-      alert("JSON格式错误，请检查响应体格式");
-      return;
+      validationErrors.value.responseBody = "JSON格式错误，请检查响应体格式";
+      hasError = true;
     }
+  }
+
+  // 如果有错误，不继续保存
+  if (hasError) {
+    return;
   }
 
   // 生成唯一ID
@@ -362,16 +392,10 @@ const saveRule = () => {
       .substring(2, 11)}`;
   }
 
-  // 设置分组ID
-  if (props.groupId) {
-    rule.value.groupId = props.groupId;
-  }
-
   console.log("保存规则:", {
     id: rule.value.id,
     urlPattern: rule.value.urlPattern,
     method: rule.value.method,
-    groupId: rule.value.groupId,
     enabled: rule.value.enabled,
   });
 
@@ -392,6 +416,7 @@ const resetForm = () => {
       headers: {},
       body: {},
     },
+    expanded: false,
   };
 
   headersText.value = "";
@@ -399,10 +424,31 @@ const resetForm = () => {
   responseType.value = "json";
   showPreview.value = false;
   responseBodyStatus.value = "";
+
+  // 清空校验错误信息
+  validationErrors.value = {
+    urlPattern: "",
+    responseBody: "",
+  };
 };
 </script>
 
 <style lang="less" scoped>
+.rule-editor-drawer {
+  .drawer-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+
+    .t-form {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+  }
+}
+
 .response-body-container {
   .json-editor-actions {
     display: flex;
@@ -490,6 +536,16 @@ const resetForm = () => {
 
     .error-text {
       color: #f5222d;
+    }
+  }
+
+  .validation-error {
+    margin-top: 4px;
+    font-size: 12px;
+
+    .error-text {
+      color: #f5222d;
+      font-weight: 500;
     }
   }
 }

@@ -14,7 +14,7 @@
         :class="{ active: activeTab === 'network' }"
         @click="activeTab = 'network'"
       >
-        网络拦截
+        请求拦截
       </div>
     </div>
 
@@ -45,19 +45,18 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import { RequestRule, ChromeMessage, RequestLog } from "./types";
+import { RequestRule, ChromeMessage } from "./types";
 import RequestInterceptor from "./components/RequestInterceptor.vue";
 import RequestLogger from "./components/RequestLogger.vue";
 
 // 响应式数据
-const activeTab = ref("request-log");
+const activeTab = ref("network");
 const requestRules = ref<RequestRule[]>([]);
-const requestLogs = ref<RequestLog[]>([]);
 
 // 组件挂载时
 onMounted(() => {
   // 从存储中加载规则
-  // loadRules();
+  loadRules();
 });
 
 // 加载规则

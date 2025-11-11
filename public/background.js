@@ -157,22 +157,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       updateDNRRules();
       break;
 
-    case "UPDATE_GROUPS":
-      // 保存分组数据
-      console.log("保存分组数据:", message.data.groups);
-      chrome.storage.local.set({
-        ruleGroups: message.data.groups,
-      });
-      sendResponse({ success: true });
-      break;
-
-    case "GET_GROUPS":
-      // 获取分组数据
-      chrome.storage.local.get(["ruleGroups"], (result) => {
-        sendResponse({ groups: result.ruleGroups || [] });
-      });
-      return true; // 保持消息通道开放
-
     case "TOGGLE_ENABLED":
       isEnabled = message.data.enabled;
       chrome.storage.local.set({ enabled: isEnabled });
@@ -287,53 +271,37 @@ chrome.runtime.onInstalled.addListener(async () => {
     },
   ];
 
-  // 初始化默认分组
-  const defaultGroups = [
-    {
-      id: "default_group",
-      name: "默认分组",
-      enabled: true,
-      expanded: true,
-      order: 0,
-    },
-  ];
+  chrome.storage.local.get(["requestRules", "enabled"], (result) => {
+    if (!result.requestRules) {
+      chrome.storage.local.set({
+        requestRules: defaultRules,
+        enabled: true,
+      });
+      requestRules = defaultRules;
+      isEnabled = true;
+      // 更新declarativeNetRequest规则
+      updateDNRRules();
+    } else {
+      // 清理现有规则中的非ASCII字符
+      const cleanedRules = cleanRules(result.requestRules);
 
-  chrome.storage.local.get(
-    ["requestRules", "enabled", "ruleGroups"],
-    (result) => {
-      if (!result.requestRules) {
+      // 如果规则被清理过，保存清理后的版本
+      if (
+        JSON.stringify(cleanedRules) !== JSON.stringify(result.requestRules)
+      ) {
         chrome.storage.local.set({
-          requestRules: defaultRules,
-          enabled: true,
-          ruleGroups: defaultGroups,
+          requestRules: cleanedRules,
+          enabled: result.enabled !== false,
         });
-        requestRules = defaultRules;
-        isEnabled = true;
-        // 更新declarativeNetRequest规则
-        updateDNRRules();
-      } else {
-        // 清理现有规则中的非ASCII字符
-        const cleanedRules = cleanRules(result.requestRules);
-
-        // 如果规则被清理过，保存清理后的版本
-        if (
-          JSON.stringify(cleanedRules) !== JSON.stringify(result.requestRules)
-        ) {
-          chrome.storage.local.set({
-            requestRules: cleanedRules,
-            enabled: result.enabled !== false,
-            ruleGroups: result.ruleGroups || [],
-          });
-          console.log("已自动清理规则中的非ASCII字符");
-        }
-
-        requestRules = cleanedRules;
-        isEnabled = result.enabled !== false;
-        // 更新declarativeNetRequest规则
-        updateDNRRules();
+        console.log("已自动清理规则中的非ASCII字符");
       }
+
+      requestRules = cleanedRules;
+      isEnabled = result.enabled !== false;
+      // 更新declarativeNetRequest规则
+      updateDNRRules();
     }
-  );
+  });
 });
 
 // 网络请求记录功能已移到RequestLogger.vue组件内部

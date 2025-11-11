@@ -16,6 +16,9 @@
             />
           </h3>
           <div class="header-actions">
+            <t-button size="small" theme="primary" @click="addRule()">
+              添加规则
+            </t-button>
             <t-button size="small" @click="importRules">导入规则</t-button>
             <t-button size="small" @click="exportData">导出数据</t-button>
             <t-popconfirm
@@ -24,9 +27,6 @@
             >
               <t-button size="small" theme="warning"> 清理所有规则 </t-button>
             </t-popconfirm>
-            <t-button size="small" @click="addGroup" theme="default">
-              添加分组
-            </t-button>
             <t-button
               size="small"
               theme="default"
@@ -38,56 +38,128 @@
           </div>
         </div>
 
-        <!-- 分组列表 -->
-        <div class="groups-list">
+        <!-- 规则列表 -->
+        <div class="rules-list">
           <!-- 空状态提示 -->
-          <div
-            v-if="
-              computedData?.isEmptyState || computedData?.hasRulesWithoutGroups
-            "
-            class="empty-state"
-          >
+          <div v-if="props.rules.length === 0" class="empty-state">
             <div class="empty-content">
-              <t-icon
-                :name="
-                  computedData?.isEmptyState ? 'file-search' : 'folder-open'
-                "
-                size="48"
-              />
-              <p class="empty-text">
-                {{
-                  computedData?.isEmptyState
-                    ? "暂无拦截规则"
-                    : `发现 ${props.rules.length} 条未分组规则`
-                }}
-              </p>
-              <p class="empty-desc">
-                {{
-                  computedData?.isEmptyState
-                    ? '点击"添加分组"按钮创建第一个分组和规则'
-                    : "建议为规则创建分组以便更好管理"
-                }}
-              </p>
-              <t-button size="small" @click="addGroup" theme="primary">
-                {{ computedData?.isEmptyState ? "添加分组" : "创建分组" }}
-              </t-button>
+              <t-icon name="file-search" size="48" />
+              <p class="empty-text">暂无拦截规则</p>
+              <p class="empty-desc">请添加第一条拦截规则开始使用</p>
             </div>
           </div>
 
-          <!-- 自定义分组 -->
-          <GroupItem
-            v-for="group in computedData?.sortedGroups"
-            :key="group.id"
-            :group="group"
-            :rules="getGroupRules(group.id)"
-            @update="updateGroup"
-            @toggle-expand="toggleGroupExpand"
-            @edit="editGroup"
-            @delete="deleteGroup"
-            @rule-update="updateRule"
-            @rule-edit="editRule"
-            @rule-delete="deleteRule"
-          />
+          <!-- 表格布局 -->
+          <div v-else class="rules-table">
+            <!-- 表格标题 -->
+            <div class="table-header">
+              <div class="col-status">状态</div>
+              <div class="col-method">方法</div>
+              <div class="col-url">URL模式</div>
+              <div class="col-response">响应状态</div>
+              <div class="col-delay">延迟</div>
+              <div class="col-actions">操作</div>
+            </div>
+
+            <!-- 规则项 -->
+            <div
+              v-for="rule in props.rules"
+              :key="rule.id"
+              class="rule-row"
+              :class="{
+                disabled: !rule.enabled,
+                expanded: rule.expanded,
+              }"
+            >
+              <div class="table-row" @click="toggleRuleDetails(rule)">
+                <div class="col-status">
+                  <t-switch
+                    v-model="rule.enabled"
+                    size="small"
+                    @click.stop="updateRule(rule)"
+                  />
+                </div>
+                <div class="col-method">
+                  <span class="method-badge">{{ rule.method }}</span>
+                </div>
+                <div class="col-url" :title="rule.urlPattern">
+                  {{ truncateUrl(rule.urlPattern) }}
+                </div>
+                <div class="col-response">
+                  <span
+                    class="status-badge"
+                    :class="getResponseStatusClass(rule.response.status)"
+                  >
+                    {{ rule.response.status }}
+                  </span>
+                </div>
+                <div class="col-delay">
+                  <span v-if="rule.delay > 0" class="delay-badge">
+                    {{ rule.delay }}ms
+                  </span>
+                  <span v-else class="no-delay">-</span>
+                </div>
+                <div class="col-actions">
+                  <div class="action-buttons" @click.stop>
+                    <t-button size="small" @click="editRule(rule)"
+                      >编辑</t-button
+                    >
+                    <t-popconfirm
+                      content="确定要删除这条拦截规则吗？"
+                      @confirm="deleteRule(rule.id)"
+                    >
+                      <t-button size="small" theme="danger">删除</t-button>
+                    </t-popconfirm>
+                  </div>
+                </div>
+                <t-icon
+                  :name="rule.expanded ? 'chevron-down' : 'chevron-right'"
+                  size="16"
+                  class="expand-icon"
+                />
+              </div>
+
+              <!-- 规则详情 -->
+              <div v-if="rule.expanded" class="rule-details">
+                <div class="detail-section">
+                  <div class="detail-title">规则详情</div>
+                  <div class="detail-content">
+                    <div class="detail-row">
+                      <span class="detail-label">规则ID:</span>
+                      <span class="detail-value">{{ rule.id }}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">URL模式:</span>
+                      <span class="detail-value">{{ rule.urlPattern }}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">请求方法:</span>
+                      <span class="detail-value">{{ rule.method }}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">响应状态:</span>
+                      <span class="detail-value">{{
+                        rule.response.status
+                      }}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">延迟时间:</span>
+                      <span class="detail-value">{{ rule.delay || 0 }}ms</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="detail-section">
+                  <div class="detail-title">响应内容</div>
+                  <div class="detail-content">
+                    <pre class="response-body">{{
+                      formatResponseBody(rule.response.body)
+                    }}</pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -113,43 +185,81 @@
         </div>
 
         <div class="history-list" ref="historyList">
+          <!-- 表格标题 -->
+          <div class="table-header">
+            <div class="col-status">状态</div>
+            <div class="col-method">方法</div>
+            <div class="col-url">URL</div>
+            <div class="col-status-code">状态码</div>
+            <div class="col-time">时间</div>
+            <div class="col-delay">延迟</div>
+          </div>
+
+          <!-- 拦截记录项 -->
           <div
             v-for="record in computedData?.reversedInterceptionHistory"
             :key="record.id"
             class="history-item"
             :class="getHistoryItemClass(record)"
+            @click="toggleHistoryDetails(record)"
           >
-            <div class="history-header">
-              <span class="history-method">{{ record.method }}</span>
-              <span
-                class="history-status-code"
-                :class="getStatusClass(record.responseStatus)"
-              >
-                {{ record.responseStatus }}
-              </span>
-              <span class="history-time">{{
-                formatTime(record.timestamp)
-              }}</span>
-            </div>
-            <div class="history-url">{{ record.url }}</div>
-            <div class="history-details">
-              <div class="history-rule">
-                <span class="history-label">规则ID:</span>
-                <span class="history-value">{{ record.ruleId || "未知" }}</span>
+            <div class="table-row">
+              <div class="col-status">
+                <span
+                  class="status-badge"
+                  :class="getStatusClass(record.responseStatus)"
+                >
+                  {{ record.responseStatus }}
+                </span>
               </div>
-              <div class="history-rule">
-                <span class="history-label">匹配规则:</span>
-                <span class="history-value">{{
-                  record.matchedRule || "无匹配"
+              <div class="col-method">
+                <span class="method-badge">{{ record.method }}</span>
+              </div>
+              <div class="col-url" :title="record.url">
+                {{ truncateUrl(record.url) }}
+              </div>
+              <div class="col-status-code">
+                <span class="status-code-badge">{{
+                  record.responseStatus
                 }}</span>
               </div>
-              <div class="history-delay-info">
-                <span class="history-label">延迟:</span>
-                <span class="history-value">{{ record.delay }}ms</span>
-              </div>
-              <div v-if="record.error" class="history-error">
-                <span class="history-label">错误:</span>
-                <span class="history-value">{{ record.error }}</span>
+              <div class="col-time">{{ formatTime(record.timestamp) }}</div>
+              <div class="col-delay">{{ record.delay }}ms</div>
+              <t-icon
+                :name="record.expanded ? 'chevron-down' : 'chevron-right'"
+                size="16"
+                class="expand-icon"
+              />
+            </div>
+
+            <!-- 详情面板 -->
+            <div v-if="record.expanded" class="history-details">
+              <div class="detail-section">
+                <div class="detail-title">拦截详情</div>
+                <div class="detail-content">
+                  <div class="detail-row">
+                    <span class="detail-label">规则ID:</span>
+                    <span class="detail-value">{{
+                      record.ruleId || "未知"
+                    }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">匹配规则:</span>
+                    <span class="detail-value">{{
+                      record.matchedRule || "无匹配"
+                    }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">完整URL:</span>
+                    <span class="detail-value">{{ record.url }}</span>
+                  </div>
+                  <div v-if="record.error" class="detail-row">
+                    <span class="detail-label">错误信息:</span>
+                    <span class="detail-value error-text">{{
+                      record.error
+                    }}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -161,21 +271,12 @@
       </div>
     </t-drawer>
 
-    <!-- 规则编辑器 -->
+    <!-- 规则编辑器抽屉 -->
     <RuleEditor
       :visible="showAddRuleDialog"
       :editing-rule="editingRule"
-      :group-id="currentGroupId"
       @save="saveRule"
       @close="showAddRuleDialog = false"
-    />
-
-    <!-- 分组管理器 -->
-    <GroupManager
-      :visible="showAddGroupDialog"
-      :editing-group="editingGroup"
-      @save="saveGroup"
-      @close="showAddGroupDialog = false"
     />
   </div>
 </template>
@@ -189,17 +290,16 @@ import {
   onMounted,
   onUnmounted,
   toRefs,
+  ref,
 } from "vue";
-import { RequestRule, InterceptionRecord, RuleGroup } from "../types";
+import { RequestRule, InterceptionRecord } from "../types";
 import {
   formatTime,
   generateId,
   validateUrlPattern,
   errorHandler,
 } from "../utils/common";
-import GroupItem from "./GroupItem.vue";
 import RuleEditor from "./RuleEditor.vue";
-import GroupManager from "./GroupManager.vue";
 
 interface Props {
   rules: RequestRule[];
@@ -223,10 +323,6 @@ const reactiveData = reactive({
   autoScroll: true,
   historyList: null as HTMLElement | null,
   showHistoryDrawer: false,
-  groups: [] as RuleGroup[],
-  showAddGroupDialog: false,
-  editingGroup: null as RuleGroup | null,
-  currentGroupId: null as string | null,
   interceptionHistory: [] as InterceptionRecord[],
 });
 
@@ -238,179 +334,71 @@ const {
   autoScroll,
   historyList,
   showHistoryDrawer,
-  groups,
-  showAddGroupDialog,
-  editingGroup,
-  currentGroupId,
   interceptionHistory,
 } = toRefs(reactiveData);
 
 // 计算属性
 const computedData = computed(() => {
   const reversedHistory = [...interceptionHistory.value].reverse();
-  const sortedGroupsList = [...groups.value].sort(
-    (a, b) => (a.order || 0) - (b.order || 0)
-  );
   const hasRules = props.rules.length > 0;
-  const hasGroups = groups.value.length > 0;
 
   return {
     reversedInterceptionHistory: reversedHistory,
-    sortedGroups: sortedGroupsList,
     hasRules,
-    hasGroups,
-    isEmptyState: !hasGroups && !hasRules,
-    hasRulesWithoutGroups: hasRules && !hasGroups,
+    isEmptyState: !hasRules,
   };
 });
 
-// 获取分组内的规则（带缓存优化）
-const getGroupRules = (() => {
-  const cache = new Map();
-  let lastRulesHash = "";
-
-  return (groupId: string) => {
-    // 检查规则是否发生变化
-    const currentHash = JSON.stringify(props.rules);
-    if (currentHash !== lastRulesHash) {
-      cache.clear();
-      lastRulesHash = currentHash;
-    }
-
-    // 从缓存获取或计算
-    if (!cache.has(groupId)) {
-      cache.set(
-        groupId,
-        props.rules.filter((rule) => rule.groupId === groupId)
-      );
-    }
-
-    return cache.get(groupId);
-  };
-})();
-
-// 切换分组展开状态
-const toggleGroupExpand = (group: RuleGroup) => {
-  group.expanded = !group.expanded;
-  updateGroup(group);
-};
-
-// 分组管理函数
-const groupManager = {
-  // 打开分组编辑器
-  openEditor: (group: RuleGroup | null = null) => {
-    editingGroup.value = group;
-    showAddGroupDialog.value = true;
-  },
-
-  // 更新分组
-  update: (group: RuleGroup) => {
-    groups.value = groups.value.map((g) =>
-      g.id === group.id ? { ...group } : g
-    );
-    saveGroups();
-  },
-
-  // 删除分组
-  delete: (groupId: string) => {
-    // 删除分组内的所有规则
-    const updatedRules = props.rules.filter((rule) => rule.groupId !== groupId);
-    emit("update-rules", updatedRules);
-
-    // 删除分组
-    groups.value = groups.value?.filter((group) => group.id !== groupId);
-    saveGroups();
-  },
-
-  // 保存分组
-  save: (group: RuleGroup) => {
-    console.log("开始保存分组:", group);
-
-    if (editingGroup.value) {
-      // 更新现有分组
-      console.log("更新现有分组:", editingGroup.value.id);
-      groups.value = groups.value.map((g) =>
-        g.id === editingGroup.value!.id ? { ...group } : g
-      );
-    } else {
-      // 添加新分组
-      const newGroup: RuleGroup = {
-        ...group,
-        order: groups.value.length,
-      };
-      console.log("添加新分组:", newGroup);
-      groups.value.push(newGroup);
-    }
-
-    console.log("保存后的分组列表:", groups.value);
-    saveGroups();
-    showAddGroupDialog.value = false;
-    editingGroup.value = null;
-    console.log("分组保存完成");
-  },
-};
-
-// 导出分组管理函数
-const {
-  openEditor: addGroup,
-  update: updateGroup,
-  delete: deleteGroup,
-  save: saveGroup,
-} = groupManager;
-const editGroup = (group: RuleGroup) => groupManager.openEditor(group);
-
-// 保存分组到存储
-const saveGroups = () => {
-  console.log("保存分组到存储:", groups.value);
-
-  // 通过background.js保存分组数据
-  chrome.runtime.sendMessage(
-    {
-      type: "UPDATE_GROUPS",
-      data: {
-        groups: groups.value,
-      },
-    },
-    (response) => {
-      if (response && response.success) {
-        console.log("分组数据保存成功");
-      } else {
-        console.error("保存分组数据失败");
-      }
-    }
-  );
-};
-
-// 加载分组
-const loadGroups = async () => {
-  try {
-    console.log("开始加载分组数据...");
-
-    // 通过background.js获取分组数据
-    chrome.runtime.sendMessage({ type: "GET_GROUPS" }, (response) => {
-      if (response && response.groups) {
-        console.log("从background.js获取的分组数据:", response.groups);
-        groups.value = response.groups;
-        console.log(`分组数据加载完成 - 数量: ${groups.value.length}`);
-        nextTick(() => console.log("分组数据渲染完成"));
-      } else {
-        console.log("未找到分组数据，使用空数组");
-        groups.value = [];
-      }
-    });
-  } catch (error) {
-    errorHandler.log(error, "加载分组");
-    console.error("加载分组数据失败:", error);
-    groups.value = [];
+// 截断长文本
+const truncateBody = (body: any) => {
+  if (typeof body === "string") {
+    const length = body.length;
+    return length > 50 ? body.substring(0, 50) + "..." : body;
   }
+  const str = JSON.stringify(body);
+  const length = str.length;
+  return length > 50 ? str.substring(0, 50) + "..." : str;
+};
+
+// 截断URL显示
+const truncateUrl = (url: string) => {
+  if (url.length > 80) {
+    return url.substring(0, 40) + "..." + url.substring(url.length - 40);
+  }
+  return url;
+};
+
+// 格式化响应体
+const formatResponseBody = (body: any) => {
+  if (typeof body === "string") {
+    try {
+      return JSON.stringify(JSON.parse(body), null, 2);
+    } catch {
+      return body;
+    }
+  }
+  return JSON.stringify(body, null, 2);
+};
+
+// 获取响应状态样式类
+const getResponseStatusClass = (status: number): string => {
+  if (status >= 200 && status < 300) {
+    return "status-success";
+  } else if (status >= 300 && status < 400) {
+    return "status-redirect";
+  } else if (status >= 400 && status < 500) {
+    return "status-client-error";
+  } else if (status >= 500) {
+    return "status-server-error";
+  }
+  return "status-unknown";
 };
 
 // 规则管理函数
 const ruleManager = {
   // 打开规则编辑器
-  openEditor: (rule: RequestRule | null = null, groupId?: string) => {
+  openEditor: (rule: RequestRule | null = null) => {
     editingRule.value = rule;
-    currentGroupId.value = groupId || null;
     showAddRuleDialog.value = true;
   },
 
@@ -453,7 +441,6 @@ const ruleManager = {
 
     showAddRuleDialog.value = false;
     editingRule.value = null;
-    currentGroupId.value = null;
   },
 };
 
@@ -472,49 +459,29 @@ const toggleEnabled = (enabled: boolean) => {
   emit("toggle-enabled", enabled);
 };
 
-// 导出数据
-const exportData = () => {
-  const data = {
-    requestRules: props.rules,
-    ruleGroups: groups.value,
-    interceptionHistory: interceptionHistory.value,
-    enabled: isEnabled.value,
-    exportTime: new Date().toISOString(),
-    version: "1.0",
-  };
-
-  const blob = new Blob([JSON.stringify(data, null, 2)], {
-    type: "application/json",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `debug-data-${Date.now()}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+// 加载拦截历史记录
+const loadInterceptionHistory = () => {
+  chrome.runtime.sendMessage(
+    { type: "GET_INTERCEPTION_HISTORY" },
+    (response) => {
+      if (response && response.history) {
+        interceptionHistory.value = response.history.map((record: any) => ({
+          ...record,
+          expanded: false, // 为每个历史记录添加expanded属性
+        }));
+      }
+    }
+  );
 };
 
-// 清理所有规则
-const clearAllRules = () => {
-  if (props.rules.length === 0) {
-    alert("当前没有规则可清理");
-    return;
-  }
+// 切换规则详情显示
+const toggleRuleDetails = (rule: RequestRule) => {
+  rule.expanded = !rule.expanded;
+};
 
-  // 清空规则数组
-  emit("update-rules", []);
-
-  // 通知background.js更新declarativeNetRequest规则
-  chrome.runtime.sendMessage({
-    type: "UPDATE_RULES",
-    data: {
-      rules: [],
-      enabled: isEnabled.value,
-    },
-  });
-
-  alert(`已成功清理所有 ${props.rules.length} 条规则`);
-  console.log("所有规则已清理");
+// 切换拦截历史详情显示
+const toggleHistoryDetails = (record: InterceptionRecord) => {
+  record.expanded = !record.expanded;
 };
 
 // 导入规则
@@ -555,16 +522,48 @@ const importRules = () => {
   input.click();
 };
 
-// 加载拦截历史记录
-const loadInterceptionHistory = () => {
-  chrome.runtime.sendMessage(
-    { type: "GET_INTERCEPTION_HISTORY" },
-    (response) => {
-      if (response && response.history) {
-        interceptionHistory.value = response.history;
-      }
-    }
-  );
+// 导出数据
+const exportData = () => {
+  const data = {
+    requestRules: props.rules,
+    interceptionHistory: interceptionHistory.value,
+    enabled: isEnabled.value,
+    exportTime: new Date().toISOString(),
+    version: "1.0",
+  };
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `debug-data-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+// 清理所有规则
+const clearAllRules = () => {
+  if (props.rules.length === 0) {
+    alert("当前没有规则可清理");
+    return;
+  }
+
+  // 清空规则数组
+  emit("update-rules", []);
+
+  // 通知background.js更新declarativeNetRequest规则
+  chrome.runtime.sendMessage({
+    type: "UPDATE_RULES",
+    data: {
+      rules: [],
+      enabled: isEnabled.value,
+    },
+  });
+
+  alert(`已成功清理所有 ${props.rules.length} 条规则`);
+  console.log("所有规则已清理");
 };
 
 // 清空拦截历史
@@ -624,7 +623,11 @@ watch(
 // 处理运行时消息
 function handleRuntimeMessage(message: any, sender: any, sendResponse: any) {
   if (message.type === "INTERCEPTION_RECORD") {
-    interceptionHistory.value.push(message.data);
+    const record = {
+      ...message.data,
+      expanded: false, // 添加expanded属性
+    };
+    interceptionHistory.value.push(record);
 
     // 限制历史记录数量
     if (interceptionHistory.value.length > 1000) {
@@ -638,29 +641,22 @@ function handleRuntimeMessage(message: any, sender: any, sendResponse: any) {
 // 组件挂载时
 onMounted(() => {
   loadInterceptionHistory();
-  loadGroups();
   chrome.runtime.onMessage.addListener(handleRuntimeMessage);
 
   // 统一日志输出和状态检查
-  console.log(
-    `组件挂载完成 - 规则: ${props.rules.length}, 开始加载分组数据...`
-  );
+  console.log(`组件挂载完成 - 规则: ${props.rules.length}`);
 
   // 延迟检查渲染状态
   setTimeout(() => {
-    console.log(
-      `渲染状态检查 - 规则: ${props.rules.length}, 分组: ${groups.value.length}`
-    );
+    console.log(`渲染状态检查 - 规则: ${props.rules.length}`);
   }, 100);
 });
 
-// 监听规则和分组变化，统一处理重新渲染
+// 监听规则变化，统一处理重新渲染
 watch(
-  [() => props.rules, groups],
-  ([newRules, newGroups]) => {
-    console.log(
-      `数据更新 - 规则: ${newRules.length}, 分组: ${newGroups.length}`
-    );
+  () => props.rules,
+  (newRules) => {
+    console.log(`数据更新 - 规则: ${newRules.length}`);
     nextTick(() => console.log("界面重新渲染完成"));
   },
   { deep: true, immediate: true }
@@ -776,10 +772,9 @@ onUnmounted(() => {
       }
     }
 
-    .groups-list {
+    .rules-list {
       flex: 1;
       overflow-y: auto;
-      padding: 8px;
 
       .empty-state {
         display: flex;
@@ -807,6 +802,230 @@ onUnmounted(() => {
             font-size: 14px;
             margin: 0 0 16px 0;
             color: #999;
+          }
+        }
+      }
+
+      .rules-table {
+        background: #fff;
+        border: 1px solid #e8e8e8;
+        border-radius: 6px;
+        overflow: hidden;
+
+        .table-header {
+          display: flex;
+          align-items: center;
+          background: #f8f9fa;
+          border-bottom: 1px solid #e1e1e1;
+          padding: 8px 12px;
+          font-weight: 600;
+          color: #666;
+          font-size: 12px;
+
+          .col-status {
+            width: 60px;
+            text-align: center;
+          }
+          .col-method {
+            width: 80px;
+          }
+          .col-url {
+            flex: 1;
+          }
+          .col-response {
+            width: 100px;
+            text-align: center;
+          }
+          .col-delay {
+            width: 80px;
+            text-align: center;
+          }
+          .col-actions {
+            width: 120px;
+            text-align: center;
+          }
+        }
+
+        .rule-row {
+          border-bottom: 1px solid #f0f0f0;
+
+          &:last-child {
+            border-bottom: none;
+          }
+
+          &.disabled {
+            opacity: 0.6;
+            background: #fafafa;
+          }
+
+          &.expanded {
+            background: #f6f8fa;
+          }
+
+          .table-row {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: background-color 0.1s;
+
+            &:hover {
+              background-color: #f5f5f5;
+            }
+
+            .col-status {
+              width: 60px;
+              text-align: center;
+            }
+
+            .col-method {
+              width: 80px;
+
+              .method-badge {
+                background: #1890ff;
+                color: white;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-size: 11px;
+                font-weight: 600;
+              }
+            }
+
+            .col-url {
+              flex: 1;
+              font-family: monospace;
+              font-size: 12px;
+              color: #333;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+
+            .col-response {
+              width: 100px;
+              text-align: center;
+
+              .status-badge {
+                font-size: 11px;
+                font-weight: 600;
+                padding: 2px 6px;
+                border-radius: 2px;
+
+                &.status-success {
+                  color: #107c10;
+                  background: #dff6dd;
+                }
+
+                &.status-redirect {
+                  color: #d83b01;
+                  background: #ffd8cc;
+                }
+
+                &.status-client-error,
+                &.status-server-error {
+                  color: #d13438;
+                  background: #fde7e9;
+                }
+
+                &.status-unknown {
+                  color: #666;
+                  background: #f3f2f1;
+                }
+              }
+            }
+
+            .col-delay {
+              width: 80px;
+              text-align: center;
+              font-size: 12px;
+
+              .delay-badge {
+                color: #fa8c16;
+                background: #fff7e6;
+                padding: 2px 6px;
+                border-radius: 3px;
+                border: 1px solid #ffd591;
+              }
+
+              .no-delay {
+                color: #999;
+              }
+            }
+
+            .col-actions {
+              width: 120px;
+              text-align: center;
+
+              .action-buttons {
+                display: flex;
+                gap: 6px;
+                justify-content: center;
+              }
+            }
+
+            .expand-icon {
+              margin-left: 8px;
+              color: #666;
+              opacity: 0.6;
+            }
+          }
+
+          .rule-details {
+            background: #fff;
+            border-top: 1px solid #e8e8e8;
+            padding: 16px;
+
+            .detail-section {
+              margin-bottom: 20px;
+
+              &:last-child {
+                margin-bottom: 0;
+              }
+
+              .detail-title {
+                font-size: 13px;
+                font-weight: 600;
+                color: #333;
+                margin-bottom: 8px;
+                padding-bottom: 4px;
+                border-bottom: 1px solid #f0f0f0;
+              }
+
+              .detail-content {
+                .detail-row {
+                  display: flex;
+                  margin-bottom: 6px;
+                  font-size: 12px;
+
+                  .detail-label {
+                    width: 100px;
+                    color: #666;
+                    font-weight: 500;
+                  }
+
+                  .detail-value {
+                    flex: 1;
+                    color: #333;
+                    word-break: break-all;
+                  }
+                }
+
+                .response-body {
+                  background: #f8f9fa;
+                  border: 1px solid #e1e1e1;
+                  border-radius: 4px;
+                  padding: 12px;
+                  font-size: 11px;
+                  font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono",
+                    Consolas, "Courier New", monospace;
+                  white-space: pre-wrap;
+                  word-break: break-all;
+                  max-height: 200px;
+                  overflow: auto;
+                  margin: 0;
+                }
+              }
+            }
           }
         }
       }
@@ -840,6 +1059,9 @@ onUnmounted(() => {
       flex: 1;
       overflow-y: auto;
       padding-right: 8px;
+      font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas,
+        "Courier New", monospace;
+      font-size: 12px;
 
       &::-webkit-scrollbar {
         width: 6px;
@@ -858,140 +1080,210 @@ onUnmounted(() => {
       &::-webkit-scrollbar-thumb:hover {
         background: #a8a8a8;
       }
-    }
 
-    .history-item {
-      padding: 12px;
-      border: 1px solid #f0f0f0;
-      border-radius: 6px;
-      margin-bottom: 8px;
-      background: #fff;
-      cursor: pointer;
-      transition: all 0.2s;
-
-      &:hover {
-        border-color: #d9d9d9;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      }
-
-      &:last-child {
-        margin-bottom: 0;
-      }
-
-      &.success {
-        border-left: 4px solid #52c41a;
-      }
-
-      &.warning {
-        border-left: 4px solid #faad14;
-      }
-
-      &.error {
-        border-left: 4px solid #f5222d;
-      }
-
-      .history-header {
+      .table-header {
         display: flex;
         align-items: center;
-        gap: 12px;
-        margin-bottom: 8px;
-
-        .history-method {
-          padding: 2px 8px;
-          background: #1890ff;
-          color: white;
-          border-radius: 3px;
-          font-size: 12px;
-          font-weight: 500;
-        }
-
-        .history-status-code {
-          padding: 2px 6px;
-          border-radius: 3px;
-          font-size: 12px;
-          font-weight: 500;
-
-          &.status-success {
-            background: #f6ffed;
-            color: #52c41a;
-            border: 1px solid #b7eb8f;
-          }
-
-          &.status-redirect {
-            background: #fff7e6;
-            color: #fa8c16;
-            border: 1px solid #ffd591;
-          }
-
-          &.status-client-error {
-            background: #fff2f0;
-            color: #ff4d4f;
-            border: 1px solid #ffccc7;
-          }
-
-          &.status-server-error {
-            background: #fff2f0;
-            color: #ff4d4f;
-            border: 1px solid #ffccc7;
-          }
-
-          &.status-unknown {
-            background: #fafafa;
-            color: #666;
-            border: 1px solid #d9d9d9;
-          }
-        }
-
-        .history-time {
-          font-size: 12px;
-          color: #999;
-          margin-left: auto;
-        }
-      }
-
-      .history-url {
-        font-family: monospace;
-        font-size: 13px;
-        color: #333;
-        margin: 8px 0;
-        word-break: break-all;
-        line-height: 1.4;
-      }
-
-      .history-details {
-        display: grid;
-        grid-template-columns: auto 1fr;
-        gap: 6px 12px;
-        font-size: 12px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #e1e1e1;
+        padding: 6px 8px;
+        font-weight: 600;
         color: #666;
+        position: sticky;
+        top: 0;
+        z-index: 10;
 
-        .history-label {
-          font-weight: 500;
-          color: #333;
+        .col-status {
+          width: 60px;
+        }
+        .col-method {
+          width: 60px;
+        }
+        .col-url {
+          flex: 1;
+        }
+        .col-status-code {
+          width: 80px;
+          text-align: center;
+        }
+        .col-time {
+          width: 100px;
           text-align: right;
         }
+        .col-delay {
+          width: 80px;
+          text-align: right;
+        }
+      }
 
-        .history-value {
-          word-break: break-word;
+      .history-item {
+        border-bottom: 1px solid #f0f0f0;
+        cursor: pointer;
+        transition: background-color 0.1s;
+
+        &:hover {
+          background-color: #f8f9fa;
         }
 
-        .history-error {
-          grid-column: 1 / -1;
-          margin-top: 6px;
+        &:last-child {
+          border-bottom: none;
+        }
 
-          .history-value {
-            color: #f5222d;
+        &.success {
+          background-color: #f6ffed;
+        }
+
+        &.warning {
+          background-color: #fff7e6;
+        }
+
+        &.error {
+          background-color: #fff2f0;
+        }
+
+        &.expanded {
+          background-color: #e6f7ff;
+        }
+
+        .table-row {
+          display: flex;
+          align-items: center;
+          padding: 4px 8px;
+          min-height: 24px;
+
+          .col-status {
+            width: 60px;
+          }
+          .col-method {
+            width: 60px;
+          }
+          .col-url {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+          .col-status-code {
+            width: 80px;
+            text-align: center;
+            color: #666;
+          }
+          .col-time {
+            width: 100px;
+            text-align: right;
+            color: #666;
+          }
+          .col-delay {
+            width: 80px;
+            text-align: right;
+            color: #666;
+          }
+
+          .status-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 1px 4px;
+            border-radius: 2px;
+
+            &.status-success {
+              color: #107c10;
+              background: #dff6dd;
+            }
+
+            &.status-redirect {
+              color: #d83b01;
+              background: #ffd8cc;
+            }
+
+            &.status-client-error,
+            &.status-server-error {
+              color: #d13438;
+              background: #fde7e9;
+            }
+
+            &.status-unknown {
+              color: #666;
+              background: #f3f2f1;
+            }
+          }
+
+          .method-badge {
+            background: #0078d4;
+            color: white;
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+          }
+
+          .status-code-badge {
+            font-size: 11px;
             font-weight: 500;
+            color: #666;
+          }
+
+          .expand-icon {
+            margin-left: 8px;
+            color: #666;
+            opacity: 0.6;
+          }
+        }
+
+        .history-details {
+          border-top: 1px solid #e1e1e1;
+          background: #f8f9fa;
+          padding: 16px;
+
+          .detail-section {
+            margin-bottom: 16px;
+
+            &:last-child {
+              margin-bottom: 0;
+            }
+
+            .detail-title {
+              font-size: 13px;
+              font-weight: 600;
+              color: #323130;
+              margin-bottom: 8px;
+              padding-bottom: 4px;
+              border-bottom: 1px solid #f3f2f1;
+            }
+
+            .detail-content {
+              .detail-row {
+                display: flex;
+                margin-bottom: 6px;
+                font-size: 12px;
+
+                .detail-label {
+                  width: 120px;
+                  color: #605e5c;
+                  font-weight: 500;
+                }
+
+                .detail-value {
+                  flex: 1;
+                  color: #323130;
+                  word-break: break-all;
+
+                  &.error-text {
+                    color: #d13438;
+                    font-weight: 500;
+                  }
+                }
+              }
+            }
           }
         }
       }
-    }
 
-    .empty-state {
-      text-align: center;
-      padding: 40px;
-      color: #999;
-      font-size: 14px;
+      .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: #999;
+        font-size: 14px;
+      }
     }
   }
 }
