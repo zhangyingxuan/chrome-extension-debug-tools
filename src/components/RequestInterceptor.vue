@@ -25,7 +25,7 @@
               :content="`确定要清理所有 ${props.rules.length} 条规则吗？此操作不可撤销。`"
               @confirm="clearAllRules"
             >
-              <t-button size="small" theme="warning"> 清理所有规则 </t-button>
+              <t-button size="small" theme="danger"> 清理所有规则 </t-button>
             </t-popconfirm>
             <t-button
               size="small"
@@ -290,8 +290,8 @@ import {
   onMounted,
   onUnmounted,
   toRefs,
-  ref,
 } from "vue";
+import { Message } from "tdesign-vue-next";
 import { RequestRule, InterceptionRecord } from "../types";
 import {
   formatTime,
@@ -505,7 +505,7 @@ const importRules = () => {
             if (validRules.length > 0) {
               const updatedRules = [...props.rules, ...validRules];
               emit("update-rules", updatedRules);
-              alert(`成功导入 ${validRules.length} 条规则`);
+              Message.success(`成功导入 ${validRules.length} 条规则`);
             } else {
               errorHandler.alert("导入的文件中没有有效的规则");
             }
@@ -546,7 +546,7 @@ const exportData = () => {
 // 清理所有规则
 const clearAllRules = () => {
   if (props.rules.length === 0) {
-    alert("当前没有规则可清理");
+    Message.info("当前没有规则可清理");
     return;
   }
 
@@ -562,22 +562,26 @@ const clearAllRules = () => {
     },
   });
 
-  alert(`已成功清理所有 ${props.rules.length} 条规则`);
+  Message.success(`已成功清理所有 ${props.rules.length} 条规则`);
   console.log("所有规则已清理");
 };
 
 // 清空拦截历史
 const clearHistory = () => {
-  if (confirm("确定要清空所有拦截历史记录吗？")) {
-    chrome.runtime.sendMessage(
-      { type: "CLEAR_INTERCEPTION_HISTORY" },
-      (response) => {
-        if (response && response.success) {
-          interceptionHistory.value = [];
+  Message.confirm({
+    content: "确定要清空所有拦截历史记录吗？",
+    onConfirm: () => {
+      chrome.runtime.sendMessage(
+        { type: "CLEAR_INTERCEPTION_HISTORY" },
+        (response) => {
+          if (response && response.success) {
+            interceptionHistory.value = [];
+            Message.success("拦截历史已清空");
+          }
         }
-      }
-    );
-  }
+      );
+    },
+  });
 };
 
 // 获取历史记录项样式类
@@ -622,6 +626,7 @@ watch(
 
 // 处理运行时消息
 function handleRuntimeMessage(message: any, sender: any, sendResponse: any) {
+  console.log("页面收到消息:", message);
   if (message.type === "INTERCEPTION_RECORD") {
     const record = {
       ...message.data,
@@ -642,25 +647,7 @@ function handleRuntimeMessage(message: any, sender: any, sendResponse: any) {
 onMounted(() => {
   loadInterceptionHistory();
   chrome.runtime.onMessage.addListener(handleRuntimeMessage);
-
-  // 统一日志输出和状态检查
-  console.log(`组件挂载完成 - 规则: ${props.rules.length}`);
-
-  // 延迟检查渲染状态
-  setTimeout(() => {
-    console.log(`渲染状态检查 - 规则: ${props.rules.length}`);
-  }, 100);
 });
-
-// 监听规则变化，统一处理重新渲染
-watch(
-  () => props.rules,
-  (newRules) => {
-    console.log(`数据更新 - 规则: ${newRules.length}`);
-    nextTick(() => console.log("界面重新渲染完成"));
-  },
-  { deep: true, immediate: true }
-);
 
 // 组件卸载时
 onUnmounted(() => {
@@ -701,7 +688,7 @@ onUnmounted(() => {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 16px 20px;
+      padding: 8px;
       background: #fafafa;
       border-bottom: 1px solid #e8e8e8;
 

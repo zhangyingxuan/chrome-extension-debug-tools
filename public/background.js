@@ -11,6 +11,39 @@ chrome.storage.local.get(["requestRules", "enabled"], (result) => {
   isEnabled = result.enabled !== false;
 });
 
+// 处理拦截记录
+function handleInterceptionRecord(record) {
+  // 添加到历史记录
+  interceptionHistory.push(record);
+
+  // 限制历史记录数量，避免内存溢出
+  if (interceptionHistory.length > 1000) {
+    interceptionHistory = interceptionHistory.slice(-500);
+  }
+
+  // 广播拦截记录到devtools页面
+  try {
+    console.log("发送拦截记录到devtools页面111:");
+    chrome.runtime.sendMessage(
+      {
+        type: "INTERCEPTION_RECORD",
+        data: record,
+      },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          // 忽略连接错误，这通常是正常的（devtools页面可能未打开）
+          console.debug(
+            "无法发送拦截记录到devtools页面:",
+            chrome.runtime.lastError.message
+          );
+        }
+      }
+    );
+  } catch (error) {
+    console.debug("发送拦截记录到devtools页面失败:", error);
+  }
+}
+
 // 监听declarativeNetRequest规则匹配事件（用于记录拦截历史）
 chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener((details) => {
   // 只记录我们自己的动态规则（ID从1000开始）
@@ -136,6 +169,7 @@ async function updateDNRRules() {
 
 // 监听来自内容脚本和devtools的消息
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.warn("background.js chrome.runtime.onMessage", message);
   switch (message.type) {
     case "UPDATE_RULES":
       // 清理规则中的非ASCII字符
@@ -168,11 +202,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ rules: requestRules, enabled: isEnabled });
       break;
 
-    case "INTERCEPTION_RECORD":
-      // 处理拦截记录
-      handleInterceptionRecord(message.data);
-      break;
-
     case "GET_INTERCEPTION_HISTORY":
       // 获取拦截历史
       sendResponse({ history: interceptionHistory });
@@ -185,43 +214,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       break;
   }
 });
-
-// 处理拦截记录
-function handleInterceptionRecord(record) {
-  // 添加到历史记录
-  interceptionHistory.push(record);
-
-  // 限制历史记录数量，避免内存溢出
-  if (interceptionHistory.length > 1000) {
-    interceptionHistory = interceptionHistory.slice(-500);
-  }
-
-  // 广播拦截记录到devtools页面
-  broadcastInterceptionRecord(record);
-}
-
-// 广播拦截记录到devtools页面
-function broadcastInterceptionRecord(record) {
-  try {
-    chrome.runtime.sendMessage(
-      {
-        type: "INTERCEPTION_RECORD",
-        data: record,
-      },
-      (response) => {
-        if (chrome.runtime.lastError) {
-          // 忽略连接错误，这通常是正常的（devtools页面可能未打开）
-          console.debug(
-            "无法发送拦截记录到devtools页面:",
-            chrome.runtime.lastError.message
-          );
-        }
-      }
-    );
-  } catch (error) {
-    console.debug("发送拦截记录到devtools页面失败:", error);
-  }
-}
 
 // 清理规则中的非ASCII字符
 function cleanRules(rules) {
@@ -303,6 +295,3 @@ chrome.runtime.onInstalled.addListener(async () => {
     }
   });
 });
-
-// 网络请求记录功能已移到RequestLogger.vue组件内部
-// 因为chrome.devtools.network.onRequestFinished需要在DevTools上下文中运行

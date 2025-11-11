@@ -19,7 +19,7 @@
           />
         </h3>
         <div class="control-actions">
-          <t-button size="small" @click="clearLogs" theme="default">
+          <t-button size="small" @click="clearLogs" thetheme="danger">
             清空记录
           </t-button>
           <t-button size="small" @click="exportLogs" theme="default">

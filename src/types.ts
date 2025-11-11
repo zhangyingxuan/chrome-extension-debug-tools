@@ -24,6 +24,7 @@ export interface InterceptionRecord {
   delay: number;
   error?: string;
   ruleId: string;
+  expanded: boolean;
 }
 
 // 性能监控数据类型
