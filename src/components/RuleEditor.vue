@@ -190,6 +190,195 @@ const responseType = ref<"json" | "text">("json");
 const showPreview = ref(false);
 const responseBodyStatus = ref("");
 
+// URL模式验证状态
+const urlPatternStatus = computed(() => {
+  if (!rule.value.urlPattern) return "";
+
+  // 检查是否包含非ASCII字符
+  const hasNonAscii = /[^\x00-\x7F]/.test(rule.value.urlPattern);
+  if (hasNonAscii) {
+    return "error";
+  }
+
+  try {
+    new RegExp(rule.value.urlPattern);
+    return "success";
+  } catch {
+    return "error";
+  }
+});
+
+// 监听编辑规则变化
+watch(
+  () => props.editingRule,
+  (newRule) => {
+    if (newRule) {
+      rule.value = JSON.parse(JSON.stringify(newRule));
+      headersText.value = Object.entries(newRule.response.headers)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join("\n");
+
+      if (typeof newRule.response.body === "string") {
+        responseType.value = "text";
+        responseBodyText.value = newRule.response.body;
+        responseBodyStatus.value = "";
+      } else {
+        responseType.value = "json";
+        responseBodyText.value = JSON.stringify(newRule.response.body, null, 2);
+        responseBodyStatus.value = "success";
+      }
+    } else {
+      resetForm();
+    }
+  },
+  { immediate: true }
+);
+
+// 监听headers文本变化
+watch(headersText, (newText) => {
+  const headers: Record<string, string> = {};
+  newText.split("\n").forEach((line) => {
+    const [key, value] = line.split(":").map((s) => s.trim());
+    if (key && value) {
+      headers[key] = value;
+    }
+  });
+  rule.value.response.headers = headers;
+});
+
+// 监听响应体类型变化
+watch(responseType, (newType) => {
+  if (newType === "json") {
+    try {
+      rule.value.response.body = JSON.parse(responseBodyText.value || "{}");
+      responseBodyStatus.value = "success";
+    } catch {
+      rule.value.response.body = {};
+      responseBodyStatus.value = "error";
+    }
+  } else {
+    rule.value.response.body = responseBodyText.value;
+    responseBodyStatus.value = "";
+  }
+});
+
+// 监听响应体文本变化
+watch(responseBodyText, (newText) => {
+  if (responseType.value === "json") {
+    try {
+      rule.value.response.body = JSON.parse(newText || "{}");
+      responseBodyStatus.value = "success";
+    } catch {
+      responseBodyStatus.value = "error";
+    }
+  } else {
+    rule.value.response.body = newText;
+    responseBodyStatus.value = "";
+  }
+});
+
+// 格式化JSON
+const formatJson = () => {
+  if (!responseBodyText.value) return;
+  try {
+    const parsed = JSON.parse(responseBodyText.value);
+    responseBodyText.value = JSON.stringify(parsed, null, 2);
+    responseBodyStatus.value = "success";
+  } catch (error) {
+    responseBodyStatus.value = "error";
+  }
+};
+
+// 验证JSON
+const validateJson = () => {
+  if (!responseBodyText.value) return;
+  try {
+    JSON.parse(responseBodyText.value);
+    responseBodyStatus.value = "success";
+  } catch (error) {
+    responseBodyStatus.value = "error";
+  }
+};
+
+// 切换预览
+const togglePreview = () => {
+  showPreview.value = !showPreview.value;
+};
+
+// 响应体失去焦点时验证
+const onResponseBodyBlur = () => {
+  if (responseType.value === "json" && responseBodyText.value) {
+    validateJson();
+  }
+};
+
+// 格式化JSON预览
+const formatJsonForPreview = (jsonText: string) => {
+  try {
+    const parsed = JSON.parse(jsonText);
+    return JSON.stringify(parsed, null, 2);
+  } catch {
+    return jsonText;
+  }
+};
+
+// 保存规则
+const saveRule = () => {
+  // 检查URL模式是否为空
+  if (!rule.value.urlPattern || !rule.value.urlPattern.trim()) {
+    alert("URL模式不能为空，请输入有效的URL模式");
+    return;
+  }
+
+  // 验证URL模式是否包含非ASCII字符
+  const hasNonAscii = /[^\x00-\x7F]/.test(rule.value.urlPattern);
+  if (hasNonAscii) {
+    alert("URL模式不能包含中文等非ASCII字符，请使用英文或ASCII字符");
+    return;
+  }
+
+  // 验证URL模式
+  try {
+    new RegExp(rule.value.urlPattern);
+  } catch (error) {
+    alert("URL模式格式错误，请输入有效的正则表达式");
+    return;
+  }
+
+  // 验证JSON格式（如果是JSON类型）
+  if (responseType.value === "json" && responseBodyText.value) {
+    try {
+      JSON.parse(responseBodyText.value);
+    } catch (error) {
+      alert("JSON格式错误，请检查响应体格式");
+      return;
+    }
+  }
+
+  // 生成唯一ID
+  if (!rule.value.id) {
+    rule.value.id = `rule_${Date.now()}_${Math.random()
+      .toString(36)
+      .substring(2, 11)}`;
+  }
+
+  // 设置分组ID
+  if (props.groupId) {
+    rule.value.groupId = props.groupId;
+  }
+
+  console.log("保存规则:", {
+    id: rule.value.id,
+    urlPattern: rule.value.urlPattern,
+    method: rule.value.method,
+    groupId: rule.value.groupId,
+    enabled: rule.value.enabled,
+  });
+
+  emit("save", { ...rule.value });
+  resetForm();
+};
+
 // 重置表单
 const resetForm = () => {
   rule.value = {
@@ -204,198 +393,7 @@ const resetForm = () => {
       body: {},
     },
   };
-  // URL模式验证状态
-  const urlPatternStatus = computed(() => {
-    if (!rule.value.urlPattern) return "";
 
-    // 检查是否包含非ASCII字符
-    const hasNonAscii = /[^\x00-\x7F]/.test(rule.value.urlPattern);
-    if (hasNonAscii) {
-      return "error";
-    }
-
-    try {
-      new RegExp(rule.value.urlPattern);
-      return "success";
-    } catch {
-      return "error";
-    }
-  });
-
-  // 监听编辑规则变化
-  watch(
-    () => props.editingRule,
-    (newRule) => {
-      if (newRule) {
-        rule.value = JSON.parse(JSON.stringify(newRule));
-        headersText.value = Object.entries(newRule.response.headers)
-          .map(([key, value]) => `${key}: ${value}`)
-          .join("\n");
-
-        if (typeof newRule.response.body === "string") {
-          responseType.value = "text";
-          responseBodyText.value = newRule.response.body;
-          responseBodyStatus.value = "";
-        } else {
-          responseType.value = "json";
-          responseBodyText.value = JSON.stringify(
-            newRule.response.body,
-            null,
-            2
-          );
-          responseBodyStatus.value = "success";
-        }
-      } else {
-        resetForm();
-      }
-    },
-    { immediate: true }
-  );
-
-  // 监听headers文本变化
-  watch(headersText, (newText) => {
-    const headers: Record<string, string> = {};
-    newText.split("\n").forEach((line) => {
-      const [key, value] = line.split(":").map((s) => s.trim());
-      if (key && value) {
-        headers[key] = value;
-      }
-    });
-    rule.value.response.headers = headers;
-  });
-
-  // 监听响应体类型变化
-  watch(responseType, (newType) => {
-    if (newType === "json") {
-      try {
-        rule.value.response.body = JSON.parse(responseBodyText.value || "{}");
-        responseBodyStatus.value = "success";
-      } catch {
-        rule.value.response.body = {};
-        responseBodyStatus.value = "error";
-      }
-    } else {
-      rule.value.response.body = responseBodyText.value;
-      responseBodyStatus.value = "";
-    }
-  });
-
-  // 监听响应体文本变化
-  watch(responseBodyText, (newText) => {
-    if (responseType.value === "json") {
-      try {
-        rule.value.response.body = JSON.parse(newText || "{}");
-        responseBodyStatus.value = "success";
-      } catch {
-        responseBodyStatus.value = "error";
-      }
-    } else {
-      rule.value.response.body = newText;
-      responseBodyStatus.value = "";
-    }
-  });
-
-  // 格式化JSON
-  const formatJson = () => {
-    if (!responseBodyText.value) return;
-    try {
-      const parsed = JSON.parse(responseBodyText.value);
-      responseBodyText.value = JSON.stringify(parsed, null, 2);
-      responseBodyStatus.value = "success";
-    } catch (error) {
-      responseBodyStatus.value = "error";
-    }
-  };
-
-  // 验证JSON
-  const validateJson = () => {
-    if (!responseBodyText.value) return;
-    try {
-      JSON.parse(responseBodyText.value);
-      responseBodyStatus.value = "success";
-    } catch (error) {
-      responseBodyStatus.value = "error";
-    }
-  };
-
-  // 切换预览
-  const togglePreview = () => {
-    showPreview.value = !showPreview.value;
-  };
-
-  // 响应体失去焦点时验证
-  const onResponseBodyBlur = () => {
-    if (responseType.value === "json" && responseBodyText.value) {
-      validateJson();
-    }
-  };
-
-  // 格式化JSON预览
-  const formatJsonForPreview = (jsonText: string) => {
-    try {
-      const parsed = JSON.parse(jsonText);
-      return JSON.stringify(parsed, null, 2);
-    } catch {
-      return jsonText;
-    }
-  };
-
-  // 保存规则
-  const saveRule = () => {
-    // 检查URL模式是否为空
-    if (!rule.value.urlPattern || !rule.value.urlPattern.trim()) {
-      alert("URL模式不能为空，请输入有效的URL模式");
-      return;
-    }
-
-    // 验证URL模式是否包含非ASCII字符
-    const hasNonAscii = /[^\x00-\x7F]/.test(rule.value.urlPattern);
-    if (hasNonAscii) {
-      alert("URL模式不能包含中文等非ASCII字符，请使用英文或ASCII字符");
-      return;
-    }
-
-    // 验证URL模式
-    try {
-      new RegExp(rule.value.urlPattern);
-    } catch (error) {
-      alert("URL模式格式错误，请输入有效的正则表达式");
-      return;
-    }
-
-    // 验证JSON格式（如果是JSON类型）
-    if (responseType.value === "json" && responseBodyText.value) {
-      try {
-        JSON.parse(responseBodyText.value);
-      } catch (error) {
-        alert("JSON格式错误，请检查响应体格式");
-        return;
-      }
-    }
-
-    // 生成唯一ID
-    if (!rule.value.id) {
-      rule.value.id = `rule_${Date.now()}_${Math.random()
-        .toString(36)
-        .substring(2, 11)}`;
-    }
-
-    // 设置分组ID
-    if (props.groupId) {
-      rule.value.groupId = props.groupId;
-    }
-
-    console.log("保存规则:", {
-      id: rule.value.id,
-      urlPattern: rule.value.urlPattern,
-      method: rule.value.method,
-      groupId: rule.value.groupId,
-      enabled: rule.value.enabled,
-    });
-
-    emit("save", { ...rule.value });
-    resetForm();
-  };
   headersText.value = "";
   responseBodyText.value = "";
   responseType.value = "json";

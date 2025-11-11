@@ -68,6 +68,7 @@ export interface RequestLog {
   requestBody?: any;
   responseBody?: any;
   expanded: boolean;
+  resourceType?: string;
 }
 
 // Chrome消息类型

@@ -11,6 +11,11 @@
             size="small"
             @change="toggleRecording"
           />
+          <t-switch
+            v-model="showUrlParams"
+            :label="['显示参数', '隐藏参数']"
+            size="small"
+          />
           <t-button size="small" @click="clearLogs" theme="default">
             清空记录
           </t-button>
@@ -23,6 +28,16 @@
 
     <!-- 请求列表 -->
     <div class="request-list" ref="requestList">
+      <!-- 列标题 -->
+      <div class="table-header">
+        <div class="col-status">状态</div>
+        <div class="col-method">方法</div>
+        <div class="col-type">类型</div>
+        <div class="col-url">URL</div>
+        <div class="col-duration">时间</div>
+        <div class="col-size">大小</div>
+      </div>
+
       <div
         v-for="log in reversedLogs"
         :key="log.id"
@@ -30,14 +45,23 @@
         :class="getRequestItemClass(log)"
         @click="toggleRequestDetails(log)"
       >
-        <div class="request-header">
-          <div class="request-method">{{ log.method }}</div>
-          <div class="request-status" :class="getStatusClass(log.status)">
-            {{ log.status }}
+        <div class="request-row">
+          <div class="col-status">
+            <span class="status-badge" :class="getStatusClass(log.status)">
+              {{ log.status }}
+            </span>
           </div>
-          <div class="request-time">{{ formatTime(log.timestamp) }}</div>
-          <div class="request-url">{{ log.url }}</div>
-          <div class="request-duration">{{ log.duration }}ms</div>
+          <div class="col-method">
+            <span class="method-badge">{{ log.method }}</span>
+          </div>
+          <div class="col-type">
+            <span class="type-badge">{{ log.resourceType }}</span>
+          </div>
+          <div class="col-url" :title="log.url">
+            {{ formatUrl(log.url) }}
+          </div>
+          <div class="col-duration">{{ log.duration }}ms</div>
+          <div class="col-size">{{ getResponseSize(log) }}</div>
           <t-icon
             :name="log.expanded ? 'chevron-down' : 'chevron-right'"
             size="16"
@@ -47,28 +71,78 @@
 
         <!-- 请求详情 -->
         <div v-if="log.expanded" class="request-details">
-          <div class="detail-section">
-            <h4>请求头</h4>
-            <pre class="headers-content">{{
-              formatHeaders(log.requestHeaders)
-            }}</pre>
+          <div class="detail-tabs">
+            <div class="tab active">Headers</div>
+            <div class="tab">Preview</div>
+            <div class="tab">Response</div>
+            <div class="tab">Timing</div>
           </div>
 
-          <div class="detail-section">
-            <h4>响应头</h4>
-            <pre class="headers-content">{{
-              formatHeaders(log.responseHeaders)
-            }}</pre>
-          </div>
+          <div class="detail-content">
+            <div class="tab-panel active">
+              <div class="section">
+                <div class="section-title">General</div>
+                <div class="section-content">
+                  <div class="property">
+                    <span class="property-name">Request URL:</span>
+                    <span class="property-value">{{ log.url }}</span>
+                  </div>
+                  <div class="property">
+                    <span class="property-name">Request Method:</span>
+                    <span class="property-value">{{ log.method }}</span>
+                  </div>
+                  <div class="property">
+                    <span class="property-name">Status Code:</span>
+                    <span class="property-value">{{ log.status }}</span>
+                  </div>
+                  <div class="property">
+                    <span class="property-name">Remote Address:</span>
+                    <span class="property-value">127.0.0.1:8080</span>
+                  </div>
+                </div>
+              </div>
 
-          <div v-if="log.requestBody" class="detail-section">
-            <h4>请求体</h4>
-            <pre class="body-content">{{ formatBody(log.requestBody) }}</pre>
-          </div>
+              <div class="section">
+                <div class="section-title">Request Headers</div>
+                <div class="section-content">
+                  <pre class="headers-content">{{
+                    formatHeaders(log.requestHeaders)
+                  }}</pre>
+                </div>
+              </div>
 
-          <div v-if="log.responseBody" class="detail-section">
-            <h4>响应体</h4>
-            <pre class="body-content">{{ formatBody(log.responseBody) }}</pre>
+              <div class="section">
+                <div class="section-title">Response Headers</div>
+                <div class="section-content">
+                  <pre class="headers-content">{{
+                    formatHeaders(log.responseHeaders)
+                  }}</pre>
+                </div>
+              </div>
+            </div>
+
+            <div class="tab-panel">
+              <div v-if="log.responseBody" class="preview-content">
+                <pre>{{ formatBody(log.responseBody) }}</pre>
+              </div>
+              <div v-else class="no-content">No preview available</div>
+            </div>
+
+            <div class="tab-panel">
+              <div v-if="log.responseBody" class="response-content">
+                <pre>{{ formatBody(log.responseBody) }}</pre>
+              </div>
+              <div v-else class="no-content">No response available</div>
+            </div>
+
+            <div class="tab-panel">
+              <div class="timing-content">
+                <div class="property">
+                  <span class="property-name">Duration:</span>
+                  <span class="property-value">{{ log.duration }}ms</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -100,6 +174,7 @@ interface Emits {
 const emit = defineEmits<Emits>();
 
 const isRecording = ref(false);
+const showUrlParams = ref(true);
 const requestLogs = ref<RequestLog[]>([]);
 const requestList = ref<HTMLElement>();
 
@@ -151,7 +226,11 @@ const stopRecording = () => {
 const handleRequestFinished = (request: any) => {
   if (!isRecording.value) return;
 
-  console.log("捕获到网络请求:", request.request.url);
+  const resourceType = request._resourceType || request.type || "unknown";
+  // 仅保留fetch和xhr请求
+  if (!["fetch", "xhr"].includes(resourceType)) {
+    return;
+  }
 
   const log: RequestLog = {
     id: `log_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
@@ -165,11 +244,12 @@ const handleRequestFinished = (request: any) => {
     requestBody: request.request.postData,
     responseBody: null,
     expanded: false,
+    resourceType,
   };
 
   // 尝试获取响应体内容
   if (request.getContent) {
-    request.getContent((content: string, encoding: string) => {
+    request.getContent((content: string) => {
       log.responseBody = content;
       saveRequestLog(log);
     });
@@ -282,6 +362,60 @@ const formatBody = (body: any) => {
   return JSON.stringify(body, null, 2);
 };
 
+// 格式化URL显示，只保留最后一路路径及参数
+const formatUrl = (url: string) => {
+  try {
+    const urlObj = new URL(url);
+    const pathname = urlObj.pathname;
+
+    // 获取最后一路路径
+    const pathParts = pathname.split("/").filter((part) => part.trim() !== "");
+    const lastPath =
+      pathParts.length > 0 ? pathParts[pathParts.length - 1] : "";
+
+    // 获取查询参数
+    const searchParams = urlObj.searchParams.toString();
+
+    // 根据showUrlParams决定是否显示参数
+    if (showUrlParams.value && searchParams) {
+      return `/${lastPath}?${searchParams}`;
+    } else {
+      return `/${lastPath}`;
+    }
+  } catch (error) {
+    // 如果URL解析失败，返回原始URL或简化版本
+    const urlParts = url.split("/");
+    const lastPart = urlParts[urlParts.length - 1] || "";
+
+    if (showUrlParams.value && url.includes("?")) {
+      const baseUrl = url.split("?")[0];
+      const queryString = url.split("?")[1];
+      const baseParts = baseUrl.split("/");
+      const lastBasePart = baseParts[baseParts.length - 1] || "";
+      return `/${lastBasePart}?${queryString}`;
+    } else {
+      return `/${lastPart}`;
+    }
+  }
+};
+
+// 获取响应大小
+const getResponseSize = (log: RequestLog) => {
+  if (!log.responseBody) return "-";
+
+  if (typeof log.responseBody === "string") {
+    const size = new Blob([log.responseBody]).size;
+    if (size < 1024) {
+      return `${size}B`;
+    } else if (size < 1024 * 1024) {
+      return `${(size / 1024).toFixed(1)}KB`;
+    } else {
+      return `${(size / (1024 * 1024)).toFixed(1)}MB`;
+    }
+  }
+  return "-";
+};
+
 onMounted(() => {
   console.log("RequestLogger组件已挂载");
 });
@@ -315,7 +449,7 @@ onUnmounted(() => {
 
       .control-actions {
         display: flex;
-        gap: 12px;
+        gap: 8px;
         align-items: center;
       }
     }
@@ -353,118 +487,264 @@ onUnmounted(() => {
   .request-list {
     flex: 1;
     overflow: auto;
-    padding: 16px;
+    background: #fff;
+    font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas,
+      "Courier New", monospace;
+    font-size: 12px;
+
+    .table-header {
+      display: flex;
+      align-items: center;
+      background: #f8f9fa;
+      border-bottom: 1px solid #e1e1e1;
+      padding: 6px 8px;
+      font-weight: 600;
+      color: #666;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+
+      .col-status {
+        width: 60px;
+      }
+      .col-method {
+        width: 60px;
+      }
+      .col-type {
+        width: 80px;
+      }
+      .col-url {
+        flex: 1;
+      }
+      .col-duration {
+        width: 80px;
+        text-align: right;
+      }
+      .col-size {
+        width: 80px;
+        text-align: right;
+      }
+    }
 
     .request-item {
-      background: #fff;
-      border: 1px solid #e8e8e8;
-      border-radius: 4px;
-      margin-bottom: 8px;
+      border-bottom: 1px solid #f0f0f0;
       cursor: pointer;
-      transition: all 0.3s;
+      transition: background-color 0.1s;
 
       &:hover {
-        border-color: #1890ff;
-        box-shadow: 0 2px 8px rgba(24, 144, 255, 0.1);
+        background-color: #f8f9fa;
       }
 
       &.success {
-        border-left: 3px solid #52c41a;
+        background-color: #f6ffed;
       }
 
       &.error {
-        border-left: 3px solid #ff4d4f;
+        background-color: #fff2f0;
       }
 
       &.expanded {
-        border-color: #1890ff;
+        background-color: #e6f7ff;
       }
 
-      .request-header {
+      .request-row {
         display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 12px;
+        padding: 4px 8px;
+        min-height: 24px;
 
-        .request-method {
-          background: #1890ff;
-          color: #fff;
-          padding: 2px 8px;
-          border-radius: 3px;
-          font-size: 12px;
-          font-weight: 500;
+        .col-status {
+          width: 60px;
+        }
+        .col-method {
+          width: 60px;
+        }
+        .col-type {
+          width: 80px;
+        }
+        .col-url {
+          flex: 1;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .col-duration {
+          width: 80px;
+          text-align: right;
+          color: #666;
+        }
+        .col-size {
+          width: 80px;
+          text-align: right;
+          color: #666;
         }
 
-        .request-status {
-          font-size: 12px;
-          font-weight: 500;
+        .status-badge {
+          font-size: 11px;
+          font-weight: 600;
+          padding: 1px 4px;
+          border-radius: 2px;
 
           &.status-success {
-            color: #52c41a;
+            color: #107c10;
+            background: #dff6dd;
           }
 
           &.status-redirect {
-            color: #faad14;
+            color: #d83b01;
+            background: #ffd8cc;
           }
 
           &.status-client-error,
           &.status-server-error {
-            color: #ff4d4f;
+            color: #d13438;
+            background: #fde7e9;
           }
 
           &.status-unknown {
             color: #666;
+            background: #f3f2f1;
           }
         }
 
-        .request-time {
-          font-size: 12px;
-          color: #666;
+        .method-badge {
+          background: #0078d4;
+          color: white;
+          padding: 1px 6px;
+          border-radius: 3px;
+          font-size: 11px;
+          font-weight: 600;
         }
 
-        .request-duration {
-          font-size: 12px;
+        .type-badge {
           color: #666;
+          font-size: 11px;
+          background: #f3f2f1;
+          padding: 1px 6px;
+          border-radius: 3px;
         }
 
         .expand-icon {
-          margin-left: auto;
+          margin-left: 8px;
           color: #666;
+          opacity: 0.6;
         }
       }
 
-      .request-url {
-        padding: 0 12px 12px 12px;
-        font-size: 13px;
-        color: #333;
-        word-break: break-all;
-      }
-
       .request-details {
-        border-top: 1px solid #f0f0f0;
-        padding: 12px;
+        border-top: 1px solid #e1e1e1;
+        background: #f8f9fa;
 
-        .detail-section {
-          margin-bottom: 16px;
+        .detail-tabs {
+          display: flex;
+          border-bottom: 1px solid #e1e1e1;
+          background: #fff;
 
-          h4 {
-            margin: 0 0 8px 0;
-            font-size: 13px;
-            color: #333;
-            font-weight: 500;
-          }
-
-          .headers-content,
-          .body-content {
-            background: #f5f5f5;
-            padding: 8px;
-            border-radius: 3px;
+          .tab {
+            padding: 8px 16px;
             font-size: 12px;
-            font-family: "Courier New", monospace;
-            white-space: pre-wrap;
-            word-break: break-all;
-            max-height: 200px;
-            overflow: auto;
+            color: #666;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+
+            &.active {
+              color: #0078d4;
+              border-bottom-color: #0078d4;
+              font-weight: 600;
+            }
+
+            &:hover {
+              color: #0078d4;
+              background: #f3f2f1;
+            }
+          }
+        }
+
+        .detail-content {
+          padding: 16px;
+          background: #fff;
+
+          .tab-panel {
+            display: none;
+
+            &.active {
+              display: block;
+            }
+
+            .section {
+              margin-bottom: 20px;
+
+              .section-title {
+                font-size: 13px;
+                font-weight: 600;
+                color: #323130;
+                margin-bottom: 8px;
+                padding-bottom: 4px;
+                border-bottom: 1px solid #f3f2f1;
+              }
+
+              .section-content {
+                .property {
+                  display: flex;
+                  margin-bottom: 4px;
+                  font-size: 12px;
+
+                  .property-name {
+                    width: 140px;
+                    color: #605e5c;
+                    font-weight: 500;
+                  }
+
+                  .property-value {
+                    flex: 1;
+                    color: #323130;
+                    word-break: break-all;
+                  }
+                }
+              }
+            }
+
+            .headers-content,
+            .preview-content pre,
+            .response-content pre {
+              background: #f8f9fa;
+              border: 1px solid #e1e1e1;
+              border-radius: 4px;
+              padding: 12px;
+              font-size: 11px;
+              font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono",
+                Consolas, "Courier New", monospace;
+              white-space: pre-wrap;
+              word-break: break-all;
+              max-height: 300px;
+              overflow: auto;
+              margin: 0;
+            }
+
+            .no-content {
+              text-align: center;
+              padding: 40px 20px;
+              color: #a19f9d;
+              font-size: 12px;
+            }
+
+            .timing-content {
+              .property {
+                display: flex;
+                margin-bottom: 8px;
+                font-size: 12px;
+
+                .property-name {
+                  width: 120px;
+                  color: #605e5c;
+                  font-weight: 500;
+                }
+
+                .property-value {
+                  color: #323130;
+                }
+              }
+            }
           }
         }
       }
