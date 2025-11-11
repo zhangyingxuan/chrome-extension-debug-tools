@@ -1,269 +1,206 @@
 <template>
   <div class="request-interceptor">
-    <!-- 左右分栏布局 -->
-    <div class="interceptor-layout">
-      <!-- 左侧：规则管理 -->
-      <div class="rules-panel">
-        <div class="rules-section">
-          <div class="section-header">
-            <h3>拦截规则</h3>
-            <div class="header-actions">
-              <t-button size="small" @click="importRules">导入规则</t-button>
-              <t-button size="small" @click="exportRules">导出规则</t-button>
-              <t-button
-                theme="primary"
-                size="small"
-                @click="showAddRuleDialog = true"
-              >
-                添加规则
+    <!-- 主内容区域 -->
+    <div class="main-content">
+      <!-- 规则管理区域 -->
+      <div class="rules-section">
+        <div class="section-header">
+          <h3>
+            拦截规则
+            <!-- 启用/禁用开关 -->
+            <t-switch
+              v-model="isEnabled"
+              :label="['启用', '禁用']"
+              size="small"
+              @change="toggleEnabled"
+            />
+          </h3>
+          <div class="header-actions">
+            <t-button size="small" @click="importRules">导入规则</t-button>
+            <t-button size="small" @click="exportData">导出数据</t-button>
+            <t-popconfirm
+              :content="`确定要清理所有 ${props.rules.length} 条规则吗？此操作不可撤销。`"
+              @confirm="clearAllRules"
+            >
+              <t-button size="small" theme="warning"> 清理所有规则 </t-button>
+            </t-popconfirm>
+            <t-button size="small" @click="addGroup" theme="default">
+              添加分组
+            </t-button>
+            <t-button
+              size="small"
+              theme="default"
+              @click="showHistoryDrawer = true"
+              class="history-toggle-btn"
+            >
+              查看拦截历史
+            </t-button>
+          </div>
+        </div>
+
+        <!-- 分组列表 -->
+        <div class="groups-list">
+          <!-- 空状态提示 -->
+          <div
+            v-if="
+              computedData?.isEmptyState || computedData?.hasRulesWithoutGroups
+            "
+            class="empty-state"
+          >
+            <div class="empty-content">
+              <t-icon
+                :name="
+                  computedData?.isEmptyState ? 'file-search' : 'folder-open'
+                "
+                size="48"
+              />
+              <p class="empty-text">
+                {{
+                  computedData?.isEmptyState
+                    ? "暂无拦截规则"
+                    : `发现 ${props.rules.length} 条未分组规则`
+                }}
+              </p>
+              <p class="empty-desc">
+                {{
+                  computedData?.isEmptyState
+                    ? '点击"添加分组"按钮创建第一个分组和规则'
+                    : "建议为规则创建分组以便更好管理"
+                }}
+              </p>
+              <t-button size="small" @click="addGroup" theme="primary">
+                {{ computedData?.isEmptyState ? "添加分组" : "创建分组" }}
               </t-button>
             </div>
           </div>
 
-          <div class="rules-list">
-            <div
-              v-for="rule in rules"
-              :key="rule.id"
-              class="rule-item"
-              :class="{ disabled: !rule.enabled }"
-            >
-              <div class="rule-info">
-                <div class="rule-header">
-                  <t-switch
-                    v-model="rule.enabled"
-                    size="small"
-                    @change="updateRule(rule)"
-                  />
-                  <span class="rule-method">{{ rule.method }}</span>
-                  <span class="rule-url">{{ rule.urlPattern }}</span>
-                  <span v-if="rule.delay > 0" class="rule-delay"
-                    >延迟: {{ rule.delay }}ms</span
-                  >
-                </div>
-                <div class="rule-response">
-                  响应: {{ rule.response.status }} -
-                  {{ truncate(rule.response.body) }}
-                </div>
-              </div>
-              <div class="rule-actions">
-                <t-button size="small" @click="editRule(rule)">编辑</t-button>
-                <t-button
-                  size="small"
-                  theme="danger"
-                  @click="deleteRule(rule.id)"
-                  >删除</t-button
-                >
-              </div>
-            </div>
-
-            <div v-if="rules.length === 0" class="empty-state">
-              暂无拦截规则
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 右侧：拦截历史 -->
-      <div class="history-panel">
-        <div class="history-section">
-          <div class="section-header">
-            <h3>拦截历史</h3>
-            <div class="header-actions">
-              <t-button size="small" @click="clearHistory">清空历史</t-button>
-              <t-switch
-                v-model="autoScroll"
-                size="small"
-                :label="['自动滚动', '固定']"
-              />
-            </div>
-          </div>
-
-          <div class="history-list" ref="historyList">
-            <div
-              v-for="record in interceptionHistory"
-              :key="record.id"
-              class="history-item"
-              :class="getHistoryItemClass(record)"
-            >
-              <div class="history-header">
-                <span class="history-method">{{ record.method }}</span>
-                <span class="history-url">{{ record.url }}</span>
-                <span class="history-time">{{
-                  formatTime(record.timestamp)
-                }}</span>
-              </div>
-              <div class="history-details">
-                <div class="history-rule">
-                  <span> 匹配规则: {{ record.matchedRule || "无匹配" }} </span>
-                  <span class="history-status">
-                    状态码: {{ record.responseStatus }}
-                    <span v-if="record.delay > 0" class="history-delay">
-                      (延迟: {{ record.delay }}ms)
-                    </span>
-                  </span>
-                </div>
-
-                <div v-if="record.error" class="history-error">
-                  错误: {{ record.error }}
-                </div>
-              </div>
-            </div>
-
-            <div v-if="interceptionHistory.length === 0" class="empty-state">
-              暂无拦截记录
-            </div>
-          </div>
+          <!-- 自定义分组 -->
+          <GroupItem
+            v-for="group in computedData?.sortedGroups"
+            :key="group.id"
+            :group="group"
+            :rules="getGroupRules(group.id)"
+            @update="updateGroup"
+            @toggle-expand="toggleGroupExpand"
+            @edit="editGroup"
+            @delete="deleteGroup"
+            @rule-update="updateRule"
+            @rule-edit="editRule"
+            @rule-delete="deleteRule"
+          />
         </div>
       </div>
     </div>
 
-    <!-- 添加/编辑规则对话框 -->
-    <!-- v-if="showAddRuleDialog" -->
-    <t-dialog
-      :visible="showAddRuleDialog"
-      :header="editingRule ? '编辑规则' : '添加规则'"
-      @close="showAddRuleDialog = false"
-      width="720px"
+    <!-- 拦截历史抽屉 -->
+    <t-drawer
+      :visible="showHistoryDrawer"
+      header="拦截历史"
+      :footer="null"
+      @close="showHistoryDrawer = false"
+      size="70%"
+      placement="right"
+      class="history-drawer"
     >
-      <t-form :model="newRule" label-width="120px">
-        <t-form-item label="URL模式" required>
-          <t-input
-            v-model="newRule.urlPattern"
-            placeholder="例如: .*/api/users.*"
-            :status="urlPatternStatus"
-            tips="支持正则表达式，如: ^https://api\.example\.com/.*"
+      <div class="drawer-content">
+        <div class="drawer-header-actions">
+          <t-button size="small" @click="clearHistory">清空历史</t-button>
+          <t-switch
+            v-model="autoScroll"
+            size="small"
+            :label="['自动滚动', '固定']"
           />
-        </t-form-item>
-        <t-row :gutter="[24, 24]" style="padding: 12px 0">
-          <t-col :span="6">
-            <t-form-item label="请求方法" name="method">
-              <t-select v-model="newRule.method">
-                <t-option label="GET" value="GET" />
-                <t-option label="POST" value="POST" />
-                <t-option label="PUT" value="PUT" />
-                <t-option label="DELETE" value="DELETE" />
-                <t-option label="PATCH" value="PATCH" />
-                <t-option label="OPTIONS" value="OPTIONS" />
-                <t-option label="HEAD" value="HEAD" />
-              </t-select>
-            </t-form-item>
-          </t-col>
-          <t-col :span="6">
-            <t-form-item label="响应延迟">
-              <t-input-number
-                v-model="newRule.delay"
-                :min="0"
-                :max="10000"
-                placeholder="延迟时间(毫秒)"
-                tips="0表示立即响应"
-              />
-            </t-form-item>
-          </t-col>
-        </t-row>
-        <t-row :gutter="[24, 24]" style="padding: 24px 0">
-          <t-col :span="6">
-            <t-form-item label="响应状态码">
-              <t-input-number
-                v-model="newRule.response.status"
-                :min="100"
-                :max="599"
-              />
-            </t-form-item>
-          </t-col>
-          <t-col :span="6">
-            <t-form-item label="响应体类型">
-              <t-radio-group v-model="responseType">
-                <t-radio value="json">JSON</t-radio>
-                <t-radio value="text">文本</t-radio>
-              </t-radio-group>
-            </t-form-item>
-          </t-col>
-        </t-row>
-        <t-form-item label="响应头">
-          <t-input
-            v-model="headersText"
-            type="textarea"
-            :rows="3"
-            placeholder="Content-Type: application/json"
-            tips="每行一个响应头，格式: Key: Value"
-          />
-        </t-form-item>
-        <t-form-item label="响应体">
-          <div class="response-body-container">
-            <div v-if="responseType === 'json'" class="json-editor-actions">
-              <t-button
-                size="small"
-                @click="formatJson"
-                :disabled="!responseBodyText"
-              >
-                格式化JSON
-              </t-button>
-              <t-button
-                size="small"
-                @click="validateJson"
-                :disabled="!responseBodyText"
-              >
-                验证JSON
-              </t-button>
-              <t-button
-                size="small"
-                @click="togglePreview"
-                :disabled="!responseBodyText"
-              >
-                {{ showPreview ? "隐藏预览" : "显示预览" }}
-              </t-button>
-            </div>
-            <textarea
-              v-model="responseBodyText"
-              class="response-textarea"
-              :rows="showPreview ? 4 : 8"
-              :placeholder="
-                responseType === 'json' ? 'JSON格式的响应体' : '文本响应体'
-              "
-              @blur="onResponseBodyBlur"
-              @keydown.ctrl.enter="formatJson"
-              @keydown.ctrl.shift.enter="validateJson"
-            />
-            <div
-              v-if="responseType === 'json' && responseBodyText && showPreview"
-              class="json-preview"
-            >
-              <div class="preview-header">JSON预览</div>
-              <pre class="preview-content">{{
-                formatJsonForPreview(responseBodyText)
-              }}</pre>
-            </div>
-            <div
-              v-if="responseType === 'json' && responseBodyText"
-              class="json-status"
-            >
+        </div>
+
+        <div class="history-list" ref="historyList">
+          <div
+            v-for="record in computedData?.reversedInterceptionHistory"
+            :key="record.id"
+            class="history-item"
+            :class="getHistoryItemClass(record)"
+          >
+            <div class="history-header">
+              <span class="history-method">{{ record.method }}</span>
               <span
-                v-if="responseBodyStatus === 'success'"
-                class="status-success"
-                >✓ JSON格式正确</span
+                class="history-status-code"
+                :class="getStatusClass(record.responseStatus)"
               >
-              <span v-if="responseBodyStatus === 'error'" class="status-error"
-                >✗ JSON格式错误</span
-              >
-              <span class="status-tip">
-                （快捷键：Ctrl+Enter 格式化，Ctrl+Shift+Enter 验证）
+                {{ record.responseStatus }}
               </span>
+              <span class="history-time">{{
+                formatTime(record.timestamp)
+              }}</span>
+            </div>
+            <div class="history-url">{{ record.url }}</div>
+            <div class="history-details">
+              <div class="history-rule">
+                <span class="history-label">规则ID:</span>
+                <span class="history-value">{{ record.ruleId || "未知" }}</span>
+              </div>
+              <div class="history-rule">
+                <span class="history-label">匹配规则:</span>
+                <span class="history-value">{{
+                  record.matchedRule || "无匹配"
+                }}</span>
+              </div>
+              <div class="history-delay-info">
+                <span class="history-label">延迟:</span>
+                <span class="history-value">{{ record.delay }}ms</span>
+              </div>
+              <div v-if="record.error" class="history-error">
+                <span class="history-label">错误:</span>
+                <span class="history-value">{{ record.error }}</span>
+              </div>
             </div>
           </div>
-        </t-form-item>
-      </t-form>
 
-      <template #footer>
-        <t-button @click="showAddRuleDialog = false">取消</t-button>
-        <t-button theme="primary" @click="saveRule">保存</t-button>
-      </template>
-    </t-dialog>
+          <div v-if="interceptionHistory.length === 0" class="empty-state">
+            暂无拦截记录
+          </div>
+        </div>
+      </div>
+    </t-drawer>
+
+    <!-- 规则编辑器 -->
+    <RuleEditor
+      :visible="showAddRuleDialog"
+      :editing-rule="editingRule"
+      :group-id="currentGroupId"
+      @save="saveRule"
+      @close="showAddRuleDialog = false"
+    />
+
+    <!-- 分组管理器 -->
+    <GroupManager
+      :visible="showAddGroupDialog"
+      :editing-group="editingGroup"
+      @save="saveGroup"
+      @close="showAddGroupDialog = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from "vue";
-import { RequestRule, InterceptionRecord } from "../types";
+import {
+  computed,
+  watch,
+  nextTick,
+  reactive,
+  onMounted,
+  onUnmounted,
+  toRefs,
+} from "vue";
+import { RequestRule, InterceptionRecord, RuleGroup } from "../types";
+import {
+  formatTime,
+  generateId,
+  validateUrlPattern,
+  storage,
+  errorHandler,
+} from "../utils/common";
+import GroupItem from "./GroupItem.vue";
+import RuleEditor from "./RuleEditor.vue";
+import GroupManager from "./GroupManager.vue";
 
 interface Props {
   rules: RequestRule[];
@@ -273,138 +210,351 @@ interface Emits {
   (e: "update-rules", rules: RequestRule[]): void;
   (e: "add-rule", rule: RequestRule): void;
   (e: "delete-rule", ruleId: string): void;
+  (e: "toggle-enabled", enabled: boolean): void;
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
 // 响应式数据
-const showAddRuleDialog = ref(false);
-const editingRule = ref<RequestRule | null>(null);
-const headersText = ref("");
-const responseBodyText = ref("");
-const responseType = ref<"json" | "text">("json");
-const autoScroll = ref(true);
-const historyList = ref<HTMLElement>();
-const showPreview = ref(false);
+const reactiveData = reactive({
+  isEnabled: true,
+  showAddRuleDialog: false,
+  editingRule: null as RequestRule | null,
+  autoScroll: true,
+  historyList: null as HTMLElement | null,
+  showHistoryDrawer: false,
+  groups: [] as RuleGroup[],
+  showAddGroupDialog: false,
+  editingGroup: null as RuleGroup | null,
+  currentGroupId: null as string | null,
+  interceptionHistory: [] as InterceptionRecord[],
+});
 
-// 拦截历史记录
-const interceptionHistory = ref<InterceptionRecord[]>([]);
+// 解构响应式数据以便使用
+const {
+  isEnabled,
+  showAddRuleDialog,
+  editingRule,
+  autoScroll,
+  historyList,
+  showHistoryDrawer,
+  groups,
+  showAddGroupDialog,
+  editingGroup,
+  currentGroupId,
+  interceptionHistory,
+} = toRefs(reactiveData);
 
-// 新规则模板
-const newRule = ref<RequestRule>({
-  id: "",
-  enabled: true,
-  urlPattern: "",
-  method: "GET",
-  delay: 0,
-  response: {
-    status: 200,
-    headers: {},
-    body: {},
+// 计算属性
+const computedData = computed(() => {
+  const reversedHistory = [...interceptionHistory.value].reverse();
+  const sortedGroupsList = [...groups.value].sort(
+    (a, b) => (a.order || 0) - (b.order || 0)
+  );
+  const hasRules = props.rules.length > 0;
+  const hasGroups = groups.value.length > 0;
+
+  return {
+    reversedInterceptionHistory: reversedHistory,
+    sortedGroups: sortedGroupsList,
+    hasRules,
+    hasGroups,
+    isEmptyState: !hasGroups && !hasRules,
+    hasRulesWithoutGroups: hasRules && !hasGroups,
+  };
+});
+
+// 获取分组内的规则（带缓存优化）
+const getGroupRules = (() => {
+  const cache = new Map();
+  let lastRulesHash = "";
+
+  return (groupId: string) => {
+    // 检查规则是否发生变化
+    const currentHash = JSON.stringify(props.rules);
+    if (currentHash !== lastRulesHash) {
+      cache.clear();
+      lastRulesHash = currentHash;
+    }
+
+    // 从缓存获取或计算
+    if (!cache.has(groupId)) {
+      cache.set(
+        groupId,
+        props.rules.filter((rule) => rule.groupId === groupId)
+      );
+    }
+
+    return cache.get(groupId);
+  };
+})();
+
+// 切换分组展开状态
+const toggleGroupExpand = (group: RuleGroup) => {
+  group.expanded = !group.expanded;
+  updateGroup(group);
+};
+
+// 分组管理函数
+const groupManager = {
+  // 打开分组编辑器
+  openEditor: (group: RuleGroup | null = null) => {
+    editingGroup.value = group;
+    showAddGroupDialog.value = true;
   },
-});
 
-// URL模式验证状态
-const urlPatternStatus = computed(() => {
-  if (!newRule.value.urlPattern) return "";
-  try {
-    new RegExp(newRule.value.urlPattern);
-    return "success";
-  } catch {
-    return "error";
-  }
-});
+  // 更新分组
+  update: (group: RuleGroup) => {
+    groups.value = groups.value.map((g) =>
+      g.id === group.id ? { ...group } : g
+    );
+    saveGroups();
+  },
 
-// 响应体验证状态
-const responseBodyStatus = ref("");
+  // 删除分组
+  delete: (groupId: string) => {
+    // 删除分组内的所有规则
+    const updatedRules = props.rules.filter((rule) => rule.groupId !== groupId);
+    emit("update-rules", updatedRules);
 
-// 格式化JSON
-const formatJson = () => {
-  if (!responseBodyText.value) return;
+    // 删除分组
+    groups.value = groups.value?.filter((group) => group.id !== groupId);
+    saveGroups();
+  },
 
-  try {
-    const parsed = JSON.parse(responseBodyText.value);
-    responseBodyText.value = JSON.stringify(parsed, null, 2);
-    responseBodyStatus.value = "success";
-  } catch (error) {
-    responseBodyStatus.value = "error";
-    alert("JSON格式错误，无法格式化");
-  }
-};
+  // 保存分组
+  save: (group: RuleGroup) => {
+    console.log("开始保存分组:", group);
 
-// 验证JSON
-const validateJson = () => {
-  if (!responseBodyText.value) return;
-
-  try {
-    JSON.parse(responseBodyText.value);
-    responseBodyStatus.value = "success";
-    alert("JSON格式正确");
-  } catch (error) {
-    responseBodyStatus.value = "error";
-    const errorMessage = error instanceof Error ? error.message : "未知错误";
-    alert(`JSON格式错误: ${errorMessage}`);
-  }
-};
-
-// 响应体失去焦点时自动验证
-const onResponseBodyBlur = () => {
-  if (responseType.value === "json" && responseBodyText.value) {
-    try {
-      JSON.parse(responseBodyText.value);
-      responseBodyStatus.value = "success";
-    } catch {
-      responseBodyStatus.value = "error";
-    }
-  } else {
-    responseBodyStatus.value = "";
-  }
-};
-
-// 切换预览显示
-const togglePreview = () => {
-  showPreview.value = !showPreview.value;
-};
-
-// 格式化JSON用于预览显示
-const formatJsonForPreview = (jsonText: string): string => {
-  try {
-    const parsed = JSON.parse(jsonText);
-    return JSON.stringify(parsed, null, 2);
-  } catch (error) {
-    return jsonText;
-  }
-};
-
-// 组件挂载时
-onMounted(() => {
-  // 加载拦截历史记录
-  loadInterceptionHistory();
-
-  // 监听拦截记录消息
-  chrome.runtime.onMessage.addListener(handleRuntimeMessage);
-});
-
-// 组件卸载时
-onUnmounted(() => {
-  chrome.runtime.onMessage.removeListener(handleRuntimeMessage);
-});
-
-// 处理运行时消息
-function handleRuntimeMessage(message: any, sender: any, sendResponse: any) {
-  if (message.type === "INTERCEPTION_RECORD") {
-    // 添加新的拦截记录
-    interceptionHistory.value.push(message.data);
-
-    // 限制历史记录数量
-    if (interceptionHistory.value.length > 1000) {
-      interceptionHistory.value = interceptionHistory.value.slice(-500);
+    if (editingGroup.value) {
+      // 更新现有分组
+      console.log("更新现有分组:", editingGroup.value.id);
+      groups.value = groups.value.map((g) =>
+        g.id === editingGroup.value!.id ? { ...group } : g
+      );
+    } else {
+      // 添加新分组
+      const newGroup: RuleGroup = {
+        ...group,
+        order: groups.value.length,
+      };
+      console.log("添加新分组:", newGroup);
+      groups.value.push(newGroup);
     }
 
-    return true;
+    console.log("保存后的分组列表:", groups.value);
+    saveGroups();
+    showAddGroupDialog.value = false;
+    editingGroup.value = null;
+    console.log("分组保存完成");
+  },
+};
+
+// 导出分组管理函数
+const {
+  openEditor: addGroup,
+  update: updateGroup,
+  delete: deleteGroup,
+  save: saveGroup,
+} = groupManager;
+const editGroup = (group: RuleGroup) => groupManager.openEditor(group);
+
+// 保存分组到存储
+const saveGroups = () => {
+  console.log("保存分组到存储:", groups.value);
+
+  // 通过background.js保存分组数据
+  chrome.runtime.sendMessage(
+    {
+      type: "UPDATE_GROUPS",
+      data: {
+        groups: groups.value,
+      },
+    },
+    (response) => {
+      if (response && response.success) {
+        console.log("分组数据保存成功");
+      } else {
+        console.error("保存分组数据失败");
+      }
+    }
+  );
+};
+
+// 加载分组
+const loadGroups = async () => {
+  try {
+    console.log("开始加载分组数据...");
+
+    // 通过background.js获取分组数据
+    chrome.runtime.sendMessage({ type: "GET_GROUPS" }, (response) => {
+      if (response && response.groups) {
+        console.log("从background.js获取的分组数据:", response.groups);
+        groups.value = response.groups;
+        console.log(`分组数据加载完成 - 数量: ${groups.value.length}`);
+        nextTick(() => console.log("分组数据渲染完成"));
+      } else {
+        console.log("未找到分组数据，使用空数组");
+        groups.value = [];
+      }
+    });
+  } catch (error) {
+    errorHandler.log(error, "加载分组");
+    console.error("加载分组数据失败:", error);
+    groups.value = [];
   }
-}
+};
+
+// 规则管理函数
+const ruleManager = {
+  // 打开规则编辑器
+  openEditor: (rule: RequestRule | null = null, groupId?: string) => {
+    editingRule.value = rule;
+    currentGroupId.value = groupId || null;
+    showAddRuleDialog.value = true;
+  },
+
+  // 更新规则
+  update: (rule: RequestRule) => {
+    emit("update-rules", [...props.rules]);
+    nextTick(() => console.log("规则更新完成，触发重新渲染"));
+  },
+
+  // 删除规则
+  delete: (ruleId: string) => {
+    emit("delete-rule", ruleId);
+  },
+
+  // 保存规则
+  save: (rule: RequestRule) => {
+    if (!validateUrlPattern(rule.urlPattern)) {
+      errorHandler.alert("URL模式格式错误，请输入有效的正则表达式");
+      return;
+    }
+
+    if (editingRule.value) {
+      // 更新现有规则
+      const index = props.rules.findIndex(
+        (r) => r.id === editingRule.value!.id
+      );
+      if (index !== -1) {
+        const updatedRules = [...props.rules];
+        updatedRules[index] = { ...rule };
+        emit("update-rules", updatedRules);
+      }
+    } else {
+      // 添加新规则
+      const newRule: RequestRule = {
+        ...rule,
+        id: rule.id || generateId("rule"),
+      };
+      emit("add-rule", newRule);
+    }
+
+    showAddRuleDialog.value = false;
+    editingRule.value = null;
+    currentGroupId.value = null;
+  },
+};
+
+// 导出规则管理函数
+const {
+  openEditor: addRule,
+  update: updateRule,
+  delete: deleteRule,
+  save: saveRule,
+} = ruleManager;
+const editRule = (rule: RequestRule) => ruleManager.openEditor(rule);
+
+// 切换启用状态
+const toggleEnabled = (enabled: boolean) => {
+  isEnabled.value = enabled;
+  emit("toggle-enabled", enabled);
+};
+
+// 导出数据
+const exportData = () => {
+  const data = {
+    requestRules: props.rules,
+    ruleGroups: groups.value,
+    interceptionHistory: interceptionHistory.value,
+    enabled: isEnabled.value,
+    exportTime: new Date().toISOString(),
+    version: "1.0",
+  };
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `debug-data-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+// 清理所有规则
+const clearAllRules = () => {
+  if (props.rules.length === 0) {
+    alert("当前没有规则可清理");
+    return;
+  }
+
+  // 清空规则数组
+  emit("update-rules", []);
+
+  // 通知background.js更新declarativeNetRequest规则
+  chrome.runtime.sendMessage({
+    type: "UPDATE_RULES",
+    data: {
+      rules: [],
+      enabled: isEnabled.value,
+    },
+  });
+
+  alert(`已成功清理所有 ${props.rules.length} 条规则`);
+  console.log("所有规则已清理");
+};
+
+// 导入规则
+const importRules = () => {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json";
+  input.onchange = (e) => {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const data = JSON.parse(event.target?.result as string);
+          if (data.rules && Array.isArray(data.rules)) {
+            const validRules = data.rules.filter(
+              (rule: any) =>
+                rule.id && rule.urlPattern && rule.method && rule.response
+            );
+
+            if (validRules.length > 0) {
+              const updatedRules = [...props.rules, ...validRules];
+              emit("update-rules", updatedRules);
+              alert(`成功导入 ${validRules.length} 条规则`);
+            } else {
+              errorHandler.alert("导入的文件中没有有效的规则");
+            }
+          } else {
+            errorHandler.alert("文件格式不正确");
+          }
+        } catch (error) {
+          errorHandler.alert("文件解析失败");
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+  input.click();
+};
 
 // 加载拦截历史记录
 const loadInterceptionHistory = () => {
@@ -432,32 +582,6 @@ const clearHistory = () => {
   }
 };
 
-// 监听拦截历史变化，实现自动滚动
-watch(
-  interceptionHistory,
-  () => {
-    if (autoScroll.value) {
-      nextTick(() => {
-        const list = historyList.value;
-        if (list) {
-          list.scrollTop = list.scrollHeight;
-        }
-      });
-    }
-  },
-  { deep: true }
-);
-
-// 格式化时间
-const formatTime = (timestamp: number): string => {
-  return new Date(timestamp).toLocaleTimeString("zh-CN", {
-    hour12: false,
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-};
-
 // 获取历史记录项样式类
 const getHistoryItemClass = (record: InterceptionRecord) => {
   const classes = [];
@@ -471,526 +595,404 @@ const getHistoryItemClass = (record: InterceptionRecord) => {
   return classes;
 };
 
-// 过滤器：截断长文本
-const truncate = (value: any) => {
-  if (typeof value === "string") {
-    const length = value.length;
-    return length > 50 ? value.substring(0, 50) + "..." : value;
+// 获取状态码样式类
+const getStatusClass = (statusCode: number): string => {
+  if (statusCode >= 200 && statusCode < 300) {
+    return "status-success";
+  } else if (statusCode >= 300 && statusCode < 400) {
+    return "status-redirect";
+  } else if (statusCode >= 400 && statusCode < 500) {
+    return "status-client-error";
+  } else if (statusCode >= 500) {
+    return "status-server-error";
   }
-  const str = JSON.stringify(value);
-  const length = str.length;
-  return length > 50 ? str.substring(0, 50) + "..." : str;
+  return "status-unknown";
 };
 
-// 监听headers文本变化
-watch(headersText, (newText) => {
-  const headers: Record<string, string> = {};
-  newText.split("\n").forEach((line) => {
-    const [key, value] = line.split(":").map((s) => s.trim());
-    if (key && value) {
-      headers[key] = value;
+// 监听拦截历史变化，实现自动滚动到最新记录
+watch(
+  [interceptionHistory, autoScroll],
+  ([history, shouldScroll]) => {
+    if (shouldScroll) {
+      nextTick(() =>
+        historyList.value?.scrollTo({ top: 0, behavior: "smooth" })
+      );
     }
-  });
-  newRule.value.response.headers = headers;
+  },
+  { deep: true }
+);
+
+// 处理运行时消息
+function handleRuntimeMessage(message: any, sender: any, sendResponse: any) {
+  if (message.type === "INTERCEPTION_RECORD") {
+    interceptionHistory.value.push(message.data);
+
+    // 限制历史记录数量
+    if (interceptionHistory.value.length > 1000) {
+      interceptionHistory.value = interceptionHistory.value.slice(-500);
+    }
+
+    return true;
+  }
+}
+
+// 组件挂载时
+onMounted(() => {
+  loadInterceptionHistory();
+  loadGroups();
+  chrome.runtime.onMessage.addListener(handleRuntimeMessage);
+
+  // 统一日志输出和状态检查
+  console.log(
+    `组件挂载完成 - 规则: ${props.rules.length}, 开始加载分组数据...`
+  );
+
+  // 延迟检查渲染状态
+  setTimeout(() => {
+    console.log(
+      `渲染状态检查 - 规则: ${props.rules.length}, 分组: ${groups.value.length}`
+    );
+  }, 100);
 });
 
-// 监听响应体类型变化
-watch(responseType, (newType) => {
-  if (newType === "json") {
-    try {
-      newRule.value.response.body = JSON.parse(responseBodyText.value || "{}");
-      responseBodyStatus.value = "success";
-    } catch {
-      newRule.value.response.body = {};
-      responseBodyStatus.value = "error";
-    }
-  } else {
-    newRule.value.response.body = responseBodyText.value;
-    responseBodyStatus.value = "";
-  }
+// 监听规则和分组变化，统一处理重新渲染
+watch(
+  [() => props.rules, groups],
+  ([newRules, newGroups]) => {
+    console.log(
+      `数据更新 - 规则: ${newRules.length}, 分组: ${newGroups.length}`
+    );
+    nextTick(() => console.log("界面重新渲染完成"));
+  },
+  { deep: true, immediate: true }
+);
+
+// 组件卸载时
+onUnmounted(() => {
+  chrome.runtime.onMessage.removeListener(handleRuntimeMessage);
 });
-
-// 监听响应体文本变化
-watch(responseBodyText, (newText) => {
-  if (responseType.value === "json") {
-    try {
-      newRule.value.response.body = JSON.parse(newText || "{}");
-      responseBodyStatus.value = "success";
-    } catch {
-      // 保持原值，JSON格式错误时显示错误状态
-      responseBodyStatus.value = "error";
-    }
-  } else {
-    newRule.value.response.body = newText;
-    responseBodyStatus.value = "";
-  }
-});
-
-// 更新规则
-const updateRule = (rule: RequestRule) => {
-  emit("update-rules", [...props.rules]);
-};
-
-// 删除规则
-const deleteRule = (ruleId: string) => {
-  emit("delete-rule", ruleId);
-};
-
-// 编辑规则
-const editRule = (rule: RequestRule) => {
-  console.log("editRule", rule);
-  editingRule.value = rule;
-  newRule.value = JSON.parse(JSON.stringify(rule));
-  headersText.value = Object.entries(rule.response.headers)
-    .map(([key, value]) => `${key}: ${value}`)
-    .join("\n");
-
-  // 设置响应体类型和文本
-  if (typeof rule.response.body === "string") {
-    responseType.value = "text";
-    responseBodyText.value = rule.response.body;
-    responseBodyStatus.value = "";
-  } else {
-    responseType.value = "json";
-    responseBodyText.value = JSON.stringify(rule.response.body, null, 2);
-    responseBodyStatus.value = "success";
-  }
-
-  showAddRuleDialog.value = true;
-};
-
-// 保存规则
-const saveRule = () => {
-  if (!newRule.value.urlPattern) {
-    alert("请输入URL模式");
-    return;
-  }
-
-  // 验证URL模式
-  try {
-    new RegExp(newRule.value.urlPattern);
-  } catch (error) {
-    alert("URL模式格式错误，请输入有效的正则表达式");
-    return;
-  }
-
-  // 验证JSON格式（如果是JSON类型）
-  if (responseType.value === "json" && responseBodyText.value) {
-    try {
-      JSON.parse(responseBodyText.value);
-    } catch (error) {
-      alert("JSON格式错误，请检查响应体格式");
-      return;
-    }
-  }
-
-  // 生成唯一ID
-  if (!newRule.value.id) {
-    newRule.value.id = `rule_${Date.now()}_${Math.random()
-      .toString(36)
-      .substring(2, 11)}`;
-  }
-
-  if (editingRule.value) {
-    // 更新现有规则
-    const index = props.rules.findIndex((r) => r.id === editingRule.value!.id);
-    if (index !== -1) {
-      const updatedRules = [...props.rules];
-      updatedRules[index] = { ...newRule.value };
-      emit("update-rules", updatedRules);
-    }
-  } else {
-    // 添加新规则
-    emit("add-rule", { ...newRule.value });
-  }
-
-  // 重置表单
-  resetForm();
-  showAddRuleDialog.value = false;
-};
-
-// 重置表单
-const resetForm = () => {
-  newRule.value = {
-    id: "",
-    enabled: true,
-    urlPattern: "",
-    method: "GET",
-    delay: 0,
-    response: {
-      status: 200,
-      headers: {},
-      body: {},
-    },
-  };
-  headersText.value = "";
-  responseBodyText.value = "";
-  responseType.value = "json";
-  editingRule.value = null;
-};
-
-// 导出规则
-const exportRules = () => {
-  const data = {
-    rules: props.rules,
-    exportTime: new Date().toISOString(),
-    version: "1.0",
-  };
-
-  const blob = new Blob([JSON.stringify(data, null, 2)], {
-    type: "application/json",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `request-rules-${Date.now()}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-};
-
-// 导入规则
-const importRules = () => {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = ".json";
-  input.onchange = (e) => {
-    const file = (e.target as HTMLInputElement).files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const data = JSON.parse(event.target?.result as string);
-          if (data.rules && Array.isArray(data.rules)) {
-            // 验证导入的规则格式
-            const validRules = data.rules.filter(
-              (rule: any) =>
-                rule.id && rule.urlPattern && rule.method && rule.response
-            );
-
-            if (validRules.length > 0) {
-              const updatedRules = [...props.rules, ...validRules];
-              emit("update-rules", updatedRules);
-              alert(`成功导入 ${validRules.length} 条规则`);
-            } else {
-              alert("导入的文件中没有有效的规则");
-            }
-          } else {
-            alert("文件格式不正确");
-          }
-        } catch (error) {
-          alert("文件解析失败");
-        }
-      };
-      reader.readAsText(file);
-    }
-  };
-  input.click();
-};
 </script>
 
 <style lang="less" scoped>
 .request-interceptor {
   height: 100%;
+  position: relative;
 
-  .interceptor-layout {
-    display: flex;
-    height: 100%;
-    gap: 16px;
-
-    .rules-panel {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .history-panel {
-      flex: 1;
-      min-width: 0;
-    }
-  }
-
-  .rules-section,
-  .history-section {
+  .main-content {
     height: 100%;
     display: flex;
     flex-direction: column;
+
+    @media (max-width: 768px) {
+      padding: 8px;
+    }
+  }
+
+  .rules-section {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+
+    @media (max-width: 768px) {
+      border-radius: 4px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    }
 
     .section-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
+      padding: 16px 20px;
+      background: #fafafa;
+      border-bottom: 1px solid #e8e8e8;
+
+      @media (max-width: 768px) {
+        padding: 12px 16px;
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+      }
 
       h3 {
         margin: 0;
-        font-size: 14px;
+        font-size: 16px;
+        font-weight: 600;
         color: #333;
+
+        @media (max-width: 768px) {
+          font-size: 14px;
+        }
       }
 
       .header-actions {
         display: flex;
         gap: 8px;
         align-items: center;
+        flex-wrap: wrap;
+
+        @media (max-width: 768px) {
+          justify-content: space-between;
+        }
+
+        .t-switch {
+          margin-right: 8px;
+
+          :deep(.t-switch__label) {
+            font-size: 12px;
+            color: #666;
+          }
+
+          :deep(.t-switch__node) {
+            background-color: #1890ff;
+          }
+
+          &:deep(.t-switch.is-checked .t-switch__node) {
+            background-color: #52c41a;
+          }
+        }
+
+        .history-toggle-btn {
+          background: #1890ff;
+          color: white;
+          border: none;
+
+          &:hover {
+            background: #40a9ff;
+          }
+        }
+
+        .t-button[theme="warning"] {
+          background: #faad14;
+          color: white;
+          border: none;
+
+          &:hover {
+            background: #ffc53d;
+          }
+        }
       }
     }
 
-    .rules-list,
-    .history-list {
+    .groups-list {
       flex: 1;
       overflow-y: auto;
-      border: 1px solid #e8e8e8;
-      border-radius: 4px;
-      background: #fff;
+      padding: 8px;
+
+      .empty-state {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 200px;
+
+        .empty-content {
+          text-align: center;
+          color: #999;
+
+          .t-icon {
+            color: #d9d9d9;
+            margin-bottom: 16px;
+          }
+
+          .empty-text {
+            font-size: 16px;
+            font-weight: 500;
+            margin: 0 0 8px 0;
+            color: #666;
+          }
+
+          .empty-desc {
+            font-size: 14px;
+            margin: 0 0 16px 0;
+            color: #999;
+          }
+        }
+      }
     }
   }
+}
 
-  .rules-list {
-    .rule-item {
+.history-drawer {
+  .drawer-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+
+    .drawer-header-actions {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 4px;
-      border-bottom: 1px solid #f0f0f0;
+      padding: 16px 0;
+      border-bottom: 1px solid #e8e8e8;
+      margin-bottom: 16px;
 
-      &:last-child {
-        border-bottom: none;
-      }
-
-      &.disabled {
-        opacity: 0.6;
-        background: #fafafa;
-      }
-
-      .rule-info {
-        flex: 1;
-
-        .rule-header {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          margin-bottom: 4px;
-
-          .rule-method {
-            padding: 2px 6px;
-            background: #1890ff;
-            color: white;
-            border-radius: 2px;
-            font-size: 12px;
-            font-weight: 500;
-          }
-
-          .rule-url {
-            font-family: monospace;
-            font-size: 12px;
-            color: #666;
-            flex: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          }
-
-          .rule-delay {
-            font-size: 12px;
-            color: #999;
-            background: #f0f0f0;
-            padding: 2px 6px;
-            border-radius: 2px;
-          }
-        }
-
-        .rule-response {
-          font-size: 12px;
-          color: #999;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-      }
-
-      .rule-actions {
-        display: flex;
-        gap: 8px;
+      @media (max-width: 768px) {
+        padding: 12px 0;
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
       }
     }
 
-    .empty-state {
-      text-align: center;
-      padding: 40px 0;
-      color: #999;
-      font-size: 14px;
-    }
-  }
+    .history-list {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 8px;
 
-  .history-list {
+      &::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      &::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+      }
+
+      &::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+      }
+    }
+
     .history-item {
-      padding: 4px;
-      border-bottom: 1px solid #f0f0f0;
+      padding: 12px;
+      border: 1px solid #f0f0f0;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      background: #fff;
       cursor: pointer;
-      transition: background-color 0.2s;
-
-      &:last-child {
-        border-bottom: none;
-      }
+      transition: all 0.2s;
 
       &:hover {
-        background-color: #f8f9fa;
+        border-color: #d9d9d9;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      &:last-child {
+        margin-bottom: 0;
       }
 
       &.success {
-        border-left: 3px solid #52c41a;
+        border-left: 4px solid #52c41a;
       }
 
       &.warning {
-        border-left: 3px solid #faad14;
+        border-left: 4px solid #faad14;
       }
 
       &.error {
-        border-left: 3px solid #f5222d;
+        border-left: 4px solid #f5222d;
       }
 
       .history-header {
         display: flex;
         align-items: center;
-        gap: 8px;
-        margin-bottom: 2px;
+        gap: 12px;
+        margin-bottom: 8px;
 
         .history-method {
-          padding: 2px 6px;
+          padding: 2px 8px;
           background: #1890ff;
           color: white;
-          border-radius: 2px;
-          font-size: 11px;
+          border-radius: 3px;
+          font-size: 12px;
           font-weight: 500;
         }
 
-        .history-url {
-          font-family: monospace;
+        .history-status-code {
+          padding: 2px 6px;
+          border-radius: 3px;
           font-size: 12px;
-          color: #333;
-          flex: 1;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
+          font-weight: 500;
 
-        .history-time {
-          font-size: 11px;
-          color: #999;
-        }
-      }
+          &.status-success {
+            background: #f6ffed;
+            color: #52c41a;
+            border: 1px solid #b7eb8f;
+          }
 
-      .history-details {
-        font-size: 12px;
-        color: #666;
+          &.status-redirect {
+            background: #fff7e6;
+            color: #fa8c16;
+            border: 1px solid #ffd591;
+          }
 
-        .history-rule {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 2px;
-        }
+          &.status-client-error {
+            background: #fff2f0;
+            color: #ff4d4f;
+            border: 1px solid #ffccc7;
+          }
 
-        .history-status {
-          min-width: 100px;
-          .history-delay {
-            color: #999;
+          &.status-server-error {
+            background: #fff2f0;
+            color: #ff4d4f;
+            border: 1px solid #ffccc7;
+          }
+
+          &.status-unknown {
+            background: #fafafa;
+            color: #666;
+            border: 1px solid #d9d9d9;
           }
         }
 
-        .history-error {
-          color: #f5222d;
+        .history-time {
+          font-size: 12px;
+          color: #999;
+          margin-left: auto;
+        }
+      }
+
+      .history-url {
+        font-family: monospace;
+        font-size: 13px;
+        color: #333;
+        margin: 8px 0;
+        word-break: break-all;
+        line-height: 1.4;
+      }
+
+      .history-details {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 6px 12px;
+        font-size: 12px;
+        color: #666;
+
+        .history-label {
           font-weight: 500;
+          color: #333;
+          text-align: right;
+        }
+
+        .history-value {
+          word-break: break-word;
+        }
+
+        .history-error {
+          grid-column: 1 / -1;
+          margin-top: 6px;
+
+          .history-value {
+            color: #f5222d;
+            font-weight: 500;
+          }
         }
       }
     }
 
     .empty-state {
       text-align: center;
-      padding: 40px 0;
+      padding: 40px;
       color: #999;
       font-size: 14px;
-    }
-  }
-}
-
-.form-tip {
-  font-size: 12px;
-  color: #999;
-  margin-top: 4px;
-}
-
-.response-body-container {
-  .json-editor-actions {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-
-  .response-textarea {
-    width: 500px;
-    min-height: 120px;
-    max-height: 300px;
-    padding: 8px 12px;
-    border: 1px solid #d9d9d9;
-    border-radius: 4px;
-    font-family: "Courier New", monospace;
-    font-size: 14px;
-    line-height: 1.5;
-    resize: vertical;
-    transition: border-color 0.2s;
-
-    &:focus {
-      outline: none;
-      border-color: #1890ff;
-      box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
-    }
-
-    &:hover {
-      border-color: #40a9ff;
-    }
-  }
-
-  .json-preview {
-    margin-top: 8px;
-    border: 1px solid #e8e8e8;
-    border-radius: 4px;
-    background: #fafafa;
-
-    .preview-header {
-      padding: 6px 12px;
-      background: #f0f0f0;
-      border-bottom: 1px solid #e8e8e8;
-      font-size: 12px;
-      font-weight: 500;
-      color: #666;
-    }
-
-    .preview-content {
-      margin: 0;
-      padding: 12px;
-      max-height: 200px;
-      overflow: auto;
-      font-family: "Courier New", monospace;
-      font-size: 13px;
-      line-height: 1.4;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-    }
-  }
-
-  .json-status {
-    margin-top: 4px;
-    font-size: 12px;
-
-    .status-success {
-      color: #52c41a;
-    }
-
-    .status-error {
-      color: #f5222d;
-    }
-
-    .status-tip {
-      color: #999;
-      margin-left: 8px;
     }
   }
 }

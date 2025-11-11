@@ -96,7 +96,6 @@ npm run build
 src/
 ├── components/          # Vue 组件
 │   ├── RequestInterceptor.vue    # 网络请求拦截组件
-│   └── PerformanceMonitor.vue    # 性能监控组件
 ├── styles/             # 样式文件
 │   └── common.less     # 全局样式
 ├── types.ts            # TypeScript 类型定义

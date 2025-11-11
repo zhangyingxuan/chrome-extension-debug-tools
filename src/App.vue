@@ -1,26 +1,20 @@
 <template>
   <div class="debug-tool">
-    <!-- 顶部工具栏 -->
-    <div class="toolbar">
-      <h3>前端调试增强器</h3>
-      <div class="toolbar-controls">
-        <t-switch
-          v-model="isEnabled"
-          :label="['启用', '禁用']"
-          @change="toggleEnabled"
-        />
-        <t-button theme="primary" @click="exportData">导出数据</t-button>
-      </div>
-    </div>
-
-    <!-- Tab切换 -->
+    <!-- 选项卡头部 -->
     <div class="tab-header">
       <div
         class="tab-item"
         :class="{ active: activeTab === 'network' }"
         @click="activeTab = 'network'"
       >
-        网络请求拦截
+        网络拦截
+      </div>
+      <div
+        class="tab-item"
+        :class="{ active: activeTab === 'request-log' }"
+        @click="activeTab = 'request-log'"
+      >
+        请求记录
       </div>
     </div>
 
@@ -34,6 +28,18 @@
             @update-rules="updateRules"
             @add-rule="addRule"
             @delete-rule="deleteRule"
+            @toggle-enabled="toggleEnabled"
+          />
+        </div>
+      </div>
+
+      <!-- 网络请求记录面板 -->
+      <div class="panel" v-show="activeTab === 'request-log'">
+        <div class="panel-content">
+          <RequestLogger
+            :request-logs="requestLogs"
+            @clear-logs="clearRequestLogs"
+            @update-logs="handleUpdateLogs"
           />
         </div>
       </div>
@@ -42,19 +48,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
-import { RequestRule, ChromeMessage } from "./types";
+import { ref, onMounted } from "vue";
+import { RequestRule, ChromeMessage, RequestLog } from "./types";
 import RequestInterceptor from "./components/RequestInterceptor.vue";
+import RequestLogger from "./components/RequestLogger.vue";
 
 // 响应式数据
-const isEnabled = ref(true);
 const activeTab = ref("network");
 const requestRules = ref<RequestRule[]>([]);
+const requestLogs = ref<RequestLog[]>([]);
 
 // 组件挂载时
 onMounted(() => {
   // 从存储中加载规则
   loadRules();
+  // 从存储中加载请求记录
+  loadRequestLogs();
 });
 
 // 加载规则
@@ -63,14 +72,18 @@ const loadRules = () => {
     chrome.runtime.sendMessage(
       { type: "GET_RULES" } as ChromeMessage,
       (response) => {
-        if (response) {
+        if (response && response.rules) {
+          console.log("成功加载规则，数量:", response.rules.length);
           requestRules.value = response.rules;
-          isEnabled.value = response.enabled;
+        } else {
+          console.log("未获取到规则数据，初始化空数组");
+          requestRules.value = [];
         }
       }
     );
   } catch (error) {
-    console.debug("无法加载规则:", error);
+    console.error("无法加载规则:", error);
+    requestRules.value = [];
   }
 };
 
@@ -80,7 +93,7 @@ const updateRules = (rules: RequestRule[]) => {
   try {
     chrome.runtime.sendMessage({
       type: "UPDATE_RULES",
-      data: { rules, enabled: isEnabled.value },
+      data: { rules },
     } as ChromeMessage);
   } catch (error) {
     console.debug("无法更新规则:", error);
@@ -95,13 +108,12 @@ const addRule = (rule: RequestRule) => {
 
 // 删除规则
 const deleteRule = (ruleId: string) => {
-  const newRules = requestRules.value.filter((rule) => rule.id !== ruleId);
+  const newRules = requestRules.value?.filter((rule) => rule.id !== ruleId);
   updateRules(newRules);
 };
 
 // 切换启用状态
 const toggleEnabled = (enabled: boolean) => {
-  isEnabled.value = enabled;
   try {
     chrome.runtime.sendMessage({
       type: "TOGGLE_ENABLED",
@@ -112,22 +124,33 @@ const toggleEnabled = (enabled: boolean) => {
   }
 };
 
-// 导出数据
-const exportData = () => {
-  const data = {
-    requestRules: requestRules.value,
-    exportTime: new Date().toISOString(),
-  };
+// 清空请求记录
+const clearRequestLogs = () => {
+  requestLogs.value = [];
+  console.log("已清空请求记录");
+};
 
-  const blob = new Blob([JSON.stringify(data, null, 2)], {
-    type: "application/json",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `debug-data-${Date.now()}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+// 加载请求记录
+const loadRequestLogs = async () => {
+  try {
+    const result = await chrome.storage.local.get(["requestLogs"]);
+    if (result.requestLogs) {
+      console.log("成功加载请求记录，数量:", result.requestLogs.length);
+      requestLogs.value = result.requestLogs;
+    } else {
+      console.log("未获取到请求记录数据，初始化空数组");
+      requestLogs.value = [];
+    }
+  } catch (error) {
+    console.error("无法加载请求记录:", error);
+    requestLogs.value = [];
+  }
+};
+
+// 监听请求记录更新
+const handleUpdateLogs = (logs: RequestLog[]) => {
+  requestLogs.value = logs;
+  console.log("请求记录已更新，数量:", logs.length);
 };
 </script>
 
@@ -196,7 +219,7 @@ const exportData = () => {
 
       .panel-content {
         padding: 16px;
-        height: calc(100vh - 160px);
+        height: 100%;
         overflow: auto;
       }
     }
