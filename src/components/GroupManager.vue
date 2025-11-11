@@ -79,9 +79,4 @@ const saveGroup = () => {
   console.log("GroupManager: save事件已触发");
   // 不重置表单，让父组件处理对话框关闭
 };
-
-// 重置表单
-const resetForm = () => {
-  groupName.value = "";
-};
 </script>

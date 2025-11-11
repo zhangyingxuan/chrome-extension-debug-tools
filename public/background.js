@@ -6,14 +6,10 @@ let isEnabled = true;
 let interceptionHistory = [];
 
 // 从存储中加载配置
-chrome.storage.local.get(
-  ["requestRules", "enabled", "interceptionHistory"],
-  (result) => {
-    requestRules = result.requestRules || [];
-    isEnabled = result.enabled !== false;
-    interceptionHistory = result.interceptionHistory || [];
-  }
-);
+chrome.storage.local.get(["requestRules", "enabled"], (result) => {
+  requestRules = result.requestRules || [];
+  isEnabled = result.enabled !== false;
+});
 
 // 监听declarativeNetRequest规则匹配事件（用于记录拦截历史）
 chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener((details) => {
@@ -201,7 +197,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case "CLEAR_INTERCEPTION_HISTORY":
       // 清空拦截历史
       interceptionHistory = [];
-      chrome.storage.local.set({ interceptionHistory: [] });
       sendResponse({ success: true });
       break;
   }
@@ -216,9 +211,6 @@ function handleInterceptionRecord(record) {
   if (interceptionHistory.length > 1000) {
     interceptionHistory = interceptionHistory.slice(-500);
   }
-
-  // 保存到存储
-  chrome.storage.local.set({ interceptionHistory });
 
   // 广播拦截记录到devtools页面
   broadcastInterceptionRecord(record);

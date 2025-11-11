@@ -19,22 +19,6 @@
           </t-button>
         </div>
       </div>
-
-      <!-- 统计信息 -->
-      <div class="stats-info">
-        <div class="stat-item">
-          <span class="stat-label">总请求数:</span>
-          <span class="stat-value">{{ requestLogs.length }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">成功请求:</span>
-          <span class="stat-value success">{{ successCount }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">失败请求:</span>
-          <span class="stat-value error">{{ errorCount }}</span>
-        </div>
-      </div>
     </div>
 
     <!-- 请求列表 -->
@@ -52,6 +36,7 @@
             {{ log.status }}
           </div>
           <div class="request-time">{{ formatTime(log.timestamp) }}</div>
+          <div class="request-url">{{ log.url }}</div>
           <div class="request-duration">{{ log.duration }}ms</div>
           <t-icon
             :name="log.expanded ? 'chevron-down' : 'chevron-right'"
@@ -59,8 +44,6 @@
             class="expand-icon"
           />
         </div>
-
-        <div class="request-url">{{ log.url }}</div>
 
         <!-- 请求详情 -->
         <div v-if="log.expanded" class="request-details">
@@ -125,16 +108,6 @@ const reversedLogs = computed(() => {
   return [...requestLogs.value].reverse();
 });
 
-const successCount = computed(() => {
-  return requestLogs.value?.filter(
-    (log) => log.status >= 200 && log.status < 400
-  ).length;
-});
-
-const errorCount = computed(() => {
-  return requestLogs.value?.filter((log) => log.status >= 400).length;
-});
-
 // 网络请求监听器
 let requestFinishedListener: ((request: any) => void) | null = null;
 
@@ -186,7 +159,7 @@ const handleRequestFinished = (request: any) => {
     url: request.request.url,
     method: request.request.method,
     status: request.response.status,
-    duration: request.time,
+    duration: request.time?.toFixed(2),
     requestHeaders: request.request.headers || {},
     responseHeaders: request.response.headers || {},
     requestBody: request.request.postData,
@@ -214,35 +187,8 @@ const saveRequestLog = (log: RequestLog) => {
     requestLogs.value = requestLogs.value.slice(-500);
   }
 
-  // 保存到本地存储
-  saveLogsToStorage();
-
   // 通知父组件
   emit("update-logs", requestLogs.value);
-};
-
-// 保存记录到本地存储
-const saveLogsToStorage = () => {
-  try {
-    chrome.storage.local.set({
-      requestLogs: requestLogs.value,
-    });
-  } catch (error) {
-    console.error("保存请求记录到存储失败:", error);
-  }
-};
-
-// 从本地存储加载记录
-const loadLogsFromStorage = async () => {
-  try {
-    const result = await chrome.storage.local.get(["requestLogs"]);
-    if (result.requestLogs) {
-      requestLogs.value = result.requestLogs;
-      emit("update-logs", requestLogs.value);
-    }
-  } catch (error) {
-    console.error("从存储加载请求记录失败:", error);
-  }
 };
 
 // 切换记录状态
@@ -259,7 +205,6 @@ const toggleRecording = (enabled: boolean) => {
 // 清空记录
 const clearLogs = () => {
   requestLogs.value = [];
-  saveLogsToStorage();
   emit("clear-logs");
   emit("update-logs", requestLogs.value);
 };
@@ -270,8 +215,6 @@ const exportLogs = () => {
     requestLogs: requestLogs.value,
     exportTime: new Date().toISOString(),
     totalCount: requestLogs.value.length,
-    successCount: successCount.value,
-    errorCount: errorCount.value,
     isRecording: isRecording.value,
   };
 
@@ -341,7 +284,6 @@ const formatBody = (body: any) => {
 
 onMounted(() => {
   console.log("RequestLogger组件已挂载");
-  loadLogsFromStorage();
 });
 
 onUnmounted(() => {
@@ -357,14 +299,13 @@ onUnmounted(() => {
 
   .control-section {
     background: #fff;
-    padding: 16px;
+    padding: 8px;
     border-bottom: 1px solid #e8e8e8;
 
     .control-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
 
       h3 {
         margin: 0;

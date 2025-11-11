@@ -4,17 +4,17 @@
     <div class="tab-header">
       <div
         class="tab-item"
-        :class="{ active: activeTab === 'network' }"
-        @click="activeTab = 'network'"
-      >
-        网络拦截
-      </div>
-      <div
-        class="tab-item"
         :class="{ active: activeTab === 'request-log' }"
         @click="activeTab = 'request-log'"
       >
         请求记录
+      </div>
+      <div
+        class="tab-item"
+        :class="{ active: activeTab === 'network' }"
+        @click="activeTab = 'network'"
+      >
+        网络拦截
       </div>
     </div>
 
@@ -36,11 +36,7 @@
       <!-- 网络请求记录面板 -->
       <div class="panel" v-show="activeTab === 'request-log'">
         <div class="panel-content">
-          <RequestLogger
-            :request-logs="requestLogs"
-            @clear-logs="clearRequestLogs"
-            @update-logs="handleUpdateLogs"
-          />
+          <RequestLogger />
         </div>
       </div>
     </div>
@@ -54,16 +50,14 @@ import RequestInterceptor from "./components/RequestInterceptor.vue";
 import RequestLogger from "./components/RequestLogger.vue";
 
 // 响应式数据
-const activeTab = ref("network");
+const activeTab = ref("request-log");
 const requestRules = ref<RequestRule[]>([]);
 const requestLogs = ref<RequestLog[]>([]);
 
 // 组件挂载时
 onMounted(() => {
   // 从存储中加载规则
-  loadRules();
-  // 从存储中加载请求记录
-  loadRequestLogs();
+  // loadRules();
 });
 
 // 加载规则
@@ -123,42 +117,13 @@ const toggleEnabled = (enabled: boolean) => {
     console.debug("无法切换启用状态:", error);
   }
 };
-
-// 清空请求记录
-const clearRequestLogs = () => {
-  requestLogs.value = [];
-  console.log("已清空请求记录");
-};
-
-// 加载请求记录
-const loadRequestLogs = async () => {
-  try {
-    const result = await chrome.storage.local.get(["requestLogs"]);
-    if (result.requestLogs) {
-      console.log("成功加载请求记录，数量:", result.requestLogs.length);
-      requestLogs.value = result.requestLogs;
-    } else {
-      console.log("未获取到请求记录数据，初始化空数组");
-      requestLogs.value = [];
-    }
-  } catch (error) {
-    console.error("无法加载请求记录:", error);
-    requestLogs.value = [];
-  }
-};
-
-// 监听请求记录更新
-const handleUpdateLogs = (logs: RequestLog[]) => {
-  requestLogs.value = logs;
-  console.log("请求记录已更新，数量:", logs.length);
-};
 </script>
 
 <style lang="less" scoped>
 .debug-tool {
   height: 100vh;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   background: #f5f5f5;
 
   .toolbar {
@@ -183,14 +148,14 @@ const handleUpdateLogs = (logs: RequestLog[]) => {
   }
 
   .tab-header {
-    display: flex;
     background: #fff;
-    border-bottom: 1px solid #e8e8e8;
+    border-right: 1px solid #e8e8e8;
 
     .tab-item {
-      padding: 12px 24px;
+      writing-mode: vertical-rl;
+      padding: 12px 8px;
       cursor: pointer;
-      border-bottom: 2px solid transparent;
+      border-right: 2px solid transparent;
       transition: all 0.3s;
       font-size: 14px;
       color: #666;
@@ -201,7 +166,7 @@ const handleUpdateLogs = (logs: RequestLog[]) => {
 
       &.active {
         color: #1890ff;
-        border-bottom-color: #1890ff;
+        border-right: 2px solid #1890ff;
         font-weight: 500;
       }
     }
@@ -218,7 +183,7 @@ const handleUpdateLogs = (logs: RequestLog[]) => {
       overflow: hidden;
 
       .panel-content {
-        padding: 16px;
+        padding: 4px;
         height: 100%;
         overflow: auto;
       }
