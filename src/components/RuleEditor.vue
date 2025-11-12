@@ -61,25 +61,12 @@
             </t-form-item>
           </t-col>
         </t-row>
-        <t-row :gutter="[24, 24]" style="padding: 24px 0">
-          <t-col :span="6">
-            <t-form-item label="响应状态码">
-              <t-input-number
-                v-model="rule.response.status"
-                :min="100"
-                :max="599"
-              />
-            </t-form-item>
-          </t-col>
-          <t-col :span="6">
-            <t-form-item label="响应体类型">
-              <t-radio-group v-model="responseType">
-                <t-radio value="json">JSON</t-radio>
-                <t-radio value="text">文本</t-radio>
-              </t-radio-group>
-            </t-form-item>
-          </t-col>
-        </t-row>
+        <t-form-item label="响应体类型">
+          <t-radio-group v-model="responseType">
+            <t-radio value="json">JSON</t-radio>
+            <t-radio value="text">文本</t-radio>
+          </t-radio-group>
+        </t-form-item>
         <t-form-item label="响应头">
           <t-input
             v-model="headersText"

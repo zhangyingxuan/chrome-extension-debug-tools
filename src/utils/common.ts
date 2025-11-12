@@ -170,47 +170,7 @@ export const groupBy = <T, K extends keyof any>(
   }, {} as Record<K, T[]>);
 };
 
-// 本地存储工具
-export const storage = {
-  get: async <T>(key: string): Promise<T | null> => {
-    try {
-      return new Promise((resolve) => {
-        chrome.storage.local.get([key], (result) => {
-          resolve(result[key] || null);
-        });
-      });
-    } catch (error) {
-      console.debug('无法读取存储:', error);
-      return null;
-    }
-  },
 
-  set: async <T>(key: string, value: T): Promise<boolean> => {
-    try {
-      return new Promise((resolve) => {
-        chrome.storage.local.set({ [key]: value }, () => {
-          resolve(true);
-        });
-      });
-    } catch (error) {
-      console.debug('无法写入存储:', error);
-      return false;
-    }
-  },
-
-  remove: async (key: string): Promise<boolean> => {
-    try {
-      return new Promise((resolve) => {
-        chrome.storage.local.remove([key], () => {
-          resolve(true);
-        });
-      });
-    } catch (error) {
-      console.debug('无法删除存储:', error);
-      return false;
-    }
-  }
-};
 
 // 错误处理工具
 export const errorHandler = {

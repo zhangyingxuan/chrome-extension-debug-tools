@@ -23,13 +23,7 @@
       <!-- 网络调试面板 -->
       <div class="panel" v-show="activeTab === 'network'">
         <div class="panel-content">
-          <RequestInterceptor
-            :rules="requestRules"
-            @update-rules="updateRules"
-            @add-rule="addRule"
-            @delete-rule="deleteRule"
-            @toggle-enabled="toggleEnabled"
-          />
+          <RequestInterceptor />
         </div>
       </div>
 
@@ -45,77 +39,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import { RequestRule, ChromeMessage } from "./types";
 import RequestInterceptor from "./components/RequestInterceptor.vue";
 import RequestLogger from "./components/RequestLogger.vue";
 
 // 响应式数据
 const activeTab = ref("network");
-const requestRules = ref<RequestRule[]>([]);
-
-// 组件挂载时
-onMounted(() => {
-  // 从存储中加载规则
-  loadRules();
-});
-
-// 加载规则
-const loadRules = () => {
-  try {
-    chrome.runtime.sendMessage(
-      { type: "GET_RULES" } as ChromeMessage,
-      (response) => {
-        if (response && response.rules) {
-          console.log("成功加载规则，数量:", response.rules.length);
-          requestRules.value = response.rules;
-        } else {
-          console.log("未获取到规则数据，初始化空数组");
-          requestRules.value = [];
-        }
-      }
-    );
-  } catch (error) {
-    console.error("无法加载规则:", error);
-    requestRules.value = [];
-  }
-};
-
-// 更新规则
-const updateRules = (rules: RequestRule[]) => {
-  requestRules.value = rules;
-  try {
-    chrome.runtime.sendMessage({
-      type: "UPDATE_RULES",
-      data: { rules },
-    } as ChromeMessage);
-  } catch (error) {
-    console.debug("无法更新规则:", error);
-  }
-};
-
-// 添加规则
-const addRule = (rule: RequestRule) => {
-  const newRules = [...requestRules.value, rule];
-  updateRules(newRules);
-};
-
-// 删除规则
-const deleteRule = (ruleId: string) => {
-  const newRules = requestRules.value?.filter((rule) => rule.id !== ruleId);
-  updateRules(newRules);
-};
-
-// 切换启用状态
-const toggleEnabled = (enabled: boolean) => {
-  try {
-    chrome.runtime.sendMessage({
-      type: "TOGGLE_ENABLED",
-      data: { enabled },
-    } as ChromeMessage);
-  } catch (error) {
-    console.debug("无法切换启用状态:", error);
-  }
-};
 </script>
 
 <style lang="less" scoped>

@@ -15,7 +15,7 @@
         </span>
       </div>
       <div class="rule-response">
-        响应: {{ rule.response.status }} -
+        响应:
         {{ truncate(rule.response.body) }}
       </div>
     </div>
