@@ -9,31 +9,25 @@
     class="rule-editor-drawer"
   >
     <div class="drawer-content">
-      <t-form :model="rule" label-width="120px">
-        <t-form-item label="URL模式" required>
+      <t-form
+        :model="rule"
+        :rules="formRules"
+        label-width="120px"
+        ref="formRef"
+      >
+        <t-form-item label="URL模式" name="urlPattern" required>
           <t-input
             v-model="rule.urlPattern"
             placeholder="例如: .*/api/users.*"
-            :status="urlPatternStatus"
             tips="支持正则表达式，如: ^https://api\.example\.com/.*，不能包含中文等非ASCII字符"
           />
-          <div v-if="urlPatternStatus === 'error'" class="validation-message">
-            <span
-              v-if="rule.urlPattern && /[^\x00-\x7F]/.test(rule.urlPattern)"
-              class="error-text"
-            >
-              ✗ URL模式不能包含中文等非ASCII字符
-            </span>
-            <span v-else-if="rule.urlPattern" class="error-text">
-              ✗ URL模式格式错误，请输入有效的正则表达式
-            </span>
-          </div>
-          <div v-if="urlPatternStatus === 'success'" class="validation-message">
-            <span class="success-text">✓ URL模式格式正确</span>
-          </div>
-          <div v-if="validationErrors.urlPattern" class="validation-error">
-            <span class="error-text">✗ {{ validationErrors.urlPattern }}</span>
-          </div>
+        </t-form-item>
+
+        <t-form-item label="匹配模式">
+          <t-radio-group v-model="responseType">
+            <t-radio value="urlFilter">url</t-radio>
+            <t-radio value="regexFilter">regex</t-radio>
+          </t-radio-group>
         </t-form-item>
         <t-row :gutter="[24, 24]" style="padding: 12px 0">
           <t-col :span="6">
@@ -70,37 +64,12 @@
         <t-form-item label="响应头">
           <t-input
             v-model="headersText"
-            type="textarea"
-            :rows="3"
             placeholder="Content-Type: application/json"
             tips="每行一个响应头，格式: Key: Value"
           />
         </t-form-item>
-        <t-form-item label="响应体">
+        <t-form-item label="响应体" name="responseBody">
           <div class="response-body-container">
-            <div v-if="responseType === 'json'" class="json-editor-actions">
-              <t-button
-                size="small"
-                @click="formatJson"
-                :disabled="!responseBodyText"
-              >
-                格式化JSON
-              </t-button>
-              <t-button
-                size="small"
-                @click="validateJson"
-                :disabled="!responseBodyText"
-              >
-                验证JSON
-              </t-button>
-              <t-button
-                size="small"
-                @click="togglePreview"
-                :disabled="!responseBodyText"
-              >
-                {{ showPreview ? "隐藏预览" : "显示预览" }}
-              </t-button>
-            </div>
             <textarea
               v-model="responseBodyText"
               class="response-textarea"
@@ -108,40 +77,8 @@
               :placeholder="
                 responseType === 'json' ? 'JSON格式的响应体' : '文本响应体'
               "
-              @blur="onResponseBodyBlur"
               @keydown.ctrl.enter="formatJson"
-              @keydown.ctrl.shift.enter="validateJson"
             />
-            <div
-              v-if="responseType === 'json' && responseBodyText && showPreview"
-              class="json-preview"
-            >
-              <div class="preview-header">JSON预览</div>
-              <pre class="preview-content">{{
-                formatJsonForPreview(responseBodyText)
-              }}</pre>
-            </div>
-            <div
-              v-if="responseType === 'json' && responseBodyText"
-              class="json-status"
-            >
-              <span
-                v-if="responseBodyStatus === 'success'"
-                class="status-success"
-                >✓ JSON格式正确</span
-              >
-              <span v-if="responseBodyStatus === 'error'" class="status-error"
-                >✗ JSON格式错误</span
-              >
-              <span class="status-tip">
-                （快捷键：Ctrl+Enter 格式化，Ctrl+Shift+Enter 验证）
-              </span>
-            </div>
-            <div v-if="validationErrors.responseBody" class="validation-error">
-              <span class="error-text"
-                >✗ {{ validationErrors.responseBody }}</span
-              >
-            </div>
           </div>
         </t-form-item>
       </t-form>
@@ -150,19 +87,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, watch } from "vue";
 import { RequestRule } from "../types";
-
 interface Props {
   visible: boolean;
   editingRule?: RequestRule | null;
 }
-
 interface Emits {
   (e: "save", rule: RequestRule): void;
   (e: "close"): void;
 }
-
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
@@ -184,31 +118,59 @@ const headersText = ref("");
 const responseBodyText = ref("");
 const responseType = ref<"json" | "text">("json");
 const showPreview = ref(false);
-const responseBodyStatus = ref("");
+const formRef = ref();
 
-// 表单校验错误信息
-const validationErrors = ref({
-  urlPattern: "",
-  responseBody: "",
-});
+// 表单校验规则
+const formRules = {
+  urlPattern: [
+    {
+      required: true,
+      message: "URL模式不能为空，请输入有效的URL模式",
+      trigger: "blur",
+    },
+    {
+      validator: (value: string) => {
+        if (!value) return true;
+        // 检查是否包含非ASCII字符
+        const hasNonAscii = /[^\x00-\x7F]/.test(value);
+        if (hasNonAscii) {
+          return {
+            result: false,
+            message: "URL模式不能包含中文等非ASCII字符，请使用英文或ASCII字符",
+          };
+        }
 
-// URL模式验证状态
-const urlPatternStatus = computed(() => {
-  if (!rule.value.urlPattern) return "";
-
-  // 检查是否包含非ASCII字符
-  const hasNonAscii = /[^\x00-\x7F]/.test(rule.value.urlPattern);
-  if (hasNonAscii) {
-    return "error";
-  }
-
-  try {
-    new RegExp(rule.value.urlPattern);
-    return "success";
-  } catch {
-    return "error";
-  }
-});
+        // 验证正则表达式格式
+        try {
+          new RegExp(value);
+          return true;
+        } catch {
+          return {
+            result: false,
+            message: "URL模式格式错误，请输入有效的正则表达式",
+          };
+        }
+      },
+      trigger: "blur",
+    },
+  ],
+  responseBody: [
+    {
+      validator: () => {
+        if (responseType.value === "json" && responseBodyText.value) {
+          try {
+            console.log(JSON.parse(responseBodyText.value));
+            return true;
+          } catch {
+            return { result: false, message: "JSON格式错误，请检查响应体格式" };
+          }
+        }
+        return true;
+      },
+      trigger: "blur",
+    },
+  ],
+};
 
 // 监听编辑规则变化
 watch(
@@ -223,11 +185,9 @@ watch(
       if (typeof newRule.response.body === "string") {
         responseType.value = "text";
         responseBodyText.value = newRule.response.body;
-        responseBodyStatus.value = "";
       } else {
         responseType.value = "json";
         responseBodyText.value = JSON.stringify(newRule.response.body, null, 2);
-        responseBodyStatus.value = "success";
       }
     } else {
       resetForm();
@@ -236,158 +196,33 @@ watch(
   { immediate: true }
 );
 
-// 监听headers文本变化
-watch(headersText, (newText) => {
-  const headers: Record<string, string> = {};
-  newText.split("\n").forEach((line) => {
-    const [key, value] = line.split(":").map((s) => s.trim());
-    if (key && value) {
-      headers[key] = value;
-    }
-  });
-  rule.value.response.headers = headers;
-});
-
-// 监听响应体类型变化
-watch(responseType, (newType) => {
-  if (newType === "json") {
-    try {
-      rule.value.response.body = JSON.parse(responseBodyText.value || "{}");
-      responseBodyStatus.value = "success";
-    } catch {
-      rule.value.response.body = {};
-      responseBodyStatus.value = "error";
-    }
-  } else {
-    rule.value.response.body = responseBodyText.value;
-    responseBodyStatus.value = "";
-  }
-});
-
-// 监听响应体文本变化
-watch(responseBodyText, (newText) => {
-  if (responseType.value === "json") {
-    try {
-      rule.value.response.body = JSON.parse(newText || "{}");
-      responseBodyStatus.value = "success";
-    } catch {
-      responseBodyStatus.value = "error";
-    }
-  } else {
-    rule.value.response.body = newText;
-    responseBodyStatus.value = "";
-  }
-});
-
 // 格式化JSON
 const formatJson = () => {
   if (!responseBodyText.value) return;
   try {
     const parsed = JSON.parse(responseBodyText.value);
     responseBodyText.value = JSON.stringify(parsed, null, 2);
-    responseBodyStatus.value = "success";
-  } catch (error) {
-    responseBodyStatus.value = "error";
-  }
-};
-
-// 验证JSON
-const validateJson = () => {
-  if (!responseBodyText.value) return;
-  try {
-    JSON.parse(responseBodyText.value);
-    responseBodyStatus.value = "success";
-  } catch (error) {
-    responseBodyStatus.value = "error";
-  }
-};
-
-// 切换预览
-const togglePreview = () => {
-  showPreview.value = !showPreview.value;
-};
-
-// 响应体失去焦点时验证
-const onResponseBodyBlur = () => {
-  if (responseType.value === "json" && responseBodyText.value) {
-    validateJson();
-  }
-};
-
-// 格式化JSON预览
-const formatJsonForPreview = (jsonText: string) => {
-  try {
-    const parsed = JSON.parse(jsonText);
-    return JSON.stringify(parsed, null, 2);
-  } catch {
-    return jsonText;
-  }
+  } catch (error) {}
 };
 
 // 保存规则
-const saveRule = () => {
-  // 清空之前的错误信息
-  validationErrors.value = {
-    urlPattern: "",
-    responseBody: "",
-  };
+const saveRule = async () => {
+  console.log("保存规则");
+  const result = await formRef.value.validate();
 
-  let hasError = false;
-
-  // 检查URL模式是否为空
-  if (!rule.value.urlPattern || !rule.value.urlPattern.trim()) {
-    validationErrors.value.urlPattern = "URL模式不能为空，请输入有效的URL模式";
-    hasError = true;
-  }
-
-  // 验证URL模式是否包含非ASCII字符
-  const hasNonAscii = /[^\x00-\x7F]/.test(rule.value.urlPattern);
-  if (hasNonAscii) {
-    validationErrors.value.urlPattern =
-      "URL模式不能包含中文等非ASCII字符，请使用英文或ASCII字符";
-    hasError = true;
-  }
-
-  // 验证URL模式
-  try {
-    new RegExp(rule.value.urlPattern);
-  } catch (error) {
-    validationErrors.value.urlPattern =
-      "URL模式格式错误，请输入有效的正则表达式";
-    hasError = true;
-  }
-
-  // 验证JSON格式（如果是JSON类型）
-  if (responseType.value === "json" && responseBodyText.value) {
-    try {
-      JSON.parse(responseBodyText.value);
-    } catch (error) {
-      validationErrors.value.responseBody = "JSON格式错误，请检查响应体格式";
-      hasError = true;
+  if (typeof result === "boolean" && result === true) {
+    // 校验通过，继续保存逻辑
+    // 生成唯一ID
+    if (!rule.value.id) {
+      rule.value.id = `rule_${Date.now()}_${Math.random()
+        .toString(36)
+        .substring(2, 11)}`;
     }
+
+    emit("save", { ...rule.value });
+    resetForm();
   }
-
-  // 如果有错误，不继续保存
-  if (hasError) {
-    return;
-  }
-
-  // 生成唯一ID
-  if (!rule.value.id) {
-    rule.value.id = `rule_${Date.now()}_${Math.random()
-      .toString(36)
-      .substring(2, 11)}`;
-  }
-
-  console.log("保存规则:", {
-    id: rule.value.id,
-    urlPattern: rule.value.urlPattern,
-    method: rule.value.method,
-    enabled: rule.value.enabled,
-  });
-
-  emit("save", { ...rule.value });
-  resetForm();
+  // 如果校验失败，TDesign会自动显示错误信息，无需额外处理
 };
 
 // 重置表单
@@ -410,13 +245,11 @@ const resetForm = () => {
   responseBodyText.value = "";
   responseType.value = "json";
   showPreview.value = false;
-  responseBodyStatus.value = "";
 
-  // 清空校验错误信息
-  validationErrors.value = {
-    urlPattern: "",
-    responseBody: "",
-  };
+  // 重置表单校验状态
+  if (formRef.value) {
+    formRef.value.clearValidate();
+  }
 };
 </script>
 

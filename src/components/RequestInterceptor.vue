@@ -210,42 +210,41 @@ const loadRules = async () => {
     const rules = await chrome.declarativeNetRequest.getDynamicRules();
     console.log("加载规则成功-原始规则:", rules);
     // 过滤出我们自己的规则（ID从1000开始）
-    const ourRules = rules
-      .filter((rule) => rule.id >= ourRuleIdPrefix)
-      .map((rule) => {
-        const ruleIndex = rule.id - ourRuleIdPrefix;
-        // 从规则中提取信息
-        const urlPattern = rule.condition.urlFilter;
-        const method =
-          rule.condition.requestMethods?.[0]?.toUpperCase() || "GET";
+    // const ourRules = rules
+    //   .filter((rule) => rule.id >= ourRuleIdPrefix)
+    const ourRules = rules.map((rule) => {
+      const ruleIndex = rule.id - ourRuleIdPrefix;
+      // 从规则中提取信息
+      const urlPattern = rule.condition.urlFilter;
+      const method = rule.condition.requestMethods?.[0]?.toUpperCase() || "GET";
 
-        // 解析响应体
-        let responseBody = {};
-        if (rule.action.type === "redirect" && rule.action.redirect?.url) {
-          const url = rule.action.redirect.url;
-          if (url.startsWith("data:application/json")) {
-            try {
-              const jsonStr = decodeURIComponent(url.split(",")[1]);
-              responseBody = JSON.parse(jsonStr);
-            } catch (e) {
-              console.warn("解析响应体失败:", e);
-            }
+      // 解析响应体
+      let responseBody = {};
+      if (rule.action.type === "redirect" && rule.action.redirect?.url) {
+        const url = rule.action.redirect.url;
+        if (url.startsWith("data:application/json")) {
+          try {
+            const jsonStr = decodeURIComponent(url.split(",")[1]);
+            responseBody = JSON.parse(jsonStr);
+          } catch (e) {
+            console.warn("解析响应体失败:", e);
           }
         }
+      }
 
-        return {
-          id: ruleIndex,
-          enabled: true,
-          urlPattern,
-          method,
-          delay: 0,
-          response: {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-            body: responseBody,
-          },
-        } as RequestRule;
-      });
+      return {
+        id: ruleIndex,
+        enabled: true,
+        urlPattern,
+        method,
+        delay: 0,
+        response: {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+          body: responseBody,
+        },
+      } as RequestRule;
+    });
 
     requestRules.value = ourRules;
     console.log("成功加载规则ourRules：", ourRules, ourRules.length);
