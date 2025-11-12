@@ -14,6 +14,7 @@ export interface RequestRule {
     body: any;
   };
   expanded?: boolean;
+  responseBody?: string
 }
 
 // 拦截记录类型

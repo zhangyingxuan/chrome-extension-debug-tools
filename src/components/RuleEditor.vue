@@ -10,10 +10,10 @@
   >
     <div class="drawer-content">
       <t-form
-        :model="ruleData"
+        ref="formRef"
+        :data="ruleData"
         :rules="formRules"
         label-width="120px"
-        ref="formRef"
       >
         <t-form-item label="拦截规则" name="urlPattern" required>
           <t-input
@@ -58,9 +58,8 @@
         </t-form-item>
         <t-form-item label="响应体" name="responseBody">
           <t-textarea
-            v-model="responseBodyText"
+            v-model="ruleData.responseBody"
             :autosize="{ minRows: 6 }"
-            :rows="8"
             :placeholder="
               responseType === 'json' ? 'JSON格式的响应体' : '文本响应体'
             "
@@ -93,6 +92,7 @@ const defaultRule = {
   method: "GET",
   urlPattern: "",
   filterType: "urlFilter",
+  responseBody: "",
   response: {
     status: 200,
     headers: {},
@@ -103,21 +103,8 @@ const defaultRule = {
 // 响应式数据
 const ruleData = reactive<RequestRule>(defaultRule);
 
-const responseBodyText = ref("");
 const responseType = ref<"json" | "text">("json");
 const formRef = ref();
-
-// 监听响应体类型变化
-watch(
-  responseType,
-  (newType, oldType) => {
-    if (newType !== oldType && responseBodyText.value) {
-      // 切换类型时，如果当前有内容，清空内容以避免格式冲突
-      responseBodyText.value = "";
-    }
-  },
-  { immediate: false }
-);
 
 // 表单校验规则
 const formRules = {
@@ -168,10 +155,11 @@ const formRules = {
       trigger: "blur",
     },
     {
-      validator: () => {
-        if (responseType.value === "json" && responseBodyText.value) {
+      validator: (value: string) => {
+        if (responseType.value === "json" && value) {
+          console.log("校验JSON格式", value);
           try {
-            JSON.parse(responseBodyText.value);
+            JSON.parse(value);
             return true;
           } catch {
             return { result: false, message: "JSON格式错误，请检查响应体格式" };
@@ -201,18 +189,18 @@ watch(
       // 处理响应体数据
       if (typeof newRule.response.body === "string") {
         responseType.value = "text";
-        responseBodyText.value = newRule.response.body;
+        ruleData.responseBody = newRule.response.body;
       } else if (
         newRule.response.body &&
         typeof newRule.response.body === "object" &&
         Object.keys(newRule.response.body).length > 0
       ) {
         responseType.value = "json";
-        responseBodyText.value = JSON.stringify(newRule.response.body, null, 2);
+        ruleData.responseBody = JSON.stringify(newRule.response.body, null, 2);
       } else {
         // 处理空对象或其他情况
         responseType.value = "json";
-        responseBodyText.value = JSON.stringify(
+        ruleData.responseBody = JSON.stringify(
           { message: "默认响应体" },
           null,
           2
@@ -227,20 +215,23 @@ watch(
 
 // 格式化JSON
 const formatJson = () => {
-  if (!responseBodyText.value) return;
+  // 如果是json格式，则格式化
+  if (responseType.value !== "json" || !ruleData.responseBody) return;
   try {
-    const parsed = JSON.parse(responseBodyText.value);
-    responseBodyText.value = JSON.stringify(parsed, null, 2);
+    const parsed = JSON.parse(ruleData.responseBody);
+    ruleData.responseBody = JSON.stringify(parsed, null, 2);
   } catch (error) {}
 };
 
 // 保存规则
 const saveRule = async () => {
-  console.log("保存规则");
   try {
     // 执行表单校验
-    const result = await formRef.value.validate();
-    console.log("表单校验结果:", result);
+    const validateResult = await formRef.value.validate();
+    console.log("表单校验结果:", validateResult);
+    if (validateResult !== true) {
+      return;
+    }
 
     // 校验通过，继续保存逻辑
     // 生成唯一ID
@@ -252,10 +243,10 @@ const saveRule = async () => {
 
     // 处理响应体数据
     let responseBody;
-    if (responseType.value === "json" && responseBodyText.value) {
-      responseBody = JSON.parse(responseBodyText.value);
+    if (responseType.value === "json" && ruleData.responseBody) {
+      responseBody = JSON.parse(ruleData.responseBody);
     } else {
-      responseBody = responseBodyText.value;
+      responseBody = ruleData.responseBody;
     }
 
     // 保存过滤类型信息
@@ -271,15 +262,12 @@ const saveRule = async () => {
     resetForm();
   } catch (error) {
     console.log("表单校验失败:", error);
-    // 校验失败时，TDesign会自动显示错误信息
   }
 };
 
 // 重置表单
 const resetForm = () => {
   Object.assign(ruleData, defaultRule);
-
-  responseBodyText.value = "";
   responseType.value = "json";
 
   // 重置表单校验状态
