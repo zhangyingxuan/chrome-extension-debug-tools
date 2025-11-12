@@ -10,16 +10,16 @@
   >
     <div class="drawer-content">
       <t-form
-        :model="rule"
+        :model="ruleData"
         :rules="formRules"
         label-width="120px"
         ref="formRef"
       >
         <t-form-item label="拦截规则" name="urlPattern" required>
           <t-input
-            v-model="rule.urlPattern"
+            v-model="ruleData.urlPattern"
             :placeholder="
-              rule.filterType === 'urlFilter'
+              ruleData.filterType === 'urlFilter'
                 ? '例如: */api/users*'
                 : '例如: ^https://api\\.example\\.com/.*'
             "
@@ -30,7 +30,7 @@
                 : '支持正则表达式，如: ^https://api\\.example\\.com/.*'
             " -->
             <template #prefixIcon>
-              <t-select v-model="rule.filterType">
+              <t-select v-model="ruleData.filterType">
                 <t-option key="urlFilter" label="URL匹配" value="urlFilter" />
                 <t-option
                   key="regexFilter"
@@ -38,7 +38,7 @@
                   value="regexFilter"
                 />
               </t-select>
-              <t-select v-model="rule.method">
+              <t-select v-model="ruleData.method">
                 <t-option label="GET" value="GET" />
                 <t-option label="POST" value="POST" />
                 <t-option label="PUT" value="PUT" />
@@ -73,7 +73,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { reactive, ref, watch } from "vue";
 import { RequestRule } from "@/types";
 interface Props {
   visible: boolean;
@@ -88,6 +88,7 @@ const emit = defineEmits<Emits>();
 
 const defaultRule = {
   id: "",
+  ruleId: -1,
   enabled: true,
   method: "GET",
   urlPattern: "",
@@ -100,11 +101,23 @@ const defaultRule = {
   expanded: false,
 };
 // 响应式数据
-const rule = ref<RequestRule>(defaultRule);
+const ruleData = reactive<RequestRule>(defaultRule);
 
 const responseBodyText = ref("");
 const responseType = ref<"json" | "text">("json");
 const formRef = ref();
+
+// 监听响应体类型变化
+watch(
+  responseType,
+  (newType, oldType) => {
+    if (newType !== oldType && responseBodyText.value) {
+      // 切换类型时，如果当前有内容，清空内容以避免格式冲突
+      responseBodyText.value = "";
+    }
+  },
+  { immediate: false }
+);
 
 // 表单校验规则
 const formRules = {
@@ -118,7 +131,7 @@ const formRules = {
       validator: (value: string) => {
         if (!value) return true;
 
-        if (rule.value.filterType === "urlFilter") {
+        if (ruleData.filterType === "urlFilter") {
           // URL匹配模式：简单的URL模式匹配，支持通配符
           // 检查是否包含非ASCII字符
           const hasNonAscii = /[^\x00-\x7F]/.test(value);
@@ -151,14 +164,14 @@ const formRules = {
   responseBody: [
     {
       required: true,
-      message: "URL模式不能为空，请输入有效的URL模式",
+      message: "响应体不能为空，请输入有效的响应体内容",
       trigger: "blur",
     },
     {
       validator: () => {
         if (responseType.value === "json" && responseBodyText.value) {
           try {
-            console.log(JSON.parse(responseBodyText.value));
+            JSON.parse(responseBodyText.value);
             return true;
           } catch {
             return { result: false, message: "JSON格式错误，请检查响应体格式" };
@@ -176,21 +189,34 @@ watch(
   () => props.editingRule,
   (newRule) => {
     if (newRule) {
-      rule.value = JSON.parse(JSON.stringify(newRule));
+      Object.assign(ruleData, newRule);
 
       // 设置过滤类型（如果规则中有filterType则使用，否则默认使用urlFilter）
       if (newRule.filterType) {
-        rule.value.filterType = newRule.filterType;
+        ruleData.filterType = newRule.filterType;
       } else {
-        rule.value.filterType = "urlFilter";
+        ruleData.filterType = "urlFilter";
       }
 
+      // 处理响应体数据
       if (typeof newRule.response.body === "string") {
         responseType.value = "text";
         responseBodyText.value = newRule.response.body;
-      } else {
+      } else if (
+        newRule.response.body &&
+        typeof newRule.response.body === "object" &&
+        Object.keys(newRule.response.body).length > 0
+      ) {
         responseType.value = "json";
         responseBodyText.value = JSON.stringify(newRule.response.body, null, 2);
+      } else {
+        // 处理空对象或其他情况
+        responseType.value = "json";
+        responseBodyText.value = JSON.stringify(
+          { message: "默认响应体" },
+          null,
+          2
+        );
       }
     } else {
       resetForm();
@@ -211,31 +237,47 @@ const formatJson = () => {
 // 保存规则
 const saveRule = async () => {
   console.log("保存规则");
-  const result = await formRef.value.validate();
+  try {
+    // 执行表单校验
+    const result = await formRef.value.validate();
+    console.log("表单校验结果:", result);
 
-  if (typeof result === "boolean" && result === true) {
     // 校验通过，继续保存逻辑
     // 生成唯一ID
-    if (!rule.value.id) {
-      rule.value.id = `rule_${Date.now()}_${Math.random()
+    if (!ruleData.id) {
+      ruleData.id = `rule_${Date.now()}_${Math.random()
         .toString(36)
         .substring(2, 11)}`;
     }
 
+    // 处理响应体数据
+    let responseBody;
+    if (responseType.value === "json" && responseBodyText.value) {
+      responseBody = JSON.parse(responseBodyText.value);
+    } else {
+      responseBody = responseBodyText.value;
+    }
+
     // 保存过滤类型信息
     const ruleToSave = {
-      ...rule.value,
+      ...ruleData,
+      response: {
+        ...ruleData.response,
+        body: responseBody,
+      },
     };
 
     emit("save", ruleToSave);
     resetForm();
+  } catch (error) {
+    console.log("表单校验失败:", error);
+    // 校验失败时，TDesign会自动显示错误信息
   }
-  // 如果校验失败，TDesign会自动显示错误信息，无需额外处理
 };
 
 // 重置表单
 const resetForm = () => {
-  rule.value = defaultRule;
+  Object.assign(ruleData, defaultRule);
 
   responseBodyText.value = "";
   responseType.value = "json";

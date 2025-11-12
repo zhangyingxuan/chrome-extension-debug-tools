@@ -82,7 +82,7 @@
                     >
                     <t-popconfirm
                       content="确定要删除这条拦截规则吗？"
-                      @confirm="deleteRule(rule.id)"
+                      @confirm="deleteRule(rule)"
                     >
                       <t-button size="small" theme="danger">删除</t-button>
                     </t-popconfirm>
@@ -217,6 +217,16 @@ const loadRules = async () => {
             responseBody = JSON.parse(jsonStr);
           } catch (e) {
             console.warn("解析响应体失败:", e);
+            // 如果解析失败，使用默认的JSON对象
+            responseBody = { message: "默认响应体" };
+          }
+        } else if (url.startsWith("data:text/plain")) {
+          // 处理文本响应体
+          try {
+            responseBody = decodeURIComponent(url.split(",")[1]);
+          } catch (e) {
+            console.warn("解析文本响应体失败:", e);
+            responseBody = "默认文本响应体";
           }
         }
       }
@@ -318,6 +328,21 @@ const formatResponseBody = (body: any) => {
 
 // 规则管理函数
 const ruleManager = {
+  delete: async (rule: RequestRule) => {
+    try {
+      // 从内存中删除规则
+      requestRules.value = requestRules.value.filter((r) => r.id !== rule.id);
+
+      // 从Chrome拦截规则中移除该规则
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: [rule.ruleId],
+      });
+
+      console.log("规则删除完成，已从Chrome拦截规则中移除");
+    } catch (error) {
+      console.error("删除规则时发生错误:", error);
+    }
+  },
   // 打开规则编辑器
   openEditor: (rule: RequestRule | null = null) => {
     editingRule.value = rule;
@@ -334,17 +359,6 @@ const ruleManager = {
       await updateDNRRules();
       console.log("规则更新完成，已同步到Chrome拦截规则");
     }
-  },
-
-  // 删除规则
-  delete: async (ruleId: string | number) => {
-    // 从内存中删除规则
-    requestRules.value = requestRules.value.filter(
-      (rule) => rule.id !== ruleId
-    );
-    // 直接更新Chrome拦截规则
-    await updateDNRRules();
-    console.log("规则删除完成，已同步到Chrome拦截规则");
   },
 
   // 保存规则
@@ -379,8 +393,8 @@ const ruleManager = {
 const {
   openEditor: addRule,
   update: updateRule,
-  delete: deleteRule,
   save: saveRule,
+  delete: deleteRule,
 } = ruleManager;
 const editRule = (rule: RequestRule) => ruleManager.openEditor(rule);
 
