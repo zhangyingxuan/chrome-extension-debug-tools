@@ -166,8 +166,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import { formatTime } from "../utils/common";
-import { RequestLog } from "../types";
+import { getStatusClass } from "@/utils/common";
+import { RequestLog } from "@/types";
 
 interface Emits {
   (e: "clear-logs"): void;
@@ -325,20 +325,6 @@ const getRequestItemClass = (log: RequestLog) => {
     classes.push("expanded");
   }
   return classes.join(" ");
-};
-
-// 获取状态样式类
-const getStatusClass = (status: number) => {
-  if (status >= 200 && status < 300) {
-    return "status-success";
-  } else if (status >= 300 && status < 400) {
-    return "status-redirect";
-  } else if (status >= 400 && status < 500) {
-    return "status-client-error";
-  } else if (status >= 500) {
-    return "status-server-error";
-  }
-  return "status-unknown";
 };
 
 // 切换请求详情

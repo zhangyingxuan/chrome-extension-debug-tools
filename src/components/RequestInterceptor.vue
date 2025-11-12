@@ -6,7 +6,7 @@
       <div class="rules-section">
         <div class="section-header">
           <h3>
-            拦截规则
+            网络请求拦截规则
             <!-- 启用/禁用开关 -->
             <t-switch
               v-model="isEnabled"
@@ -48,8 +48,6 @@
               <div class="col-status">状态</div>
               <div class="col-method">方法</div>
               <div class="col-url">URL模式</div>
-              <div class="col-response">响应状态</div>
-              <div class="col-delay">延迟</div>
               <div class="col-actions">操作</div>
             </div>
 
@@ -75,13 +73,7 @@
                   <span class="method-badge">{{ rule.method }}</span>
                 </div>
                 <div class="col-url" :title="rule.urlPattern">
-                  {{ truncateUrl(rule.urlPattern) }}
-                </div>
-                <div class="col-delay">
-                  <span v-if="rule.delay > 0" class="delay-badge">
-                    {{ rule.delay }}ms
-                  </span>
-                  <span v-else class="no-delay">-</span>
+                  {{ rule.urlPattern }}
                 </div>
                 <div class="col-actions">
                   <div class="action-buttons" @click.stop>
@@ -119,10 +111,6 @@
                     <div class="detail-row">
                       <span class="detail-label">请求方法:</span>
                       <span class="detail-value">{{ rule.method }}</span>
-                    </div>
-                    <div class="detail-row">
-                      <span class="detail-label">延迟时间:</span>
-                      <span class="detail-value">{{ rule.delay || 0 }}ms</span>
                     </div>
                   </div>
                 </div>
@@ -162,8 +150,8 @@
 
 <script setup lang="ts">
 import { reactive, toRefs, ref, onMounted } from "vue";
-import { RequestRule } from "../types";
-import { generateId, validateUrlPattern, errorHandler } from "../utils/common";
+import { RequestRule } from "@/types";
+import { generateId } from "@/utils/common";
 import RuleEditor from "./RuleEditor.vue";
 import InterceptionHistory from "./InterceptionHistory.vue";
 
@@ -181,7 +169,7 @@ const emit = defineEmits<Emits>();
 // 响应式数据
 const reactiveData = reactive({
   isEnabled: true,
-  showAddRuleDialog: false,
+  showAddRuleDialog: true,
   editingRule: null as RequestRule | null,
   autoScroll: true,
   showHistoryDrawer: false,
@@ -215,7 +203,8 @@ const loadRules = async () => {
     const ourRules = rules.map((rule) => {
       const ruleIndex = rule.id - ourRuleIdPrefix;
       // 从规则中提取信息
-      const urlPattern = rule.condition.urlFilter;
+      const urlFilter = rule.condition.urlFilter;
+      const regexFilter = rule.condition.regexFilter;
       const method = rule.condition.requestMethods?.[0]?.toUpperCase() || "GET";
 
       // 解析响应体
@@ -234,10 +223,12 @@ const loadRules = async () => {
 
       return {
         id: ruleIndex,
+        ruleId: rule.id,
         enabled: true,
-        urlPattern,
+        urlFilter,
+        regexFilter,
+        urlPattern: urlFilter || regexFilter,
         method,
-        delay: 0,
         response: {
           status: 200,
           headers: { "Content-Type": "application/json" },
@@ -256,19 +247,16 @@ const loadRules = async () => {
 
 // 将规则转换为declarativeNetRequest格式
 const convertToDNRRule = (rule: RequestRule, ruleId: number) => {
-  // 过滤URL模式中的非ASCII字符，确保urlFilter只包含ASCII字符
-  let cleanUrlPattern = rule.urlPattern.replace(/[^\x00-\x7F]/g, "");
-
-  // 如果过滤后为空，使用默认的通配符模式
-  if (!cleanUrlPattern.trim()) {
-    cleanUrlPattern = ".*";
-    console.warn(
-      `规则ID ${ruleId} 的URL模式过滤后为空，已使用默认通配符模式: "${rule.urlPattern}" -> "${cleanUrlPattern}"`
-    );
-  } else if (cleanUrlPattern !== rule.urlPattern) {
-    console.warn(
-      `规则ID ${ruleId} 的URL模式包含非ASCII字符，已自动过滤: "${rule.urlPattern}" -> "${cleanUrlPattern}"`
-    );
+  const condition = {
+    urlFilter: rule.urlPattern,
+    regexFilter: rule.urlPattern,
+    resourceTypes: ["xmlhttprequest"],
+    requestMethods: [rule.method.toLowerCase()],
+  };
+  if (rule.filterType === "urlFilter") {
+    delete condition.regexFilter;
+  } else {
+    delete condition.urlFilter;
   }
 
   return {
@@ -282,11 +270,7 @@ const convertToDNRRule = (rule: RequestRule, ruleId: number) => {
         )}`,
       },
     },
-    condition: {
-      urlFilter: cleanUrlPattern,
-      resourceTypes: ["xmlhttprequest"],
-      requestMethods: [rule.method.toLowerCase()],
-    },
+    condition,
   };
 };
 
@@ -296,9 +280,7 @@ const updateDNRRules = async () => {
     if (!isEnabled.value) {
       // 如果禁用，移除所有动态规则
       await chrome.declarativeNetRequest.updateDynamicRules({
-        removeRuleIds: requestRules.value.map(
-          (rule, index) => index + ourRuleIdPrefix
-        ),
+        removeRuleIds: requestRules.value.map((rule) => rule.ruleId),
       });
       console.log("已禁用所有declarativeNetRequest规则");
       return;
@@ -306,34 +288,13 @@ const updateDNRRules = async () => {
 
     const enabledRules = requestRules.value.filter((rule) => rule.enabled);
 
-    // 过滤掉URL模式为空的规则
-    const validRules = enabledRules.filter((rule) => {
-      if (!rule.urlPattern || !rule.urlPattern.trim()) {
-        console.warn(`规则ID ${rule.id} 的URL模式为空，已跳过`);
-        return false;
-      }
-      return true;
-    });
-
-    const dnrRules: any = validRules.map((rule, index) =>
-      convertToDNRRule(rule, index + ourRuleIdPrefix)
+    const dnrRules: any = enabledRules.map((rule) =>
+      convertToDNRRule(rule, rule.ruleId)
     );
-
-    console.log("正在更新declarativeNetRequest规则:", {
-      totalRules: requestRules.value.length,
-      enabledRules: enabledRules.length,
-      dnrRules: dnrRules.map((rule: any) => ({
-        id: rule.id,
-        urlFilter: rule.condition.urlFilter,
-        method: rule.condition.requestMethods?.[0],
-      })),
-    });
 
     // 先移除旧规则，再添加新规则
     await chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: requestRules.value.map(
-        (rule, index) => index + ourRuleIdPrefix
-      ),
+      removeRuleIds: requestRules.value.map((rule) => rule.ruleId),
       addRules: dnrRules,
     });
 
@@ -341,14 +302,6 @@ const updateDNRRules = async () => {
   } catch (error) {
     console.error("更新declarativeNetRequest规则时发生错误:", error);
   }
-};
-
-// 截断URL显示
-const truncateUrl = (url: string) => {
-  if (url?.length > 80) {
-    return url.substring(0, 40) + "..." + url.substring(url?.length - 40);
-  }
-  return url;
 };
 
 // 格式化响应体
@@ -396,11 +349,6 @@ const ruleManager = {
 
   // 保存规则
   save: async (rule: RequestRule) => {
-    if (!validateUrlPattern(rule.urlPattern)) {
-      errorHandler.alert("URL模式格式错误，请输入有效的正则表达式");
-      return;
-    }
-
     if (editingRule.value) {
       // 更新现有规则
       const index = requestRules.value.findIndex(
@@ -413,7 +361,7 @@ const ruleManager = {
       // 添加新规则
       const newRule: RequestRule = {
         ...rule,
-        id: rule.id || generateId("rule"),
+        id: rule.id,
       };
       requestRules.value.push(newRule);
     }
@@ -618,10 +566,6 @@ const toggleRuleDetails = (rule: RequestRule) => {
             width: 100px;
             text-align: center;
           }
-          .col-delay {
-            width: 80px;
-            text-align: center;
-          }
           .col-actions {
             width: 120px;
             text-align: center;
@@ -713,24 +657,6 @@ const toggleRuleDetails = (rule: RequestRule) => {
                   color: #666;
                   background: #f3f2f1;
                 }
-              }
-            }
-
-            .col-delay {
-              width: 80px;
-              text-align: center;
-              font-size: 12px;
-
-              .delay-badge {
-                color: #fa8c16;
-                background: #fff7e6;
-                padding: 2px 6px;
-                border-radius: 3px;
-                border: 1px solid #ffd591;
-              }
-
-              .no-delay {
-                color: #999;
               }
             }
 

@@ -8,11 +8,6 @@ export const formatTime = (timestamp: number): string => {
   });
 };
 
-// 延迟函数
-export const delay = (ms: number): Promise<void> => {
-  return new Promise(resolve => setTimeout(resolve, ms));
-};
-
 // 生成唯一ID
 export const generateId = (prefix: string = 'id'): string => {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
@@ -86,18 +81,10 @@ export const getStatusClass = (statusCode: number): string => {
     return 'status-client-error';
   } else if (statusCode >= 500) {
     return 'status-server-error';
+  } else if (statusCode === 0) {
+    return 'status-server-error';
   }
   return 'status-unknown';
-};
-
-// 验证URL模式（正则表达式）
-export const validateUrlPattern = (pattern: string): boolean => {
-  try {
-    new RegExp(pattern);
-    return true;
-  } catch {
-    return false;
-  }
 };
 
 // 解析headers文本为对象

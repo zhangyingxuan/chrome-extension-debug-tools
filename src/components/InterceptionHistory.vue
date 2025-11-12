@@ -25,7 +25,6 @@
           <div class="col-url">URL</div>
           <div class="col-status-code">状态码</div>
           <div class="col-time">时间</div>
-          <div class="col-delay">延迟</div>
         </div>
 
         <!-- 拦截记录项 -->
@@ -55,7 +54,6 @@
               <span class="status-code-badge">{{ record.responseStatus }}</span>
             </div>
             <div class="col-time">{{ formatTime(record.timestamp) }}</div>
-            <div class="col-delay">{{ record.delay }}ms</div>
             <t-icon
               :name="record.expanded ? 'chevron-down' : 'chevron-right'"
               size="16"
@@ -104,9 +102,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted, onUnmounted } from "vue";
+import { ref, watch, nextTick, onMounted } from "vue";
 import { Message } from "tdesign-vue-next";
-import type { InterceptionRecord } from "../types";
+import type { InterceptionRecord } from "@/types";
+import { getStatusClass, formatTime } from "@/utils/common";
 
 interface Props {
   visible: boolean;
@@ -138,23 +137,11 @@ const getHistoryItemClass = (record: InterceptionRecord) => {
   return classes;
 };
 
-const getStatusClass = (statusCode: number): string => {
-  if (statusCode >= 200 && statusCode < 300) return "status-success";
-  if (statusCode >= 300 && statusCode < 400) return "status-redirect";
-  if (statusCode >= 400 && statusCode < 500) return "status-client-error";
-  if (statusCode >= 500) return "status-server-error";
-  return "status-unknown";
-};
-
 const truncateUrl = (url: string) => {
   if (url.length > 80) {
     return url.substring(0, 40) + "..." + url.substring(url.length - 40);
   }
   return url;
-};
-
-const formatTime = (timestamp: number) => {
-  return new Date(timestamp).toLocaleTimeString();
 };
 
 const toggleDetails = (record: InterceptionRecord) => {
@@ -183,7 +170,7 @@ watch(
   { deep: true }
 );
 
-function handleInterceptionRecord(record) {
+function handleInterceptionRecord(record: any) {
   // 添加到历史记录
   interceptionHistory.value.push(record);
 
@@ -204,7 +191,6 @@ onMounted(() => {
       url: details.request.url,
       method: details.request.method,
       ruleId: details.rule.ruleId,
-      delay: 0,
     };
 
     // 记录拦截历史
@@ -294,10 +280,6 @@ onMounted(() => {
           width: 100px;
           text-align: right;
         }
-        .col-delay {
-          width: 80px;
-          text-align: right;
-        }
       }
 
       .history-item {
@@ -354,11 +336,6 @@ onMounted(() => {
           }
           .col-time {
             width: 100px;
-            text-align: right;
-            color: #666;
-          }
-          .col-delay {
-            width: 80px;
             text-align: right;
             color: #666;
           }

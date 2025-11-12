@@ -15,23 +15,29 @@
         label-width="120px"
         ref="formRef"
       >
-        <t-form-item label="URL模式" name="urlPattern" required>
+        <t-form-item label="拦截规则" name="urlPattern" required>
           <t-input
             v-model="rule.urlPattern"
-            placeholder="例如: .*/api/users.*"
-            tips="支持正则表达式，如: ^https://api\.example\.com/.*，不能包含中文等非ASCII字符"
-          />
-        </t-form-item>
-
-        <t-form-item label="匹配模式">
-          <t-radio-group v-model="responseType">
-            <t-radio value="urlFilter">url</t-radio>
-            <t-radio value="regexFilter">regex</t-radio>
-          </t-radio-group>
-        </t-form-item>
-        <t-row :gutter="[24, 24]" style="padding: 12px 0">
-          <t-col :span="6">
-            <t-form-item label="请求方法" name="method">
+            :placeholder="
+              rule.filterType === 'urlFilter'
+                ? '例如: */api/users*'
+                : '例如: ^https://api\\.example\\.com/.*'
+            "
+          >
+            <!-- :tips="
+              rule.filterType === 'urlFilter'
+                ? '支持通配符匹配，如: */api/*，不能包含中文等非ASCII字符'
+                : '支持正则表达式，如: ^https://api\\.example\\.com/.*'
+            " -->
+            <template #prefixIcon>
+              <t-select v-model="rule.filterType">
+                <t-option key="urlFilter" label="URL匹配" value="urlFilter" />
+                <t-option
+                  key="regexFilter"
+                  label="Reg匹配"
+                  value="regexFilter"
+                />
+              </t-select>
               <t-select v-model="rule.method">
                 <t-option label="GET" value="GET" />
                 <t-option label="POST" value="POST" />
@@ -41,45 +47,25 @@
                 <t-option label="OPTIONS" value="OPTIONS" />
                 <t-option label="HEAD" value="HEAD" />
               </t-select>
-            </t-form-item>
-          </t-col>
-          <t-col :span="6">
-            <t-form-item label="响应延迟">
-              <t-input-number
-                v-model="rule.delay"
-                :min="0"
-                :max="10000"
-                placeholder="延迟时间(毫秒)"
-                tips="0表示立即响应"
-              />
-            </t-form-item>
-          </t-col>
-        </t-row>
+            </template>
+          </t-input>
+        </t-form-item>
         <t-form-item label="响应体类型">
           <t-radio-group v-model="responseType">
             <t-radio value="json">JSON</t-radio>
             <t-radio value="text">文本</t-radio>
           </t-radio-group>
         </t-form-item>
-        <t-form-item label="响应头">
-          <t-input
-            v-model="headersText"
-            placeholder="Content-Type: application/json"
-            tips="每行一个响应头，格式: Key: Value"
-          />
-        </t-form-item>
         <t-form-item label="响应体" name="responseBody">
-          <div class="response-body-container">
-            <textarea
-              v-model="responseBodyText"
-              class="response-textarea"
-              :rows="showPreview ? 4 : 8"
-              :placeholder="
-                responseType === 'json' ? 'JSON格式的响应体' : '文本响应体'
-              "
-              @keydown.ctrl.enter="formatJson"
-            />
-          </div>
+          <t-textarea
+            v-model="responseBodyText"
+            :autosize="{ minRows: 6 }"
+            :rows="8"
+            :placeholder="
+              responseType === 'json' ? 'JSON格式的响应体' : '文本响应体'
+            "
+            @keydown.ctrl.enter="formatJson"
+          />
         </t-form-item>
       </t-form>
     </div>
@@ -88,7 +74,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import { RequestRule } from "../types";
+import { RequestRule } from "@/types";
 interface Props {
   visible: boolean;
   editingRule?: RequestRule | null;
@@ -100,24 +86,24 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-// 响应式数据
-const rule = ref<RequestRule>({
+const defaultRule = {
   id: "",
   enabled: true,
-  urlPattern: "",
   method: "GET",
-  delay: 0,
+  urlPattern: "",
+  filterType: "urlFilter",
   response: {
     status: 200,
     headers: {},
     body: {},
   },
-});
+  expanded: false,
+};
+// 响应式数据
+const rule = ref<RequestRule>(defaultRule);
 
-const headersText = ref("");
 const responseBodyText = ref("");
 const responseType = ref<"json" | "text">("json");
-const showPreview = ref(false);
 const formRef = ref();
 
 // 表单校验规则
@@ -125,36 +111,49 @@ const formRules = {
   urlPattern: [
     {
       required: true,
-      message: "URL模式不能为空，请输入有效的URL模式",
+      message: "响应体不能为空",
       trigger: "blur",
     },
     {
       validator: (value: string) => {
         if (!value) return true;
-        // 检查是否包含非ASCII字符
-        const hasNonAscii = /[^\x00-\x7F]/.test(value);
-        if (hasNonAscii) {
-          return {
-            result: false,
-            message: "URL模式不能包含中文等非ASCII字符，请使用英文或ASCII字符",
-          };
-        }
 
-        // 验证正则表达式格式
-        try {
-          new RegExp(value);
+        if (rule.value.filterType === "urlFilter") {
+          // URL匹配模式：简单的URL模式匹配，支持通配符
+          // 检查是否包含非ASCII字符
+          const hasNonAscii = /[^\x00-\x7F]/.test(value);
+          if (hasNonAscii) {
+            return {
+              result: false,
+              message:
+                "URL模式不能包含中文等非ASCII字符，请使用英文或ASCII字符",
+            };
+          }
+
+          // URL模式校验通过
           return true;
-        } catch {
-          return {
-            result: false,
-            message: "URL模式格式错误，请输入有效的正则表达式",
-          };
+        } else {
+          // 正则表达式模式：严格的正则表达式校验
+          try {
+            new RegExp(value);
+            return true;
+          } catch {
+            return {
+              result: false,
+              message: "正则表达式格式错误，请输入有效的正则表达式",
+            };
+          }
         }
       },
       trigger: "blur",
     },
   ],
   responseBody: [
+    {
+      required: true,
+      message: "URL模式不能为空，请输入有效的URL模式",
+      trigger: "blur",
+    },
     {
       validator: () => {
         if (responseType.value === "json" && responseBodyText.value) {
@@ -178,9 +177,13 @@ watch(
   (newRule) => {
     if (newRule) {
       rule.value = JSON.parse(JSON.stringify(newRule));
-      headersText.value = Object.entries(newRule.response.headers)
-        .map(([key, value]) => `${key}: ${value}`)
-        .join("\n");
+
+      // 设置过滤类型（如果规则中有filterType则使用，否则默认使用urlFilter）
+      if (newRule.filterType) {
+        rule.value.filterType = newRule.filterType;
+      } else {
+        rule.value.filterType = "urlFilter";
+      }
 
       if (typeof newRule.response.body === "string") {
         responseType.value = "text";
@@ -219,7 +222,12 @@ const saveRule = async () => {
         .substring(2, 11)}`;
     }
 
-    emit("save", { ...rule.value });
+    // 保存过滤类型信息
+    const ruleToSave = {
+      ...rule.value,
+    };
+
+    emit("save", ruleToSave);
     resetForm();
   }
   // 如果校验失败，TDesign会自动显示错误信息，无需额外处理
@@ -227,24 +235,10 @@ const saveRule = async () => {
 
 // 重置表单
 const resetForm = () => {
-  rule.value = {
-    id: "",
-    enabled: true,
-    urlPattern: "",
-    method: "GET",
-    delay: 0,
-    response: {
-      status: 200,
-      headers: {},
-      body: {},
-    },
-    expanded: false,
-  };
+  rule.value = defaultRule;
 
-  headersText.value = "";
   responseBodyText.value = "";
   responseType.value = "json";
-  showPreview.value = false;
 
   // 重置表单校验状态
   if (formRef.value) {
@@ -265,107 +259,6 @@ const resetForm = () => {
       flex: 1;
       overflow-y: auto;
       padding: 20px;
-    }
-  }
-}
-
-.response-body-container {
-  .json-editor-actions {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-
-  .response-textarea {
-    width: 100%;
-    min-height: 120px;
-    max-height: 300px;
-    padding: 8px 12px;
-    border: 1px solid #d9d9d9;
-    border-radius: 4px;
-    font-family: "Courier New", monospace;
-    font-size: 14px;
-    line-height: 1.5;
-    resize: vertical;
-    transition: border-color 0.2s;
-
-    &:focus {
-      outline: none;
-      border-color: #1890ff;
-      box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
-    }
-
-    &:hover {
-      border-color: #40a9ff;
-    }
-  }
-
-  .json-preview {
-    margin-top: 8px;
-    border: 1px solid #e8e8e8;
-    border-radius: 4px;
-    background: #fafafa;
-
-    .preview-header {
-      padding: 6px 12px;
-      background: #f0f0f0;
-      border-bottom: 1px solid #e8e8e8;
-      font-size: 12px;
-      font-weight: 500;
-      color: #666;
-    }
-
-    .preview-content {
-      margin: 0;
-      padding: 12px;
-      max-height: 200px;
-      overflow: auto;
-      font-family: "Courier New", monospace;
-      font-size: 13px;
-      line-height: 1.4;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-    }
-  }
-
-  .json-status {
-    margin-top: 4px;
-    font-size: 12px;
-
-    .status-success {
-      color: #52c41a;
-    }
-
-    .status-error {
-      color: #f5222d;
-    }
-
-    .status-tip {
-      color: #999;
-      margin-left: 8px;
-    }
-  }
-
-  .validation-message {
-    margin-top: 4px;
-    font-size: 12px;
-
-    .success-text {
-      color: #52c41a;
-    }
-
-    .error-text {
-      color: #f5222d;
-    }
-  }
-
-  .validation-error {
-    margin-top: 4px;
-    font-size: 12px;
-
-    .error-text {
-      color: #f5222d;
-      font-weight: 500;
     }
   }
 }

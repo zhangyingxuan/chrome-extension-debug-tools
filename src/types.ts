@@ -1,10 +1,13 @@
 // 网络请求相关类型
 export interface RequestRule {
   id: string | number;
+  ruleId: number;
   enabled: boolean;
-  urlPattern: string;
+  urlPattern?: string;
+  regexFilter?: string;
+  // 非必填
+  filterType?: string;
   method: string;
-  delay: number;
   response: {
     status: number;
     headers: Record<string, string>;
@@ -21,7 +24,6 @@ export interface InterceptionRecord {
   method: string;
   matchedRule?: string;
   responseStatus: number;
-  delay: number;
   error?: string;
   ruleId: string;
   expanded: boolean;
