@@ -74,6 +74,7 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from "vue";
 import { RequestRule } from "@/types";
+import { generateId } from "@/utils/common";
 interface Props {
   visible: boolean;
   editingRule?: RequestRule | null;
@@ -239,9 +240,7 @@ const saveRule = async () => {
     // 校验通过，继续保存逻辑
     // 生成唯一ID
     if (!ruleData.id) {
-      ruleData.id = `rule_${Date.now()}_${Math.random()
-        .toString(36)
-        .substring(2, 11)}`;
+      ruleData.id = generateId("rule");
     }
 
     // 处理响应体数据

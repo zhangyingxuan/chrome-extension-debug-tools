@@ -17,14 +17,14 @@
 
   "action": {
     "default_icon": {
-      "48": "sources/tabs64.png",
-      "128": "sources/tabs128.png"
+      "48": "sources/netIntercept64.png",
+      "64": "sources/netIntercept64.png",
+      "128": "sources/netIntercept128.png"
     }
   },
   "icons": {
-    "48": "sources/tabs64.png",
-    "128": "sources/tabs128.png",
-    "256": "sources/tabs256.png"
+    "64": "sources/netIntercept64.png",
+    "128": "sources/netIntercept128.png"
   },
   "background": {
     "service_worker": "background.js"

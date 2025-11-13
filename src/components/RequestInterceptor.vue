@@ -157,9 +157,9 @@
 <script setup lang="ts">
 import { reactive, toRefs, ref, onMounted } from "vue";
 import { RequestRule } from "@/types";
-import { generateId } from "@/utils/common";
 import RuleEditor from "./RuleEditor.vue";
 import InterceptionHistory from "./InterceptionHistory.vue";
+import { generateId } from "@/utils/common";
 
 const ourRuleIdPrefix = 1000;
 
@@ -246,7 +246,6 @@ const loadRules = async () => {
       console.log("加载规则成功-原始规则:", rules);
 
       const ourRules = rules.map((rule) => {
-        const ruleIndex = rule.id - ourRuleIdPrefix;
         // 从规则中提取信息
         const urlFilter = rule.condition.urlFilter;
         const regexFilter = rule.condition.regexFilter;
@@ -276,7 +275,7 @@ const loadRules = async () => {
         }
 
         return {
-          id: ruleIndex,
+          id: generateId("rule"),
           ruleId: rule.id,
           enabled: true,
           urlFilter,
@@ -451,6 +450,13 @@ const toggleEnabled = async (enabled: boolean) => {
   requestRules.value.forEach((rule) => {
     rule.enabled = enabled;
   });
+  if (enabled) {
+    chrome.action.setBadgeText({ text: "ON" });
+    chrome.action.setBadgeBackgroundColor({ color: "#52c41a" }); // 绿色
+  } else {
+    chrome.action.setBadgeText({ text: "OFF" });
+    chrome.action.setBadgeBackgroundColor({ color: "#f5222d" }); // 红色
+  }
   await updateDNRRules();
 };
 

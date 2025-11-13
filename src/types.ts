@@ -1,6 +1,6 @@
 // 网络请求相关类型
 export interface RequestRule {
-  id: string | number;
+  id: string;
   ruleId: number;
   enabled: boolean;
   urlPattern?: string;
@@ -20,13 +20,13 @@ export interface RequestRule {
 // 拦截记录类型
 export interface InterceptionRecord {
   id: string;
+  ruleId: number;
   timestamp: number;
   url: string;
   method: string;
   matchedRule?: string;
   responseStatus: number;
   error?: string;
-  ruleId: string;
   expanded: boolean;
 }
 

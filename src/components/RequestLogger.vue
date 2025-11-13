@@ -166,7 +166,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import { getStatusClass } from "@/utils/common";
+import { generateId, getStatusClass } from "@/utils/common";
 import { RequestLog } from "@/types";
 
 interface Emits {
@@ -236,7 +236,7 @@ const handleRequestFinished = (request: any) => {
   }
 
   const log: RequestLog = {
-    id: `log_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+    id: generateId("rule_log"),
     timestamp: Date.now(),
     url: request.request.url,
     method: request.request.method,
