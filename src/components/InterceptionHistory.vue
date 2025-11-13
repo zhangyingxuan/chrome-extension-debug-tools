@@ -9,7 +9,9 @@
   >
     <div class="drawer-content">
       <div class="drawer-header-actions">
-        <t-button size="small" @click="clearHistory">清空历史</t-button>
+        <t-popconfirm content="确定清空历史吗？" @confirm="clearHistory">
+          <t-button size="small" theme="danger">清空历史</t-button>
+        </t-popconfirm>
         <t-switch
           v-model="autoScroll"
           size="small"
@@ -109,12 +111,10 @@ import { getStatusClass, formatTime } from "@/utils/common";
 
 interface Props {
   visible: boolean;
-  autoScroll: boolean;
 }
 
 interface Emits {
   (e: "close"): void;
-  (e: "update:autoScroll", value: boolean): void;
 }
 
 const props = defineProps<Props>();
@@ -123,6 +123,7 @@ const emit = defineEmits<Emits>();
 const historyList = ref<HTMLElement>();
 
 const interceptionHistory = ref<InterceptionRecord[]>([]);
+const autoScroll = ref(true);
 
 // 方法
 const getHistoryItemClass = (record: InterceptionRecord) => {
@@ -149,17 +150,12 @@ const toggleDetails = (record: InterceptionRecord) => {
 };
 
 const clearHistory = () => {
-  Message.confirm({
-    content: "确定要清空所有拦截历史记录吗？",
-    onConfirm: () => {
-      interceptionHistory.value = [];
-    },
-  });
+  interceptionHistory.value = [];
 };
 
 // 监听历史记录变化，实现自动滚动
 watch(
-  [() => interceptionHistory, () => props.autoScroll],
+  [() => interceptionHistory, () => autoScroll],
   ([interceptionHistory, shouldScroll]) => {
     if (shouldScroll && interceptionHistory.value.length > 0) {
       nextTick(() => {
@@ -183,7 +179,7 @@ function handleInterceptionRecord(record: any) {
 // 组件挂载时
 onMounted(() => {
   // 监听declarativeNetRequest规则匹配事件（用于记录拦截历史）
-  chrome.declarativeNetRequest.onRuleMatchedDebug?.addListener((details) => {
+  chrome.declarativeNetRequest?.onRuleMatchedDebug?.addListener((details) => {
     // 记录所有匹配的规则，不区分来源
     const record = {
       id: details.rule.ruleId,

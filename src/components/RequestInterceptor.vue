@@ -139,9 +139,7 @@
     <!-- 拦截历史抽屉 -->
     <InterceptionHistory
       :visible="showHistoryDrawer"
-      :auto-scroll="autoScroll"
       @close="showHistoryDrawer = false"
-      @update:auto-scroll="(value) => (autoScroll = value)"
     />
 
     <!-- 规则编辑器抽屉 -->
@@ -155,7 +153,8 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, toRefs, ref, onMounted } from "vue";
+import { MessagePlugin } from "tdesign-vue-next";
+import { reactive, toRefs, ref, onMounted, toRaw } from "vue";
 import { RequestRule } from "@/types";
 import RuleEditor from "./RuleEditor.vue";
 import InterceptionHistory from "./InterceptionHistory.vue";
@@ -175,20 +174,14 @@ const emit = defineEmits<Emits>();
 // 响应式数据
 const reactiveData = reactive({
   isEnabled: true,
-  showAddRuleDialog: true,
+  showAddRuleDialog: false,
   editingRule: null as RequestRule | null,
-  autoScroll: true,
   showHistoryDrawer: false,
 });
 
 // 解构响应式数据以便使用
-const {
-  isEnabled,
-  showAddRuleDialog,
-  editingRule,
-  autoScroll,
-  showHistoryDrawer,
-} = toRefs(reactiveData);
+const { isEnabled, showAddRuleDialog, editingRule, showHistoryDrawer } =
+  toRefs(reactiveData);
 
 // 当前管理的规则
 const requestRules = ref<RequestRule[]>([]);
@@ -202,11 +195,11 @@ onMounted(() => {
 const saveRulesToCache = async () => {
   try {
     await chrome.storage.local.set({
-      requestRules: requestRules.value,
+      requestRules: toRaw(requestRules.value),
       requestRulesEnabled: isEnabled.value,
       rulesLastModified: Date.now(),
     });
-    console.log("规则已保存到缓存");
+    console.log("规则已保存到缓存", requestRules.value, isEnabled.value);
   } catch (error) {
     console.error("保存规则到缓存失败:", error);
   }
@@ -224,6 +217,8 @@ const loadRulesFromCache = async () => {
       requestRules.value = result.requestRules;
       console.log(
         "从缓存加载规则成功，最后修改时间:",
+        result.requestRules,
+        result.rulesLastModified,
         new Date(result.rulesLastModified).toLocaleString()
       );
       return true;
@@ -293,7 +288,7 @@ const loadRules = async () => {
       requestRules.value = ourRules;
       // 保存到缓存
       await saveRulesToCache();
-      console.log("成功加载规则并保存到缓存，规则数量:", ourRules.length);
+      console.log("成功加载规则并保存到缓存，规则数量:", ourRules);
     } catch (error) {
       console.error("获取规则失败:", error);
       requestRules.value = [];
@@ -408,7 +403,8 @@ const ruleManager = {
 
   // 保存规则
   save: async (rule: RequestRule) => {
-    if (editingRule.value) {
+    console.log("保存规则:", requestRules, rule);
+    if (editingRule.value && editingRule.value?.id) {
       // 更新现有规则
       const index = requestRules.value.findIndex(
         (r) => r.id === editingRule.value!.id
@@ -420,7 +416,7 @@ const ruleManager = {
       // 添加新规则
       const newRule: RequestRule = {
         ...rule,
-        id: rule.id,
+        id: generateId("rule"),
       };
       requestRules.value.push(newRule);
     }
@@ -434,6 +430,50 @@ const ruleManager = {
   },
 };
 
+// 接收快速添加规则数据
+const handleQuickAddRule = (ruleData: any) => {
+  // 格式化响应体数据
+  let formattedResponseBody = ruleData.responseBody || "{}";
+  if (typeof formattedResponseBody === "string") {
+    try {
+      // 如果是JSON字符串，先解析再格式化
+      const parsedBody = JSON.parse(formattedResponseBody);
+      formattedResponseBody = JSON.stringify(parsedBody, null, 2);
+    } catch (error) {
+      // 如果不是JSON，保持原样
+      console.log("响应体不是JSON格式，保持原样:", formattedResponseBody);
+    }
+  } else if (typeof formattedResponseBody === "object") {
+    // 如果是对象，直接格式化
+    formattedResponseBody = JSON.stringify(formattedResponseBody, null, 2);
+  }
+  // 取出最大的ruleId值+1
+  const maxRuleId =
+    requestRules.value.length > 0
+      ? Math.max(...requestRules.value.map((r) => r.ruleId)) + 1
+      : ourRuleIdPrefix;
+
+  // 创建新规则数据
+  const newRule: RequestRule = {
+    ruleId: maxRuleId,
+    enabled: true,
+    method: ruleData.method || "GET",
+    urlPattern: ruleData.urlPattern,
+    filterType: ruleData.filterType || "urlFilter",
+    responseBody: formattedResponseBody,
+    response: {
+      status: ruleData.response?.status || 200,
+      headers: ruleData.response?.headers || {},
+      body: formattedResponseBody,
+    },
+    expanded: false,
+  };
+
+  // 打开规则编辑器并填充数据
+  editingRule.value = newRule;
+  showAddRuleDialog.value = true;
+};
+
 // 导出规则管理函数
 const {
   openEditor: addRule,
@@ -442,6 +482,11 @@ const {
   delete: deleteRule,
 } = ruleManager;
 const editRule = (rule: RequestRule) => ruleManager.openEditor(rule);
+
+// 暴露方法给父组件
+defineExpose({
+  handleQuickAddRule,
+});
 
 // 切换启用状态
 const toggleEnabled = async (enabled: boolean) => {
@@ -479,10 +524,10 @@ const clearCache = async () => {
     await loadRules();
 
     // 显示成功提示
-    alert("缓存清除成功，已重新加载规则");
+    MessagePlugin.success("缓存清除成功，已重新加载规则");
   } catch (error) {
     console.error("清除缓存失败:", error);
-    alert("清除缓存失败，请重试");
+    MessagePlugin.error("清除缓存失败，请重试");
   }
 };
 </script>

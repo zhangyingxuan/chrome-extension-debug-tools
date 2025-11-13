@@ -156,21 +156,3 @@ export const groupBy = <T, K extends keyof any>(
     return groups;
   }, {} as Record<K, T[]>);
 };
-
-
-
-// 错误处理工具
-export const errorHandler = {
-  log: (error: any, context?: string) => {
-    console.debug(context ? `${context}:` : '错误:', error);
-  },
-
-  alert: (message: string, title: string = '错误') => {
-    alert(`${title}: ${message}`);
-  },
-
-  toast: (message: string, type: 'success' | 'error' | 'warning' = 'error') => {
-    // 这里可以集成UI组件的toast功能
-    console.debug(`${type}: ${message}`);
-  }
-};

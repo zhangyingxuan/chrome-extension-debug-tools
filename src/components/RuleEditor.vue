@@ -30,7 +30,10 @@
                 : '支持正则表达式，如: ^https://api\\.example\\.com/.*'
             " -->
             <template #prefixIcon>
-              <t-select v-model="ruleData.filterType">
+              <t-select
+                v-model="ruleData.filterType"
+                class="filter-type-select"
+              >
                 <t-option key="urlFilter" label="URL匹配" value="urlFilter" />
                 <t-option
                   key="regexFilter"
@@ -38,7 +41,7 @@
                   value="regexFilter"
                 />
               </t-select>
-              <t-select v-model="ruleData.method">
+              <t-select v-model="ruleData.method" class="filter-method-select">
                 <t-option label="GET" value="GET" />
                 <t-option label="POST" value="POST" />
                 <t-option label="PUT" value="PUT" />
@@ -63,7 +66,7 @@
             :placeholder="
               responseType === 'json' ? 'JSON格式的响应体' : '文本响应体'
             "
-            @keydown.ctrl.enter="formatJson"
+            @blur="formatJson"
           />
         </t-form-item>
       </t-form>
@@ -102,7 +105,7 @@ const defaultRule = {
   expanded: false,
 };
 // 响应式数据
-const ruleData = reactive<RequestRule>(defaultRule);
+const ruleData = reactive<RequestRule>(JSON.parse(JSON.stringify(defaultRule)));
 
 const responseType = ref<"json" | "text">("json");
 const formRef = ref();
@@ -160,9 +163,12 @@ const formRules = {
         if (responseType.value === "json" && value) {
           console.log("校验JSON格式", value);
           try {
-            JSON.parse(value);
+            // 使用修复后的JSON进行验证
+            const fixedJson = fixJsonFormat(value);
+            JSON.parse(fixedJson);
             return true;
-          } catch {
+          } catch (e) {
+            console.log("JSON格式错误", e);
             return { result: false, message: "JSON格式错误，请检查响应体格式" };
           }
         }
@@ -172,6 +178,18 @@ const formRules = {
     },
   ],
 };
+
+// 重置表单
+const resetForm = () => {
+  Object.assign(ruleData, defaultRule);
+  responseType.value = "json";
+
+  // 重置表单校验状态
+  if (formRef.value) {
+    formRef.value.clearValidate();
+  }
+};
+
 const closeDrawer = () => {
   resetForm();
   emit("close");
@@ -181,7 +199,7 @@ watch(
   () => props.editingRule,
   (newRule) => {
     if (newRule) {
-      Object.assign(ruleData, newRule);
+      Object.assign(ruleData, JSON.parse(JSON.stringify(newRule)));
 
       // 设置过滤类型（如果规则中有filterType则使用，否则默认使用urlFilter）
       if (newRule.filterType) {
@@ -217,14 +235,41 @@ watch(
   { immediate: true }
 );
 
+// 修复JSON格式，自动为key添加双引号
+const fixJsonFormat = (jsonString: string): string => {
+  if (!jsonString.trim()) return jsonString;
+
+  try {
+    // 先尝试直接解析，如果成功则直接返回
+    JSON.parse(jsonString);
+    return jsonString;
+  } catch (error) {
+    // 如果解析失败，尝试修复格式
+    try {
+      // 使用eval来解析类似{test: 1}这样的JavaScript对象字面量
+      // 注意：这里使用Function构造函数来避免eval的安全问题
+      const fixedObject = new Function(`return ${jsonString}`)();
+      return JSON.stringify(fixedObject, null, 2);
+    } catch (evalError) {
+      // 如果修复失败，返回原始字符串
+      console.warn("JSON格式修复失败:", evalError);
+      return jsonString;
+    }
+  }
+};
+
 // 格式化JSON
 const formatJson = () => {
   // 如果是json格式，则格式化
   if (responseType.value !== "json" || !ruleData.responseBody) return;
   try {
-    const parsed = JSON.parse(ruleData.responseBody);
+    // 先修复格式，再解析和格式化
+    const fixedJson = fixJsonFormat(ruleData.responseBody);
+    const parsed = JSON.parse(fixedJson);
     ruleData.responseBody = JSON.stringify(parsed, null, 2);
-  } catch (error) {}
+  } catch (error) {
+    console.warn("JSON格式化失败:", error);
+  }
 };
 
 // 保存规则
@@ -232,7 +277,6 @@ const saveRule = async () => {
   try {
     // 执行表单校验
     const validateResult = await formRef.value.validate();
-    console.log("表单校验结果:", validateResult);
     if (validateResult !== true) {
       return;
     }
@@ -246,7 +290,9 @@ const saveRule = async () => {
     // 处理响应体数据
     let responseBody;
     if (responseType.value === "json" && ruleData.responseBody) {
-      responseBody = JSON.parse(ruleData.responseBody);
+      // 使用修复后的JSON进行解析
+      const fixedJson = fixJsonFormat(ruleData.responseBody);
+      responseBody = JSON.parse(fixedJson);
     } else {
       responseBody = ruleData.responseBody;
     }
@@ -266,17 +312,6 @@ const saveRule = async () => {
     console.log("表单校验失败:", error);
   }
 };
-
-// 重置表单
-const resetForm = () => {
-  Object.assign(ruleData, defaultRule);
-  responseType.value = "json";
-
-  // 重置表单校验状态
-  if (formRef.value) {
-    formRef.value.clearValidate();
-  }
-};
 </script>
 
 <style lang="less" scoped>
@@ -292,6 +327,15 @@ const resetForm = () => {
       overflow-y: auto;
       padding: 20px;
     }
+  }
+  .filter-type-select {
+    width: 100px;
+  }
+  .filter-method-select {
+    width: 100px;
+  }
+  .t-input--prefix {
+    padding: 0;
   }
 }
 </style>

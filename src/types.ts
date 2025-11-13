@@ -1,6 +1,6 @@
 // 网络请求相关类型
 export interface RequestRule {
-  id: string;
+  id?: string;
   ruleId: number;
   enabled: boolean;
   urlPattern?: string;

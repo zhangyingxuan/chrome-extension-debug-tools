@@ -23,14 +23,14 @@
       <!-- 网络调试面板 -->
       <div class="panel" v-show="activeTab === 'network'">
         <div class="panel-content">
-          <RequestInterceptor />
+          <RequestInterceptor ref="requestInterceptorRef" />
         </div>
       </div>
 
       <!-- 网络请求记录面板 -->
       <div class="panel" v-show="activeTab === 'request-log'">
         <div class="panel-content">
-          <RequestLogger />
+          <RequestLogger @open-rule-editor="handleOpenRuleEditor" />
         </div>
       </div>
     </div>
@@ -38,12 +38,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref } from "vue";
 import RequestInterceptor from "./components/RequestInterceptor.vue";
 import RequestLogger from "./components/RequestLogger.vue";
+import { RequestRule } from "./types";
 
 // 响应式数据
 const activeTab = ref("network");
+const requestInterceptorRef = ref<InstanceType<typeof RequestInterceptor>>();
+
+// 处理打开规则编辑器事件
+const handleOpenRuleEditor = (ruleData: any) => {
+  // 切换到网络拦截标签页
+  activeTab.value = "network";
+
+  // 延迟执行，确保RequestInterceptor组件已加载
+  setTimeout(() => {
+    if (requestInterceptorRef.value) {
+      // 直接调用RequestInterceptor的方法
+      requestInterceptorRef.value.handleQuickAddRule(ruleData);
+    }
+  }, 100);
+};
 </script>
 
 <style lang="less" scoped>

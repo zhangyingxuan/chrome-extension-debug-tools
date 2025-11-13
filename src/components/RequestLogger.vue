@@ -39,6 +39,7 @@
         <div class="col-url">URL</div>
         <div class="col-duration">时间</div>
         <div class="col-size">大小</div>
+        <div class="col-actions">操作</div>
       </div>
 
       <div
@@ -65,6 +66,17 @@
           </div>
           <div class="col-duration">{{ log.duration }}ms</div>
           <div class="col-size">{{ getResponseSize(log) }}</div>
+          <div class="col-actions">
+            <t-button
+              size="small"
+              theme="primary"
+              variant="text"
+              @click.stop="quickAddRule(log)"
+              title="快速添加拦截规则"
+            >
+              拦截
+            </t-button>
+          </div>
           <t-icon
             :name="log.expanded ? 'chevron-down' : 'chevron-right'"
             size="16"
@@ -172,6 +184,7 @@ import { RequestLog } from "@/types";
 interface Emits {
   (e: "clear-logs"): void;
   (e: "update-logs", logs: RequestLog[]): void;
+  (e: "open-rule-editor", ruleData: any): void;
 }
 
 const emit = defineEmits<Emits>();
@@ -405,6 +418,93 @@ const getResponseSize = (log: RequestLog) => {
   return "-";
 };
 
+// 快速添加拦截规则
+const quickAddRule = (log: RequestLog) => {
+  // 提取URL后两个/中的内容作为urlPattern
+  const urlPattern = extractUrlPattern(log.url);
+
+  // 格式化响应体数据
+  let formattedResponseBody = log.responseBody || "{}";
+  if (typeof formattedResponseBody === "string") {
+    try {
+      // 如果是JSON字符串，先解析再格式化
+      const parsedBody = JSON.parse(formattedResponseBody);
+      formattedResponseBody = JSON.stringify(parsedBody, null, 2);
+    } catch (error) {
+      // 如果不是JSON，保持原样
+      console.log("响应体不是JSON格式，保持原样:", formattedResponseBody);
+    }
+  } else if (typeof formattedResponseBody === "object") {
+    // 如果是对象，直接格式化
+    formattedResponseBody = JSON.stringify(formattedResponseBody, null, 2);
+  }
+
+  // 准备规则数据
+  const ruleData = {
+    method: log.method,
+    urlPattern: urlPattern,
+    filterType: "urlFilter",
+    responseBody: formattedResponseBody,
+    response: {
+      status: log.status,
+      headers: log.responseHeaders || {},
+      body: formattedResponseBody,
+    },
+  };
+
+  // 直接打开规则编辑器弹窗
+  emit("open-rule-editor", ruleData);
+};
+
+// 提取URL后两个/中的内容作为urlPattern
+const extractUrlPattern = (url: string): string => {
+  try {
+    const urlObj = new URL(url);
+    const pathname = urlObj.pathname;
+
+    // 分割路径部分
+    const pathParts = pathname.split("/").filter((part) => part.trim() !== "");
+
+    // 获取最后两个路径部分
+    if (pathParts.length >= 2) {
+      const lastTwoParts = pathParts.slice(-2);
+      return `*/${lastTwoParts.join("/")}*`;
+    } else if (pathParts.length === 1) {
+      return `*/${pathParts[0]}*`;
+    } else {
+      // 如果没有路径部分，使用完整路径
+      return `*${pathname}*`;
+    }
+  } catch (error) {
+    console.warn("URL解析失败，使用备用方法:", url, error);
+
+    // 如果URL解析失败，使用更健壮的路径提取
+    // 移除协议和域名部分，提取路径
+    const protocolIndex = url.indexOf("//");
+    let pathStartIndex = 0;
+
+    if (protocolIndex !== -1) {
+      pathStartIndex = url.indexOf("/", protocolIndex + 2);
+      if (pathStartIndex === -1) {
+        pathStartIndex = url.length;
+      }
+    }
+
+    const pathPart = url.substring(pathStartIndex);
+    const pathParts = pathPart.split("/").filter((part) => part.trim() !== "");
+
+    if (pathParts.length >= 2) {
+      const lastTwoParts = pathParts.slice(-2);
+      return `*/${lastTwoParts.join("/")}*`;
+    } else if (pathParts.length === 1) {
+      return `*/${pathParts[0]}*`;
+    } else {
+      // 如果无法提取路径，使用完整URL的路径部分
+      return `*${pathPart}*`;
+    }
+  }
+};
+
 onMounted(() => {
   console.log("RequestLogger组件已挂载");
 });
@@ -511,6 +611,9 @@ onUnmounted(() => {
       .col-size {
         width: 80px;
       }
+      .col-actions {
+        width: 80px;
+      }
     }
 
     .request-item {
@@ -564,6 +667,10 @@ onUnmounted(() => {
           width: 80px;
           text-align: right;
           color: #666;
+        }
+        .col-actions {
+          width: 80px;
+          text-align: center;
         }
 
         .status-badge {
