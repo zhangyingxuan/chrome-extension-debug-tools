@@ -2,7 +2,7 @@
   <t-drawer
     :visible="visible"
     :header="editingRule ? '编辑规则' : '添加规则'"
-    @close="$emit('close')"
+    @close="closeDrawer"
     @confirm="saveRule"
     size="70%"
     placement="right"
@@ -171,7 +171,10 @@ const formRules = {
     },
   ],
 };
-
+const closeDrawer = () => {
+  resetForm();
+  emit("close");
+};
 // 监听编辑规则变化
 watch(
   () => props.editingRule,

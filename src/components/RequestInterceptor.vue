@@ -27,6 +27,12 @@
             >
               查看拦截历史
             </t-button>
+            <t-popconfirm
+              content="确定要清除自定义规则缓存吗？此操作不可恢复。"
+              @confirm="clearCache"
+            >
+              <t-button size="small" theme="default"> 清除缓存 </t-button>
+            </t-popconfirm>
           </div>
         </div>
 
@@ -192,66 +198,107 @@ onMounted(() => {
   loadRules();
 });
 
+// 保存规则到缓存
+const saveRulesToCache = async () => {
+  try {
+    await chrome.storage.local.set({
+      requestRules: requestRules.value,
+      requestRulesEnabled: isEnabled.value,
+      rulesLastModified: Date.now(),
+    });
+    console.log("规则已保存到缓存");
+  } catch (error) {
+    console.error("保存规则到缓存失败:", error);
+  }
+};
+
+// 从缓存加载规则
+const loadRulesFromCache = async () => {
+  try {
+    const result = await chrome.storage.local.get([
+      "requestRules",
+      "rulesLastModified",
+      "requestRulesEnabled",
+    ]);
+    if (result.requestRules) {
+      requestRules.value = result.requestRules;
+      console.log(
+        "从缓存加载规则成功，最后修改时间:",
+        new Date(result.rulesLastModified).toLocaleString()
+      );
+      return true;
+    }
+  } catch (error) {
+    console.error("从缓存加载规则失败:", error);
+  }
+  return false;
+};
+
 // 加载规则
 const loadRules = async () => {
-  try {
-    const rules = await chrome.declarativeNetRequest.getDynamicRules();
-    console.log("加载规则成功-原始规则:", rules);
-    // 过滤出我们自己的规则（ID从1000开始）
-    // const ourRules = rules
-    //   .filter((rule) => rule.id >= ourRuleIdPrefix)
-    const ourRules = rules.map((rule) => {
-      const ruleIndex = rule.id - ourRuleIdPrefix;
-      // 从规则中提取信息
-      const urlFilter = rule.condition.urlFilter;
-      const regexFilter = rule.condition.regexFilter;
-      const method = rule.condition.requestMethods?.[0]?.toUpperCase() || "GET";
+  // 首先尝试从缓存加载
+  const cached = await loadRulesFromCache();
 
-      // 解析响应体
-      let responseBody = {};
-      if (rule.action.type === "redirect" && rule.action.redirect?.url) {
-        const url = rule.action.redirect.url;
-        if (url.startsWith("data:application/json")) {
-          try {
-            const jsonStr = decodeURIComponent(url.split(",")[1]);
-            responseBody = JSON.parse(jsonStr);
-          } catch (e) {
-            console.warn("解析响应体失败:", e);
-            // 如果解析失败，使用默认的JSON对象
-            responseBody = { message: "默认响应体" };
-          }
-        } else if (url.startsWith("data:text/plain")) {
-          // 处理文本响应体
-          try {
-            responseBody = decodeURIComponent(url.split(",")[1]);
-          } catch (e) {
-            console.warn("解析文本响应体失败:", e);
-            responseBody = "默认文本响应体";
+  if (!cached) {
+    // 缓存中没有规则，从Chrome API加载
+    try {
+      const rules = await chrome.declarativeNetRequest.getDynamicRules();
+      console.log("加载规则成功-原始规则:", rules);
+
+      const ourRules = rules.map((rule) => {
+        const ruleIndex = rule.id - ourRuleIdPrefix;
+        // 从规则中提取信息
+        const urlFilter = rule.condition.urlFilter;
+        const regexFilter = rule.condition.regexFilter;
+        const method =
+          rule.condition.requestMethods?.[0]?.toUpperCase() || "GET";
+
+        // 解析响应体
+        let responseBody = {};
+        if (rule.action.type === "redirect" && rule.action.redirect?.url) {
+          const url = rule.action.redirect.url;
+          if (url.startsWith("data:application/json")) {
+            try {
+              const jsonStr = decodeURIComponent(url.split(",")[1]);
+              responseBody = JSON.parse(jsonStr);
+            } catch (e) {
+              console.warn("解析响应体失败:", e);
+              responseBody = { message: "默认响应体" };
+            }
+          } else if (url.startsWith("data:text/plain")) {
+            try {
+              responseBody = decodeURIComponent(url.split(",")[1]);
+            } catch (e) {
+              console.warn("解析文本响应体失败:", e);
+              responseBody = "默认文本响应体";
+            }
           }
         }
-      }
 
-      return {
-        id: ruleIndex,
-        ruleId: rule.id,
-        enabled: true,
-        urlFilter,
-        regexFilter,
-        urlPattern: urlFilter || regexFilter,
-        method,
-        response: {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-          body: responseBody,
-        },
-      } as RequestRule;
-    });
+        return {
+          id: ruleIndex,
+          ruleId: rule.id,
+          enabled: true,
+          urlFilter,
+          regexFilter,
+          urlPattern: urlFilter || regexFilter,
+          method,
+          response: {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+            body: responseBody,
+          },
+        } as RequestRule;
+      });
 
-    requestRules.value = ourRules;
-    console.log("成功加载规则ourRules：", ourRules, ourRules.length);
-  } catch (error) {
-    console.error("获取规则失败:", error);
-    requestRules.value = [];
+      requestRules.value = ourRules;
+      // 保存到缓存
+      await saveRulesToCache();
+      console.log("成功加载规则并保存到缓存，规则数量:", ourRules.length);
+    } catch (error) {
+      console.error("获取规则失败:", error);
+      requestRules.value = [];
+    }
   }
 };
 
@@ -287,15 +334,6 @@ const convertToDNRRule = (rule: RequestRule, ruleId: number) => {
 // 更新declarativeNetRequest规则
 const updateDNRRules = async () => {
   try {
-    if (!isEnabled.value) {
-      // 如果禁用，移除所有动态规则
-      await chrome.declarativeNetRequest.updateDynamicRules({
-        removeRuleIds: requestRules.value.map((rule) => rule.ruleId),
-      });
-      console.log("已禁用所有declarativeNetRequest规则");
-      return;
-    }
-
     const enabledRules = requestRules.value.filter((rule) => rule.enabled);
 
     const dnrRules: any = enabledRules.map((rule) =>
@@ -304,11 +342,16 @@ const updateDNRRules = async () => {
 
     // 先移除旧规则，再添加新规则
     await chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: requestRules.value.map((rule) => rule.ruleId),
+      removeRuleIds: requestRules.value.map((rule) => rule.ruleId) || [],
       addRules: dnrRules,
     });
 
-    console.log(`已成功更新 ${dnrRules.length} 条declarativeNetRequest规则`);
+    // 更新缓存
+    await saveRulesToCache();
+
+    console.log(
+      `已成功更新 ${dnrRules.length} 条declarativeNetRequest规则并同步缓存`
+    );
   } catch (error) {
     console.error("更新declarativeNetRequest规则时发生错误:", error);
   }
@@ -338,7 +381,10 @@ const ruleManager = {
         removeRuleIds: [rule.ruleId],
       });
 
-      console.log("规则删除完成，已从Chrome拦截规则中移除");
+      // 更新缓存
+      await saveRulesToCache();
+
+      console.log("规则删除完成，已从Chrome拦截规则中移除并同步缓存");
     } catch (error) {
       console.error("删除规则时发生错误:", error);
     }
@@ -357,7 +403,7 @@ const ruleManager = {
       requestRules.value[index] = { ...rule };
       // 直接更新Chrome拦截规则
       await updateDNRRules();
-      console.log("规则更新完成，已同步到Chrome拦截规则");
+      console.log("规则更新完成，已同步到Chrome拦截规则和缓存");
     }
   },
 
@@ -385,7 +431,7 @@ const ruleManager = {
 
     showAddRuleDialog.value = false;
     editingRule.value = null;
-    console.log("规则保存完成，已同步到Chrome拦截规则");
+    console.log("规则保存完成，已同步到Chrome拦截规则和缓存");
   },
 };
 
@@ -401,17 +447,39 @@ const editRule = (rule: RequestRule) => ruleManager.openEditor(rule);
 // 切换启用状态
 const toggleEnabled = async (enabled: boolean) => {
   isEnabled.value = enabled;
-  // 直接更新Chrome拦截规则
+
+  requestRules.value.forEach((rule) => {
+    rule.enabled = enabled;
+  });
   await updateDNRRules();
-  console.log(`拦截功能已${enabled ? "启用" : "禁用"}`);
 };
 
 // 切换规则详情显示
 const toggleRuleDetails = (rule: RequestRule) => {
   rule.expanded = !rule.expanded;
 };
-</script>
 
+// 清除缓存
+const clearCache = async () => {
+  try {
+    await chrome.storage.local.remove([
+      "requestRules",
+      "rulesLastModified",
+      "requestRulesEnabled",
+    ]);
+    console.log("缓存已清除");
+
+    // 重新从Chrome API加载规则
+    await loadRules();
+
+    // 显示成功提示
+    alert("缓存清除成功，已重新加载规则");
+  } catch (error) {
+    console.error("清除缓存失败:", error);
+    alert("清除缓存失败，请重试");
+  }
+};
+</script>
 <style lang="less" scoped>
 .request-interceptor {
   height: 100%;

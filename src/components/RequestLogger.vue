@@ -507,11 +507,9 @@ onUnmounted(() => {
       }
       .col-duration {
         width: 80px;
-        text-align: right;
       }
       .col-size {
         width: 80px;
-        text-align: right;
       }
     }
 
