@@ -5,7 +5,7 @@
       <!-- 规则管理区域 -->
       <div class="rules-section">
         <div class="section-header">
-          <h3>
+          <h3 class="header-actions">
             网络请求拦截规则
             <!-- 启用/禁用开关 -->
             <t-switch
@@ -14,6 +14,20 @@
               size="small"
               @change="toggleEnabled"
             />
+            <!-- URL过滤输入框 -->
+            <div class="filter-section">
+              <t-input
+                v-model="filterKeyword"
+                placeholder="输入URL关键词过滤规则"
+                size="small"
+                style="width: 200px"
+                clearable
+              >
+                <template #suffix>
+                  <t-icon name="search" />
+                </template>
+              </t-input>
+            </div>
           </h3>
           <div class="header-actions">
             <t-button size="small" theme="primary" @click="ruleManager.add()">
@@ -40,11 +54,19 @@
         <!-- 规则列表 -->
         <div class="rules-list">
           <!-- 空状态提示 -->
-          <div v-if="requestRules?.length === 0" class="empty-state">
+          <div v-if="filteredRules?.length === 0" class="empty-state">
             <div class="empty-content">
               <t-icon name="file-search" size="48" />
-              <p class="empty-text">暂无拦截规则</p>
-              <p class="empty-desc">请添加第一条拦截规则开始使用</p>
+              <p class="empty-text">
+                {{ filterKeyword ? "未找到匹配的规则" : "暂无拦截规则" }}
+              </p>
+              <p class="empty-desc">
+                {{
+                  filterKeyword
+                    ? "请尝试其他关键词"
+                    : "请添加第一条拦截规则开始使用"
+                }}
+              </p>
             </div>
           </div>
 
@@ -60,7 +82,7 @@
 
             <!-- 规则项 -->
             <div
-              v-for="rule in requestRules"
+              v-for="rule in filteredRules"
               :key="rule.id"
               class="rule-row"
               :class="{
@@ -157,7 +179,7 @@
 
 <script setup lang="ts">
 import { MessagePlugin } from "tdesign-vue-next";
-import { reactive, toRefs, ref, onMounted, toRaw } from "vue";
+import { reactive, toRefs, ref, onMounted, toRaw, computed } from "vue";
 import { RequestRule } from "@/types";
 import RuleEditor from "./RuleEditor.vue";
 import InterceptionHistory from "./InterceptionHistory.vue";
@@ -171,15 +193,32 @@ const reactiveData = reactive({
   showAddRuleDialog: false,
   editingRule: null as RequestRule | null,
   showHistoryDrawer: false,
+  filterKeyword: "",
 });
 
 // 解构响应式数据以便使用
-const { isEnabled, showAddRuleDialog, editingRule, showHistoryDrawer } =
-  toRefs(reactiveData);
+const {
+  isEnabled,
+  showAddRuleDialog,
+  editingRule,
+  showHistoryDrawer,
+  filterKeyword,
+} = toRefs(reactiveData);
 
 // 当前管理的规则
 const requestRules = ref<RequestRule[]>([]);
 const isSupportHistory = ref(!!chrome.declarativeNetRequest.onRuleMatchedDebug);
+
+// 过滤后的规则列表
+const filteredRules = computed(() => {
+  if (!filterKeyword.value.trim()) {
+    return requestRules.value;
+  }
+  const keyword = filterKeyword.value.toLowerCase();
+  return requestRules.value.filter((rule: any) =>
+    rule.urlPattern.toLowerCase().includes(keyword)
+  );
+});
 
 // 组件挂载时加载规则
 onMounted(() => {
@@ -539,6 +578,19 @@ defineExpose({
 
         @media (max-width: 768px) {
           justify-content: space-between;
+        }
+
+        .filter-section {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-right: 8px;
+
+          @media (max-width: 768px) {
+            margin-right: 0;
+            width: 100%;
+            justify-content: space-between;
+          }
         }
 
         .t-switch {

@@ -13,9 +13,6 @@
     "@vitejs/plugin-vue-jsx": "^4.1.2",
     "vite-svg-loader": "^5.1.0",
     "vue": "^3.4.21",
-    "echarts": "^5.4.3",
-    "vue-echarts": "^6.6.1",
-    "tdesign-icons-vue-next": "^1.7.0",
     "tdesign-vue-next": "^1.14.3"
   },
   "devDependencies": {

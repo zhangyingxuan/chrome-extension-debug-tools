@@ -3,7 +3,7 @@
     <!-- 控制区域 -->
     <div class="control-section">
       <div class="control-header">
-        <h3>
+        <h3 class="control-actions">
           网络请求记录
           <t-switch
             v-model="isRecording"
@@ -16,6 +16,13 @@
             v-model="showUrlParams"
             :label="['显示参数', '隐藏参数']"
             size="small"
+          />
+          <t-input
+            v-model="filterKeyword"
+            placeholder="输入URL关键词过滤"
+            size="small"
+            style="width: 200px; margin-right: 8px"
+            clearable
           />
         </h3>
         <div class="control-actions">
@@ -191,12 +198,21 @@ const emit = defineEmits<Emits>();
 
 const isRecording = ref(false);
 const showUrlParams = ref(true);
+const filterKeyword = ref("");
 const requestLogs = ref<RequestLog[]>([]);
 const requestList = ref<HTMLElement>();
 
 // 计算属性
 const reversedLogs = computed(() => {
-  return [...requestLogs.value].reverse();
+  let logs = [...requestLogs.value];
+
+  // 应用URL过滤
+  if (filterKeyword.value.trim()) {
+    const keyword = filterKeyword.value.trim().toLowerCase();
+    logs = logs.filter((log) => log.url.toLowerCase().includes(keyword));
+  }
+
+  return logs.reverse();
 });
 
 // 网络请求监听器

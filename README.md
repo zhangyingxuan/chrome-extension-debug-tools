@@ -23,7 +23,6 @@
 - **前端框架**：Vue 3 + TypeScript
 - **构建工具**：Vite
 - **UI 组件**：TDesign Vue Next
-- **图表库**：ECharts + Vue-ECharts
 - **样式预处理器**：Less
 
 ## 📦 安装与使用
