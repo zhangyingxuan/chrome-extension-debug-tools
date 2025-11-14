@@ -16,10 +16,11 @@
             />
           </h3>
           <div class="header-actions">
-            <t-button size="small" theme="primary" @click="addRule()">
+            <t-button size="small" theme="primary" @click="ruleManager.add()">
               添加规则
             </t-button>
             <t-button
+              v-if="isSupportHistory"
               size="small"
               theme="default"
               @click="showHistoryDrawer = true"
@@ -28,10 +29,10 @@
               查看拦截历史
             </t-button>
             <t-popconfirm
-              content="确定要清除自定义规则缓存吗？此操作不可恢复。"
-              @confirm="clearCache"
+              content="确定要清理所有规则吗？此操作不可恢复。"
+              @confirm="ruleManager.clearAll()"
             >
-              <t-button size="small" theme="default"> 清除缓存 </t-button>
+              <t-button size="small" theme="danger"> 清理所有规则 </t-button>
             </t-popconfirm>
           </div>
         </div>
@@ -72,7 +73,7 @@
                   <t-switch
                     v-model="rule.enabled"
                     size="small"
-                    @click.stop="updateRule(rule)"
+                    @click.stop="ruleManager.update(rule)"
                   />
                 </div>
                 <div class="col-method">
@@ -83,12 +84,12 @@
                 </div>
                 <div class="col-actions">
                   <div class="action-buttons" @click.stop>
-                    <t-button size="small" @click="editRule(rule)"
+                    <t-button size="small" @click="ruleManager.edit(rule)"
                       >编辑</t-button
                     >
                     <t-popconfirm
                       content="确定要删除这条拦截规则吗？"
-                      @confirm="deleteRule(rule)"
+                      @confirm="ruleManager.delete(rule)"
                     >
                       <t-button size="small" theme="danger">删除</t-button>
                     </t-popconfirm>
@@ -108,7 +109,9 @@
                   <div class="detail-content">
                     <div class="detail-row">
                       <span class="detail-label">规则ID:</span>
-                      <span class="detail-value">{{ rule.id }}</span>
+                      <span class="detail-value">
+                        [{{ rule.ruleId }}]{{ rule.id }}
+                      </span>
                     </div>
                     <div class="detail-row">
                       <span class="detail-label">URL模式:</span>
@@ -146,7 +149,7 @@
     <RuleEditor
       :visible="showAddRuleDialog"
       :editing-rule="editingRule"
-      @save="saveRule"
+      @save="ruleManager.save"
       @close="showAddRuleDialog = false"
     />
   </div>
@@ -162,15 +165,6 @@ import { generateId } from "@/utils/common";
 
 const ourRuleIdPrefix = 1000;
 
-interface Emits {
-  (e: "update-rules", rules: RequestRule[]): void;
-  (e: "add-rule", rule: RequestRule): void;
-  (e: "delete-rule", ruleId: string): void;
-  (e: "toggle-enabled", enabled: boolean): void;
-}
-
-const emit = defineEmits<Emits>();
-
 // 响应式数据
 const reactiveData = reactive({
   isEnabled: true,
@@ -185,69 +179,73 @@ const { isEnabled, showAddRuleDialog, editingRule, showHistoryDrawer } =
 
 // 当前管理的规则
 const requestRules = ref<RequestRule[]>([]);
+const isSupportHistory = ref(!!chrome.declarativeNetRequest.onRuleMatchedDebug);
 
 // 组件挂载时加载规则
 onMounted(() => {
   loadRules();
 });
 
-// 保存规则到缓存
-const saveRulesToCache = async () => {
-  try {
-    await chrome.storage.local.set({
-      requestRules: toRaw(requestRules.value),
-      requestRulesEnabled: isEnabled.value,
-      rulesLastModified: Date.now(),
-    });
-    console.log("规则已保存到缓存", requestRules.value, isEnabled.value);
-  } catch (error) {
-    console.error("保存规则到缓存失败:", error);
-  }
-};
-
-// 从缓存加载规则
-const loadRulesFromCache = async () => {
-  try {
-    const result = await chrome.storage.local.get([
-      "requestRules",
-      "rulesLastModified",
-      "requestRulesEnabled",
-    ]);
-    if (result.requestRules) {
-      requestRules.value = result.requestRules;
-      console.log(
-        "从缓存加载规则成功，最后修改时间:",
-        result.requestRules,
-        result.rulesLastModified,
-        new Date(result.rulesLastModified).toLocaleString()
-      );
-      return true;
+// 缓存管理函数
+const cacheManager = {
+  // 保存规则到缓存
+  save: async () => {
+    try {
+      await chrome.storage.local.set({
+        requestRules: toRaw(requestRules.value),
+        requestRulesEnabled: isEnabled.value,
+        rulesLastModified: Date.now(),
+      });
+    } catch (error) {
+      console.error("保存规则到缓存失败:", error);
     }
-  } catch (error) {
-    console.error("从缓存加载规则失败:", error);
-  }
-  return false;
+  },
+
+  // 从缓存加载规则
+  load: async () => {
+    try {
+      const result = await chrome.storage.local.get([
+        "requestRules",
+        "rulesLastModified",
+        "requestRulesEnabled",
+      ]);
+      if (result.requestRules) {
+        requestRules.value = result.requestRules;
+        return true;
+      }
+    } catch (error) {
+      console.error("从缓存加载规则失败:", error);
+    }
+    return false;
+  },
+
+  // 清除缓存
+  clear: async () => {
+    try {
+      await chrome.storage.local.remove([
+        "requestRules",
+        "rulesLastModified",
+        "requestRulesEnabled",
+      ]);
+    } catch (error) {
+      console.error("清除缓存失败:", error);
+    }
+  },
 };
 
 // 加载规则
 const loadRules = async () => {
-  // 首先尝试从缓存加载
-  const cached = await loadRulesFromCache();
-
+  const cached = await cacheManager.load();
   if (!cached) {
-    // 缓存中没有规则，从Chrome API加载
     try {
       const rules = await chrome.declarativeNetRequest.getDynamicRules();
-      console.log("加载规则成功-原始规则:", rules);
 
       const ourRules = rules.map((rule) => {
-        // 从规则中提取信息
         const urlFilter = rule.condition.urlFilter;
         const regexFilter = rule.condition.regexFilter;
         const method =
           rule.condition.requestMethods?.[0]?.toUpperCase() || "GET";
 
-        // 解析响应体
         let responseBody = {};
         if (rule.action.type === "redirect" && rule.action.redirect?.url) {
           const url = rule.action.redirect.url;
@@ -255,15 +253,13 @@ const loadRules = async () => {
             try {
               const jsonStr = decodeURIComponent(url.split(",")[1]);
               responseBody = JSON.parse(jsonStr);
-            } catch (e) {
-              console.warn("解析响应体失败:", e);
+            } catch {
               responseBody = { message: "默认响应体" };
             }
           } else if (url.startsWith("data:text/plain")) {
             try {
               responseBody = decodeURIComponent(url.split(",")[1]);
-            } catch (e) {
-              console.warn("解析文本响应体失败:", e);
+            } catch {
               responseBody = "默认文本响应体";
             }
           }
@@ -286,9 +282,7 @@ const loadRules = async () => {
       });
 
       requestRules.value = ourRules;
-      // 保存到缓存
-      await saveRulesToCache();
-      console.log("成功加载规则并保存到缓存，规则数量:", ourRules);
+      await cacheManager.save();
     } catch (error) {
       console.error("获取规则失败:", error);
       requestRules.value = [];
@@ -296,59 +290,55 @@ const loadRules = async () => {
   }
 };
 
-// 将规则转换为declarativeNetRequest格式
-const convertToDNRRule = (rule: RequestRule, ruleId: number) => {
-  const condition = {
-    urlFilter: rule.urlPattern,
-    regexFilter: rule.urlPattern,
-    resourceTypes: ["xmlhttprequest"],
-    requestMethods: [rule.method.toLowerCase()],
-  };
-  if (rule.filterType === "urlFilter") {
-    delete condition.regexFilter;
-  } else {
-    delete condition.urlFilter;
-  }
+// DNR规则转换器
+const dnrConverter = {
+  // 将规则转换为declarativeNetRequest格式
+  convert: (rule: RequestRule, ruleId: number) => {
+    const condition = {
+      urlFilter: rule.urlPattern,
+      regexFilter: rule.urlPattern,
+      resourceTypes: ["xmlhttprequest"],
+      requestMethods: [rule.method.toLowerCase()],
+    };
+    if (rule.filterType === "urlFilter") {
+      delete condition.regexFilter;
+    } else {
+      delete condition.urlFilter;
+    }
 
-  return {
-    id: ruleId,
-    priority: 1,
-    action: {
-      type: "redirect",
-      redirect: {
-        url: `data:application/json;charset=utf-8,${encodeURIComponent(
-          JSON.stringify(rule.response.body)
-        )}`,
+    return {
+      id: ruleId,
+      priority: 1,
+      action: {
+        type: "redirect",
+        redirect: {
+          url: `data:application/json;charset=utf-8,${encodeURIComponent(
+            JSON.stringify(rule.response.body)
+          )}`,
+        },
       },
-    },
-    condition,
-  };
-};
+      condition,
+    };
+  },
 
-// 更新declarativeNetRequest规则
-const updateDNRRules = async () => {
-  try {
-    const enabledRules = requestRules.value.filter((rule) => rule.enabled);
+  // 更新declarativeNetRequest规则
+  update: async () => {
+    try {
+      const enabledRules = requestRules.value.filter((rule) => rule.enabled);
+      const dnrRules: any = enabledRules.map((rule) =>
+        dnrConverter.convert(rule, rule.ruleId)
+      );
 
-    const dnrRules: any = enabledRules.map((rule) =>
-      convertToDNRRule(rule, rule.ruleId)
-    );
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: requestRules.value.map((rule) => rule.ruleId) || [],
+        addRules: dnrRules,
+      });
 
-    // 先移除旧规则，再添加新规则
-    await chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: requestRules.value.map((rule) => rule.ruleId) || [],
-      addRules: dnrRules,
-    });
-
-    // 更新缓存
-    await saveRulesToCache();
-
-    console.log(
-      `已成功更新 ${dnrRules.length} 条declarativeNetRequest规则并同步缓存`
-    );
-  } catch (error) {
-    console.error("更新declarativeNetRequest规则时发生错误:", error);
-  }
+      await cacheManager.save();
+    } catch (error) {
+      console.error("更新declarativeNetRequest规则时发生错误:", error);
+    }
+  },
 };
 
 // 格式化响应体
@@ -363,49 +353,45 @@ const formatResponseBody = (body: any) => {
   return JSON.stringify(body, null, 2);
 };
 
-// 规则管理函数
+// 规则管理器
 const ruleManager = {
-  delete: async (rule: RequestRule) => {
-    try {
-      // 从内存中删除规则
-      requestRules.value = requestRules.value.filter((r) => r.id !== rule.id);
-
-      // 从Chrome拦截规则中移除该规则
-      await chrome.declarativeNetRequest.updateDynamicRules({
-        removeRuleIds: [rule.ruleId],
-      });
-
-      // 更新缓存
-      await saveRulesToCache();
-
-      console.log("规则删除完成，已从Chrome拦截规则中移除并同步缓存");
-    } catch (error) {
-      console.error("删除规则时发生错误:", error);
-    }
+  // 添加规则
+  add: () => {
+    editingRule.value = null;
+    showAddRuleDialog.value = true;
   },
-  // 打开规则编辑器
-  openEditor: (rule: RequestRule | null = null) => {
+
+  // 编辑规则
+  edit: (rule: RequestRule) => {
     editingRule.value = rule;
     showAddRuleDialog.value = true;
   },
 
-  // 更新规则
+  // 删除规则
+  delete: async (rule: RequestRule) => {
+    try {
+      requestRules.value = requestRules.value.filter((r) => r.id !== rule.id);
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: [rule.ruleId],
+      });
+      await cacheManager.save();
+    } catch (error) {
+      console.error("删除规则时发生错误:", error);
+    }
+  },
+
+  // 更新规则状态
   update: async (rule: RequestRule) => {
-    // 更新内存中的规则
     const index = requestRules.value.findIndex((r) => r.id === rule.id);
     if (index !== -1) {
       requestRules.value[index] = { ...rule };
-      // 直接更新Chrome拦截规则
-      await updateDNRRules();
-      console.log("规则更新完成，已同步到Chrome拦截规则和缓存");
+      await dnrConverter.update();
     }
   },
 
   // 保存规则
   save: async (rule: RequestRule) => {
-    console.log("保存规则:", requestRules, rule);
-    if (editingRule.value && editingRule.value?.id) {
-      // 更新现有规则
+    if (editingRule.value?.id) {
       const index = requestRules.value.findIndex(
         (r) => r.id === editingRule.value!.id
       );
@@ -413,96 +399,71 @@ const ruleManager = {
         requestRules.value[index] = { ...rule };
       }
     } else {
-      // 添加新规则
-      const newRule: RequestRule = {
+      requestRules.value.push({
         ...rule,
         id: generateId("rule"),
-      };
-      requestRules.value.push(newRule);
+      });
     }
 
-    // 直接更新Chrome拦截规则
-    await updateDNRRules();
-
+    await dnrConverter.update();
     showAddRuleDialog.value = false;
     editingRule.value = null;
-    console.log("规则保存完成，已同步到Chrome拦截规则和缓存");
+  },
+
+  // 清理所有规则
+  clearAll: async () => {
+    try {
+      const ruleIds = requestRules.value.map((rule) => rule.ruleId);
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: ruleIds,
+      });
+      requestRules.value = [];
+      await cacheManager.clear();
+      MessagePlugin.success("所有规则已清理完成");
+    } catch (error) {
+      console.error("清理所有规则时发生错误:", error);
+      MessagePlugin.error("清理规则失败，请重试");
+    }
   },
 };
 
 // 接收快速添加规则数据
 const handleQuickAddRule = (ruleData: any) => {
-  // 格式化响应体数据
-  let formattedResponseBody = ruleData.responseBody || "{}";
-  if (typeof formattedResponseBody === "string") {
-    try {
-      // 如果是JSON字符串，先解析再格式化
-      const parsedBody = JSON.parse(formattedResponseBody);
-      formattedResponseBody = JSON.stringify(parsedBody, null, 2);
-    } catch (error) {
-      // 如果不是JSON，保持原样
-      console.log("响应体不是JSON格式，保持原样:", formattedResponseBody);
-    }
-  } else if (typeof formattedResponseBody === "object") {
-    // 如果是对象，直接格式化
-    formattedResponseBody = JSON.stringify(formattedResponseBody, null, 2);
-  }
-  // 取出最大的ruleId值+1
   const maxRuleId =
     requestRules.value.length > 0
       ? Math.max(...requestRules.value.map((r) => r.ruleId)) + 1
       : ourRuleIdPrefix;
 
-  // 创建新规则数据
   const newRule: RequestRule = {
     ruleId: maxRuleId,
     enabled: true,
     method: ruleData.method || "GET",
     urlPattern: ruleData.urlPattern,
     filterType: ruleData.filterType || "urlFilter",
-    responseBody: formattedResponseBody,
     response: {
       status: ruleData.response?.status || 200,
       headers: ruleData.response?.headers || {},
-      body: formattedResponseBody,
+      body: ruleData.responseBody || {},
     },
     expanded: false,
   };
 
-  // 打开规则编辑器并填充数据
-  editingRule.value = newRule;
-  showAddRuleDialog.value = true;
+  ruleManager.edit(newRule);
 };
-
-// 导出规则管理函数
-const {
-  openEditor: addRule,
-  update: updateRule,
-  save: saveRule,
-  delete: deleteRule,
-} = ruleManager;
-const editRule = (rule: RequestRule) => ruleManager.openEditor(rule);
-
-// 暴露方法给父组件
-defineExpose({
-  handleQuickAddRule,
-});
 
 // 切换启用状态
 const toggleEnabled = async (enabled: boolean) => {
   isEnabled.value = enabled;
-
   requestRules.value.forEach((rule) => {
     rule.enabled = enabled;
   });
-  if (enabled) {
-    chrome.action.setBadgeText({ text: "ON" });
-    chrome.action.setBadgeBackgroundColor({ color: "#52c41a" }); // 绿色
-  } else {
-    chrome.action.setBadgeText({ text: "OFF" });
-    chrome.action.setBadgeBackgroundColor({ color: "#f5222d" }); // 红色
-  }
-  await updateDNRRules();
+
+  chrome.action.setBadgeText({ text: enabled ? "ON" : "OFF" });
+  chrome.action.setBadgeBackgroundColor({
+    color: enabled ? "#52c41a" : "#f5222d",
+  });
+
+  await dnrConverter.update();
 };
 
 // 切换规则详情显示
@@ -510,26 +471,10 @@ const toggleRuleDetails = (rule: RequestRule) => {
   rule.expanded = !rule.expanded;
 };
 
-// 清除缓存
-const clearCache = async () => {
-  try {
-    await chrome.storage.local.remove([
-      "requestRules",
-      "rulesLastModified",
-      "requestRulesEnabled",
-    ]);
-    console.log("缓存已清除");
-
-    // 重新从Chrome API加载规则
-    await loadRules();
-
-    // 显示成功提示
-    MessagePlugin.success("缓存清除成功，已重新加载规则");
-  } catch (error) {
-    console.error("清除缓存失败:", error);
-    MessagePlugin.error("清除缓存失败，请重试");
-  }
-};
+// 暴露方法给父组件
+defineExpose({
+  handleQuickAddRule,
+});
 </script>
 <style lang="less" scoped>
 .request-interceptor {
@@ -695,10 +640,6 @@ const clearCache = async () => {
           .col-url {
             flex: 1;
           }
-          .col-response {
-            width: 100px;
-            text-align: center;
-          }
           .col-actions {
             width: 120px;
             text-align: center;
@@ -758,39 +699,6 @@ const clearCache = async () => {
               white-space: nowrap;
               overflow: hidden;
               text-overflow: ellipsis;
-            }
-
-            .col-response {
-              width: 100px;
-              text-align: center;
-
-              .status-badge {
-                font-size: 11px;
-                font-weight: 600;
-                padding: 2px 6px;
-                border-radius: 2px;
-
-                &.status-success {
-                  color: #107c10;
-                  background: #dff6dd;
-                }
-
-                &.status-redirect {
-                  color: #d83b01;
-                  background: #ffd8cc;
-                }
-
-                &.status-client-error,
-                &.status-server-error {
-                  color: #d13438;
-                  background: #fde7e9;
-                }
-
-                &.status-unknown {
-                  color: #666;
-                  background: #f3f2f1;
-                }
-              }
             }
 
             .col-actions {
@@ -867,40 +775,6 @@ const clearCache = async () => {
                 }
               }
             }
-          }
-        }
-      }
-
-      .chrome-rules-status {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px 16px;
-        background: #e6f7ff;
-        border: 1px solid #91d5ff;
-        border-radius: 6px;
-        margin: 12px 16px;
-
-        .status-info {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          color: #0050b3;
-          font-size: 14px;
-          font-weight: 500;
-
-          .t-icon {
-            color: #1890ff;
-          }
-        }
-
-        .t-button {
-          background: #1890ff;
-          color: white;
-          border: none;
-
-          &:hover {
-            background: #40a9ff;
           }
         }
       }

@@ -22,10 +22,9 @@
       <div class="history-list" ref="historyList">
         <!-- 表格标题 -->
         <div class="table-header">
-          <div class="col-status">状态</div>
+          <div class="col-requestId">链接ID</div>
           <div class="col-method">方法</div>
           <div class="col-url">URL</div>
-          <div class="col-status-code">状态码</div>
           <div class="col-time">时间</div>
         </div>
 
@@ -34,17 +33,11 @@
           v-for="record in interceptionHistory"
           :key="record.id"
           class="history-item"
-          :class="getHistoryItemClass(record)"
           @click="toggleDetails(record)"
         >
           <div class="table-row">
-            <div class="col-status">
-              <span
-                class="status-badge"
-                :class="getStatusClass(record.responseStatus)"
-              >
-                {{ record.responseStatus }}
-              </span>
+            <div class="col-requestId">
+              {{ record.requestId }}
             </div>
             <div class="col-method">
               <span class="method-badge">{{ record.method }}</span>
@@ -52,15 +45,7 @@
             <div class="col-url" :title="record.url">
               {{ truncateUrl(record.url) }}
             </div>
-            <div class="col-status-code">
-              <span class="status-code-badge">{{ record.responseStatus }}</span>
-            </div>
             <div class="col-time">{{ formatTime(record.timestamp) }}</div>
-            <t-icon
-              :name="record.expanded ? 'chevron-down' : 'chevron-right'"
-              size="16"
-              class="expand-icon"
-            />
           </div>
 
           <!-- 详情面板 -->
@@ -72,6 +57,12 @@
                   <span class="detail-label">规则ID:</span>
                   <span class="detail-value">{{
                     record.ruleId || "未知"
+                  }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">规则类型:</span>
+                  <span class="detail-value">{{
+                    record.rulesetId || "未知"
                   }}</span>
                 </div>
                 <div class="detail-row">
@@ -105,9 +96,8 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted } from "vue";
-import { Message } from "tdesign-vue-next";
 import type { InterceptionRecord } from "@/types";
-import { getStatusClass, formatTime } from "@/utils/common";
+import { formatTime } from "@/utils/common";
 
 interface Props {
   visible: boolean;
@@ -124,19 +114,6 @@ const historyList = ref<HTMLElement>();
 
 const interceptionHistory = ref<InterceptionRecord[]>([]);
 const autoScroll = ref(true);
-
-// 方法
-const getHistoryItemClass = (record: InterceptionRecord) => {
-  const classes = [];
-  if (record.error) {
-    classes.push("error");
-  } else if (record.responseStatus >= 400) {
-    classes.push("warning");
-  } else {
-    classes.push("success");
-  }
-  return classes;
-};
 
 const truncateUrl = (url: string) => {
   if (url.length > 80) {
@@ -183,16 +160,20 @@ onMounted(() => {
     // 记录所有匹配的规则，不区分来源
     const record = {
       id: details.rule.ruleId,
-      timestamp: Date.now(),
+      requestId: details.request.requestId,
       url: details.request.url,
       method: details.request.method,
       ruleId: details.rule.ruleId,
+      rulesetId: details.rule.rulesetId,
+      timestamp: Date.now(),
     };
 
     // 记录拦截历史
     handleInterceptionRecord(record);
     console.log(
-      `请求被declarativeNetRequest拦截: ${details.request.url}；规则ID: ${details.rule.ruleId}`
+      `请求被declarativeNetRequest拦截: ${JSON.stringify(details)}；规则ID: ${
+        details.rule.ruleId
+      }`
     );
   });
 });
@@ -259,7 +240,7 @@ onMounted(() => {
         top: 0;
         z-index: 10;
 
-        .col-status {
+        .col-requestId {
           width: 60px;
         }
         .col-method {
@@ -267,10 +248,6 @@ onMounted(() => {
         }
         .col-url {
           flex: 1;
-        }
-        .col-status-code {
-          width: 80px;
-          text-align: center;
         }
         .col-time {
           width: 100px;
@@ -291,18 +268,6 @@ onMounted(() => {
           border-bottom: none;
         }
 
-        &.success {
-          background-color: #f6ffed;
-        }
-
-        &.warning {
-          background-color: #fff7e6;
-        }
-
-        &.error {
-          background-color: #fff2f0;
-        }
-
         &.expanded {
           background-color: #e6f7ff;
         }
@@ -313,7 +278,7 @@ onMounted(() => {
           padding: 4px 8px;
           min-height: 24px;
 
-          .col-status {
+          .col-requestId {
             width: 60px;
           }
           .col-method {
@@ -324,11 +289,6 @@ onMounted(() => {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-          }
-          .col-status-code {
-            width: 80px;
-            text-align: center;
-            color: #666;
           }
           .col-time {
             width: 100px;
@@ -341,27 +301,6 @@ onMounted(() => {
             font-weight: 600;
             padding: 1px 4px;
             border-radius: 2px;
-
-            &.status-success {
-              color: #107c10;
-              background: #dff6dd;
-            }
-
-            &.status-redirect {
-              color: #d83b01;
-              background: #ffd8cc;
-            }
-
-            &.status-client-error,
-            &.status-server-error {
-              color: #d13438;
-              background: #fde7e9;
-            }
-
-            &.status-unknown {
-              color: #666;
-              background: #f3f2f1;
-            }
           }
 
           .method-badge {
@@ -371,12 +310,6 @@ onMounted(() => {
             border-radius: 3px;
             font-size: 11px;
             font-weight: 600;
-          }
-
-          .status-code-badge {
-            font-size: 11px;
-            font-weight: 500;
-            color: #666;
           }
 
           .expand-icon {

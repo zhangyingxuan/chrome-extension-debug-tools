@@ -46,44 +46,6 @@ body {
   text-align: right;
 }
 
-.mt-8 {
-  margin-top: 8px;
-}
-.mt-16 {
-  margin-top: 16px;
-}
-.mb-8 {
-  margin-bottom: 8px;
-}
-.mb-16 {
-  margin-bottom: 16px;
-}
-.ml-8 {
-  margin-left: 8px;
-}
-.mr-8 {
-  margin-right: 8px;
-}
-
-.pt-8 {
-  padding-top: 8px;
-}
-.pt-16 {
-  padding-top: 16px;
-}
-.pb-8 {
-  padding-bottom: 8px;
-}
-.pb-16 {
-  padding-bottom: 16px;
-}
-.pl-8 {
-  padding-left: 8px;
-}
-.pr-8 {
-  padding-right: 8px;
-}
-
 .flex {
   display: flex;
 }
@@ -120,55 +82,12 @@ body {
 @background-color: #fff;
 @background-color-light: #fafafa;
 
-/* 动画 */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateY(-10px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.fade-in {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-.slide-in {
-  animation: slideIn 0.3s ease-out;
-}
-
 /* 响应式断点 */
 @mobile: ~"(max-width: 768px)";
-@tablet: ~"(min-width: 769px) and (max-width: 1024px)";
-@desktop: ~"(min-width: 1025px)";
 
-/* 媒体查询混入 */
+/* 移动端适配 */
 .mobile(@rules) {
   @media @mobile {
-    @rules();
-  }
-}
-
-.tablet(@rules) {
-  @media @tablet {
-    @rules();
-  }
-}
-
-.desktop(@rules) {
-  @media @desktop {
     @rules();
   }
 }

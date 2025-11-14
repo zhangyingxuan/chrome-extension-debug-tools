@@ -249,7 +249,7 @@ const handleRequestFinished = (request: any) => {
   }
 
   const log: RequestLog = {
-    id: generateId("rule_log"),
+    id: generateId("request_log"),
     timestamp: Date.now(),
     url: request.request.url,
     method: request.request.method,
@@ -599,9 +599,6 @@ onUnmounted(() => {
       .col-method {
         width: 60px;
       }
-      .col-type {
-        width: 80px;
-      }
       .col-url {
         flex: 1;
       }
@@ -612,7 +609,7 @@ onUnmounted(() => {
         width: 80px;
       }
       .col-actions {
-        width: 80px;
+        width: 60px;
       }
     }
 
@@ -649,9 +646,6 @@ onUnmounted(() => {
         .col-method {
           width: 60px;
         }
-        .col-type {
-          width: 80px;
-        }
         .col-url {
           flex: 1;
           white-space: nowrap;
@@ -669,7 +663,7 @@ onUnmounted(() => {
           color: #666;
         }
         .col-actions {
-          width: 80px;
+          width: 60px;
           text-align: center;
         }
 
@@ -708,14 +702,6 @@ onUnmounted(() => {
           border-radius: 3px;
           font-size: 11px;
           font-weight: 600;
-        }
-
-        .type-badge {
-          color: #666;
-          font-size: 11px;
-          background: #f3f2f1;
-          padding: 1px 6px;
-          border-radius: 3px;
         }
 
         .expand-icon {
@@ -821,24 +807,6 @@ onUnmounted(() => {
               color: #a19f9d;
               font-size: 12px;
             }
-
-            .timing-content {
-              .property {
-                display: flex;
-                margin-bottom: 8px;
-                font-size: 12px;
-
-                .property-name {
-                  width: 120px;
-                  color: #605e5c;
-                  font-weight: 500;
-                }
-
-                .property-value {
-                  color: #323130;
-                }
-              }
-            }
           }
         }
       }
@@ -857,6 +825,28 @@ onUnmounted(() => {
       .empty-desc {
         margin: 0;
         font-size: 12px;
+      }
+    }
+  }
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+  .request-logger {
+    .request-list {
+      .table-header {
+        padding: 4px 6px;
+        font-size: 11px;
+
+        .col-duration,
+        .col-size {
+          width: 60px;
+        }
+      }
+
+      .request-item .request-row {
+        padding: 3px 6px;
+        font-size: 11px;
       }
     }
   }

@@ -21,33 +21,14 @@ export interface RequestRule {
 export interface InterceptionRecord {
   id: string;
   ruleId: number;
+  rulesetId: number;
   timestamp: number;
-  url: string;
   method: string;
+  url: string;
+  requestId: string;
   matchedRule?: string;
-  responseStatus: number;
   error?: string;
   expanded: boolean;
-}
-
-// 性能监控数据类型
-export interface PerformanceData {
-  timestamp: number;
-  cpuUsage: number;
-  memoryUsage: number;
-  jsHeapSize: number;
-  jsHeapUsed: number;
-  domNodes: number;
-  eventListeners: number;
-}
-
-// 进程/线程信息
-export interface ProcessInfo {
-  pid: number;
-  name: string;
-  cpu: number;
-  memory: number;
-  type: 'main' | 'renderer' | 'worker' | 'other';
 }
 
 // 网络请求记录类型
