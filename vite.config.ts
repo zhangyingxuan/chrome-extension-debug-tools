@@ -16,13 +16,12 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: 'index.html',
-        background: 'public/background.js',
-        // content: 'src/content.ts',
+        interceptor: 'src/utils/interceptor.ts',
         devtools: 'public/devtools.html'
       },
       output: {
         entryFileNames: (chunkInfo) => {
-          if (chunkInfo.name === 'background' || chunkInfo.name === 'content') {
+          if (chunkInfo.name === 'interceptor') {
             return '[name].js';
           }
           return 'assets/[name]-[hash].js';

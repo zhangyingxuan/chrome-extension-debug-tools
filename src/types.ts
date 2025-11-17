@@ -3,15 +3,18 @@ export interface RequestRule {
   id?: string;
   ruleId: number;
   enabled: boolean;
+  name?: string;
   urlPattern?: string;
   regexFilter?: string;
-  // 非必填
-  filterType?: string;
+  filterType?: 'urlFilter' | 'regexFilter';
   method: string;
+  requestHeaders?: Record<string, string>;
+  requestBody?: any;
   response: {
     status: number;
     headers: Record<string, string>;
     body: any;
+    bodyType?: 'json' | 'function';
   };
   expanded?: boolean;
   responseBody?: string;

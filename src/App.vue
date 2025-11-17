@@ -11,6 +11,13 @@
       </div>
       <div
         class="tab-item"
+        :class="{ active: activeTab === 'script-interceptor' }"
+        @click="activeTab = 'script-interceptor'"
+      >
+        脚本拦截
+      </div>
+      <div
+        class="tab-item"
         :class="{ active: activeTab === 'network' }"
         @click="activeTab = 'network'"
       >
@@ -33,6 +40,13 @@
           <RequestLogger @open-rule-editor="handleOpenRuleEditor" />
         </div>
       </div>
+
+      <!-- 脚本拦截面板 -->
+      <div class="panel" v-show="activeTab === 'script-interceptor'">
+        <div class="panel-content">
+          <ScriptInterceptor ref="scriptInterceptorRef" />
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -41,22 +55,30 @@
 import { ref } from "vue";
 import RequestInterceptor from "./components/RequestInterceptor.vue";
 import RequestLogger from "./components/RequestLogger.vue";
-import { RequestRule } from "./types";
+import ScriptInterceptor from "./components/ScriptInterceptor.vue";
 
 // 响应式数据
-const activeTab = ref("network");
+const activeTab = ref("script-interceptor");
 const requestInterceptorRef = ref<InstanceType<typeof RequestInterceptor>>();
+const scriptInterceptorRef = ref<InstanceType<typeof ScriptInterceptor>>();
 
 // 处理打开规则编辑器事件
 const handleOpenRuleEditor = (ruleData: any) => {
-  // 切换到网络拦截标签页
-  activeTab.value = "network";
+  // 根据拦截类型选择标签页
+  const interceptorType = ruleData.interceptorType || "network";
+  activeTab.value = interceptorType;
 
-  // 延迟执行，确保RequestInterceptor组件已加载
+  // 延迟执行，确保组件已加载
   setTimeout(() => {
-    if (requestInterceptorRef.value) {
-      // 直接调用RequestInterceptor的方法
+    if (interceptorType === "network" && requestInterceptorRef.value) {
+      // 调用RequestInterceptor的方法
       requestInterceptorRef.value.handleQuickAddRule(ruleData);
+    } else if (
+      interceptorType === "script-interceptor" &&
+      scriptInterceptorRef.value
+    ) {
+      // 调用ScriptInterceptor的方法
+      scriptInterceptorRef.value.handleQuickAddRule(ruleData);
     }
   }, 100);
 };
