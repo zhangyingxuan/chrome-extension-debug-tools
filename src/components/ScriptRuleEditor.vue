@@ -1,7 +1,6 @@
 <template>
   <t-drawer
     :visible="visible"
-    :header="editingRule ? '编辑拦截规则' : '添加拦截规则'"
     size="70%"
     placement="right"
     @close="handleClose"
@@ -16,103 +15,58 @@
       >
         <!-- 基础信息 -->
         <div class="section">
-          <div class="section-title">基础信息</div>
-          <div class="form-row">
-            <t-form-item label="规则名称" name="name">
-              <t-input
-                v-model="formData.name"
-                placeholder="请输入规则名称（可选）"
-              />
-            </t-form-item>
-          </div>
-          <div class="form-row">
-            <t-form-item label="过滤类型" name="filterType">
-              <t-radio-group v-model="formData.filterType">
-                <t-radio value="urlFilter">URL过滤</t-radio>
-                <t-radio value="regexFilter">正则表达式</t-radio>
-              </t-radio-group>
-            </t-form-item>
-          </div>
-          <div class="form-row">
-            <t-form-item label="URL模式" name="urlPattern">
-              <t-input
-                v-model="formData.urlPattern"
-                :placeholder="
-                  formData.filterType === 'urlFilter'
-                    ? '请输入URL关键词（如：api/user）'
-                    : '请输入正则表达式（如：.*api.*）'
-                "
-              />
-            </t-form-item>
-          </div>
-          <div class="form-row">
-            <t-form-item label="请求方法" name="method">
-              <t-select v-model="formData.method">
-                <t-option value="ALL">所有方法</t-option>
-                <t-option value="GET">GET</t-option>
-                <t-option value="POST">POST</t-option>
-                <t-option value="PUT">PUT</t-option>
-                <t-option value="DELETE">DELETE</t-option>
-                <t-option value="PATCH">PATCH</t-option>
-                <t-option value="HEAD">HEAD</t-option>
-                <t-option value="OPTIONS">OPTIONS</t-option>
-              </t-select>
-            </t-form-item>
-          </div>
+          <t-form-item label="拦截规则" name="urlPattern" required>
+            <t-input
+              v-model="formData.urlPattern"
+              :placeholder="
+                formData.filterType === 'urlFilter'
+                  ? '请输入URL关键词（如：api/user）'
+                  : '请输入正则表达式（如：.*api.*）'
+              "
+            >
+              <!-- :tips="
+              rule.filterType === 'urlFilter'
+                ? '支持通配符匹配，如: */api/*，不能包含中文等非ASCII字符'
+                : '支持正则表达式，如: ^https://api\\.example\\.com/.*'
+            " -->
+              <template #prefixIcon>
+                <t-select
+                  v-model="formData.filterType"
+                  class="filter-type-select"
+                >
+                  <t-option key="urlFilter" label="URL匹配" value="urlFilter" />
+                  <t-option
+                    key="regexFilter"
+                    label="Reg匹配"
+                    value="regexFilter"
+                  />
+                </t-select>
+                <t-select
+                  v-model="formData.method"
+                  class="filter-method-select"
+                >
+                  <t-option label="所有方法" value="ALL" />
+                  <t-option label="GET" value="GET" />
+                  <t-option label="POST" value="POST" />
+                  <t-option label="PUT" value="PUT" />
+                  <t-option label="DELETE" value="DELETE" />
+                  <t-option label="PATCH" value="PATCH" />
+                  <t-option label="OPTIONS" value="OPTIONS" />
+                  <t-option label="HEAD" value="HEAD" />
+                </t-select>
+              </template>
+            </t-input>
+          </t-form-item>
         </div>
 
         <!-- 请求和响应修改 -->
         <div class="section">
           <div class="section-title">请求和响应修改</div>
+
           <t-tabs v-model="activeTab" theme="card">
-            <!-- 请求头 -->
-            <t-tab-panel value="requestHeaders" label="请求头">
-              <div class="tab-content">
-                <t-form-item label="请求头修改" name="requestHeaders">
-                  <t-textarea
-                    v-model="formData.requestHeadersJson"
-                    placeholder='请输入JSON格式的请求头，如：{"Content-Type": "application/json", "Authorization": "Bearer token"}'
-                    :autosize="{ minRows: 8, maxRows: 12 }"
-                  />
-                </t-form-item>
-              </div>
-            </t-tab-panel>
-
-            <!-- 请求体 -->
-            <t-tab-panel value="requestBody" label="请求体">
-              <div class="tab-content">
-                <t-form-item label="请求体修改" name="requestBody">
-                  <t-textarea
-                    v-model="formData.requestBodyJson"
-                    placeholder='请输入JSON格式的请求体修改，如：{"userId": 123, "status": "active"}'
-                    :autosize="{ minRows: 8, maxRows: 12 }"
-                  />
-                </t-form-item>
-              </div>
-            </t-tab-panel>
-
             <!-- 返回体 -->
             <t-tab-panel value="responseBody" label="返回体">
               <div class="tab-content">
-                <div class="form-row">
-                  <t-form-item label="状态码" name="response.status">
-                    <t-input-number
-                      v-model="formData.response.status"
-                      :min="100"
-                      :max="599"
-                      placeholder="请输入HTTP状态码"
-                    />
-                  </t-form-item>
-                </div>
-                <div class="form-row">
-                  <t-form-item label="响应头" name="response.headers">
-                    <t-textarea
-                      v-model="formData.responseHeadersJson"
-                      placeholder='请输入JSON格式的响应头，如：{"Content-Type": "application/json", "Cache-Control": "no-cache"}'
-                      :autosize="{ minRows: 3, maxRows: 6 }"
-                    />
-                  </t-form-item>
-                </div>
                 <div class="form-row">
                   <t-form-item label="响应体类型" name="response.bodyType">
                     <t-radio-group v-model="formData.response.bodyType">
@@ -146,6 +100,55 @@
                 </div>
               </div>
             </t-tab-panel>
+            <!-- 返回头 -->
+            <t-tab-panel value="responseHeader" label="返回头">
+              <div class="tab-content">
+                <div class="form-row">
+                  <t-form-item label="状态码" name="response.status">
+                    <t-input-number
+                      v-model="formData.response.status"
+                      :min="100"
+                      :max="599"
+                      placeholder="请输入HTTP状态码"
+                    />
+                  </t-form-item>
+                </div>
+                <div class="form-row">
+                  <t-form-item label="响应头" name="response.headers">
+                    <t-textarea
+                      v-model="formData.responseHeadersJson"
+                      placeholder='请输入JSON格式的响应头，如：{"Content-Type": "application/json", "Cache-Control": "no-cache"}'
+                      :autosize="{ minRows: 3, maxRows: 6 }"
+                    />
+                  </t-form-item>
+                </div>
+              </div>
+            </t-tab-panel>
+            <!-- 请求头 -->
+            <t-tab-panel value="requestHeaders" label="请求头">
+              <div class="tab-content">
+                <t-form-item label="请求头修改" name="requestHeaders">
+                  <t-textarea
+                    v-model="formData.requestHeadersJson"
+                    placeholder='请输入JSON格式的请求头，如：{"Content-Type": "application/json", "Authorization": "Bearer token"}'
+                    :autosize="{ minRows: 8, maxRows: 12 }"
+                  />
+                </t-form-item>
+              </div>
+            </t-tab-panel>
+
+            <!-- 请求体 -->
+            <t-tab-panel value="requestBody" label="请求体">
+              <div class="tab-content">
+                <t-form-item label="请求体修改" name="requestBody">
+                  <t-textarea
+                    v-model="formData.requestBodyJson"
+                    placeholder='请输入JSON格式的请求体修改，如：{"userId": 123, "status": "active"}'
+                    :autosize="{ minRows: 8, maxRows: 12 }"
+                  />
+                </t-form-item>
+              </div>
+            </t-tab-panel>
           </t-tabs>
         </div>
       </t-form>
@@ -172,11 +175,10 @@ const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
 const formRef = ref();
-const activeTab = ref("requestHeaders");
+const activeTab = ref("responseBody");
 
 // 表单数据
 const formData = reactive({
-  name: "",
   filterType: "urlFilter" as "urlFilter" | "regexFilter",
   urlPattern: "",
   method: "GET",
@@ -251,7 +253,6 @@ watch(
         if (props.editingRule) {
           // 编辑模式：填充现有规则数据
           const rule = props.editingRule;
-          formData.name = rule.name || "";
           formData.filterType = rule.filterType || "urlFilter";
           formData.urlPattern = rule.urlPattern || "";
           formData.method = rule.method || "GET";
@@ -333,7 +334,6 @@ const handleSubmit = async () => {
         id: props.editingRule?.id,
         ruleId: props.editingRule?.ruleId || Date.now(),
         enabled: props.editingRule?.enabled ?? true,
-        name: formData.name,
         filterType: formData.filterType,
         urlPattern: formData.urlPattern,
         method: formData.method,
@@ -388,6 +388,16 @@ const handleClose = () => {
   height: 100%;
   display: flex;
   flex-direction: column;
+
+  .filter-type-select {
+    width: 100px;
+  }
+  .filter-method-select {
+    width: 100px;
+  }
+  .t-input--prefix {
+    padding: 0;
+  }
 
   .section {
     margin-bottom: 24px;

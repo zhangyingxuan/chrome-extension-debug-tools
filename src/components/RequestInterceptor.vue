@@ -207,7 +207,9 @@ const {
 
 // 当前管理的规则
 const requestRules = ref<RequestRule[]>([]);
-const isSupportHistory = ref(!!chrome.declarativeNetRequest.onRuleMatchedDebug);
+const isSupportHistory = ref(
+  !!chrome.declarativeNetRequest?.onRuleMatchedDebug
+);
 
 // 过滤后的规则列表
 const filteredRules = computed(() => {
