@@ -101,14 +101,35 @@
         <!-- 请求详情 -->
         <div v-if="log.expanded" class="request-details">
           <div class="detail-tabs">
-            <div class="tab active">Headers</div>
-            <div class="tab">Preview</div>
-            <div class="tab">Response</div>
-            <div class="tab">Timing</div>
+            <div
+              class="tab"
+              :class="{ active: getActiveTab(log) === 'headers' }"
+              @click="switchTab(log, 'headers')"
+            >
+              Headers
+            </div>
+            <div
+              class="tab"
+              :class="{ active: getActiveTab(log) === 'response' }"
+              @click="switchTab(log, 'response')"
+            >
+              Response
+            </div>
+            <div
+              class="tab"
+              :class="{ active: getActiveTab(log) === 'timing' }"
+              @click="switchTab(log, 'timing')"
+            >
+              Timing
+            </div>
           </div>
 
           <div class="detail-content">
-            <div class="tab-panel active">
+            <!-- Headers Tab -->
+            <div
+              class="tab-panel"
+              :class="{ active: getActiveTab(log) === 'headers' }"
+            >
               <div class="section">
                 <div class="section-title">General</div>
                 <div class="section-content">
@@ -125,8 +146,12 @@
                     <span class="property-value">{{ log.status }}</span>
                   </div>
                   <div class="property">
-                    <span class="property-name">Remote Address:</span>
-                    <span class="property-value">127.0.0.1:8080</span>
+                    <span class="property-name">Resource Type:</span>
+                    <span class="property-value">{{ log.resourceType }}</span>
+                  </div>
+                  <div class="property">
+                    <span class="property-name">Duration:</span>
+                    <span class="property-value">{{ log.duration }}ms</span>
                   </div>
                 </div>
               </div>
@@ -134,41 +159,52 @@
               <div class="section">
                 <div class="section-title">Request Headers</div>
                 <div class="section-content">
-                  <pre class="headers-content">{{
-                    formatHeaders(log.requestHeaders)
-                  }}</pre>
+                  <pre class="headers-content">{{ log.requestHeaders }}</pre>
                 </div>
               </div>
 
               <div class="section">
                 <div class="section-title">Response Headers</div>
                 <div class="section-content">
-                  <pre class="headers-content">{{
-                    formatHeaders(log.responseHeaders)
-                  }}</pre>
+                  <pre class="headers-content">{{ log.responseHeaders }}</pre>
                 </div>
               </div>
             </div>
 
-            <div class="tab-panel">
-              <div v-if="log.responseBody" class="preview-content">
-                <pre>{{ formatBody(log.responseBody) }}</pre>
-              </div>
-              <div v-else class="no-content">No preview available</div>
-            </div>
-
-            <div class="tab-panel">
+            <!-- Response Tab -->
+            <div
+              class="tab-panel"
+              :class="{ active: getActiveTab(log) === 'response' }"
+            >
               <div v-if="log.responseBody" class="response-content">
+                <div class="content-type-indicator">
+                  Content-Type:
+                  {{ getContentType(log.responseBody, log.responseHeaders) }}
+                </div>
                 <pre>{{ formatBody(log.responseBody) }}</pre>
               </div>
               <div v-else class="no-content">No response available</div>
             </div>
 
-            <div class="tab-panel">
+            <!-- Timing Tab -->
+            <div
+              class="tab-panel"
+              :class="{ active: getActiveTab(log) === 'timing' }"
+            >
               <div class="timing-content">
                 <div class="property">
                   <span class="property-name">Duration:</span>
                   <span class="property-value">{{ log.duration }}ms</span>
+                </div>
+                <div class="property">
+                  <span class="property-name">Timestamp:</span>
+                  <span class="property-value">{{
+                    new Date(log.timestamp).toLocaleString()
+                  }}</span>
+                </div>
+                <div class="property">
+                  <span class="property-name">Response Size:</span>
+                  <span class="property-value">{{ getResponseSize(log) }}</span>
                 </div>
               </div>
             </div>
@@ -209,6 +245,11 @@ const filterKeyword = ref("");
 const requestLogs = ref<RequestLog[]>([]);
 const requestList = ref<HTMLElement>();
 
+// 为每个请求设置独立的tab状态
+const getActiveTab = (log: RequestLog): string => {
+  return log.activeTab || "headers";
+};
+
 // 计算属性
 const reversedLogs = computed(() => {
   let logs = [...requestLogs.value];
@@ -232,8 +273,6 @@ const startRecording = () => {
     return;
   }
 
-  console.log("开始网络请求记录");
-
   if (requestFinishedListener) {
     chrome.devtools.network.onRequestFinished.removeListener(
       requestFinishedListener
@@ -251,8 +290,6 @@ const startRecording = () => {
 
 // 停止网络请求记录
 const stopRecording = () => {
-  console.log("停止网络请求记录");
-
   if (requestFinishedListener && chrome.devtools?.network) {
     chrome.devtools.network.onRequestFinished.removeListener(
       requestFinishedListener
@@ -284,6 +321,7 @@ const handleRequestFinished = (request: any) => {
     responseBody: null,
     expanded: false,
     resourceType,
+    activeTab: "headers", // 初始化tab状态
   };
 
   // 尝试获取响应体内容
@@ -368,59 +406,95 @@ const toggleRequestDetails = (log: RequestLog) => {
   log.expanded = !log.expanded;
 };
 
-// 格式化headers
-const formatHeaders = (headers: Record<string, string>) => {
-  return Object.entries(headers)
-    .map(([key, value]) => `${key}: ${value}`)
-    .join("\n");
+// 切换tab
+const switchTab = (log: RequestLog, tabName: string) => {
+  log.activeTab = tabName;
 };
 
-// 格式化body
-const formatBody = (body: any) => {
-  if (typeof body === "string") {
-    try {
-      return JSON.stringify(JSON.parse(body), null, 2);
-    } catch {
+// 格式化body数据，支持JSON、数组等格式
+const formatBody = (body: any): string => {
+  if (!body) return "No content";
+
+  try {
+    // 如果是字符串，尝试解析为JSON
+    if (typeof body === "string") {
+      // 检查是否是JSON字符串
+      const trimmedBody = body.trim();
+      if (
+        (trimmedBody.startsWith("{") && trimmedBody.endsWith("}")) ||
+        (trimmedBody.startsWith("[") && trimmedBody.endsWith("]"))
+      ) {
+        const parsed = JSON.parse(body);
+        return JSON.stringify(parsed, null, 2);
+      }
+      // 如果不是JSON，检查是否是HTML
+      if (body.includes("<html") || body.includes("<!DOCTYPE")) {
+        return body; // 保持HTML原样
+      }
+      // 普通文本
       return body;
     }
+
+    // 如果是对象或数组，直接格式化
+    if (typeof body === "object") {
+      return JSON.stringify(body, null, 2);
+    }
+
+    // 其他类型转换为字符串
+    return String(body);
+  } catch (error) {
+    console.warn("格式化body失败:", error);
+    return typeof body === "string" ? body : String(body);
   }
-  return JSON.stringify(body, null, 2);
+};
+
+// 判断内容类型
+const getContentType = (
+  body: any,
+  headers: Record<string, string> = {}
+): string => {
+  if (!body) return "text";
+
+  const contentType = headers["content-type"] || headers["Content-Type"] || "";
+
+  if (contentType.includes("application/json")) {
+    return "json";
+  } else if (contentType.includes("text/html")) {
+    return "html";
+  } else if (contentType.includes("text/plain")) {
+    return "text";
+  } else if (
+    contentType.includes("application/xml") ||
+    contentType.includes("text/xml")
+  ) {
+    return "xml";
+  }
+
+  // 根据内容自动判断
+  if (typeof body === "string") {
+    const trimmed = body.trim();
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) return "json";
+    if (trimmed.startsWith("[") && trimmed.endsWith("]")) return "json";
+    if (body.includes("<html") || body.includes("<!DOCTYPE")) return "html";
+    if (body.includes("<?xml") || body.includes("<xml")) return "xml";
+  }
+
+  return "text";
 };
 
 // 格式化URL显示，只保留最后一路路径及参数
 const formatUrl = (url: string) => {
-  try {
-    const urlObj = new URL(url);
-    const pathname = urlObj.pathname;
+  const urlObj = new URL(url);
+  let lastTwoParts = extractUrlPattern(url);
 
-    // 获取最后一路路径
-    const pathParts = pathname.split("/").filter((part) => part.trim() !== "");
-    const lastPath =
-      pathParts.length > 0 ? pathParts[pathParts.length - 1] : "";
+  // 获取查询参数
+  const searchParams = urlObj.searchParams.toString();
 
-    // 获取查询参数
-    const searchParams = urlObj.searchParams.toString();
-
-    // 根据showUrlParams决定是否显示参数
-    if (showUrlParams.value && searchParams) {
-      return `/${lastPath}?${searchParams}`;
-    } else {
-      return `/${lastPath}`;
-    }
-  } catch (error) {
-    // 如果URL解析失败，返回原始URL或简化版本
-    const urlParts = url.split("/");
-    const lastPart = urlParts[urlParts.length - 1] || "";
-
-    if (showUrlParams.value && url.includes("?")) {
-      const baseUrl = url.split("?")[0];
-      const queryString = url.split("?")[1];
-      const baseParts = baseUrl.split("/");
-      const lastBasePart = baseParts[baseParts.length - 1] || "";
-      return `/${lastBasePart}?${queryString}`;
-    } else {
-      return `/${lastPart}`;
-    }
+  // 根据showUrlParams决定是否显示参数
+  if (showUrlParams.value && searchParams) {
+    return `${lastTwoParts}?${searchParams}`;
+  } else {
+    return `${lastTwoParts}`;
   }
 };
 
@@ -455,7 +529,7 @@ const quickAddRule = (log: RequestLog) => {
       formattedResponseBody = JSON.stringify(parsedBody, null, 2);
     } catch (error) {
       // 如果不是JSON，保持原样
-      console.log("响应体不是JSON格式，保持原样:", formattedResponseBody);
+      console.warn("响应体不是JSON格式，保持原样:", formattedResponseBody);
     }
   } else if (typeof formattedResponseBody === "object") {
     // 如果是对象，直接格式化
@@ -472,6 +546,7 @@ const quickAddRule = (log: RequestLog) => {
       headers: log.responseHeaders || {},
       body: formattedResponseBody,
     },
+    interceptorType: "request-interceptor", // 路由到请求拦截器
   };
 
   // 直接打开规则编辑器弹窗
@@ -480,7 +555,6 @@ const quickAddRule = (log: RequestLog) => {
 
 // 脚本拦截（使用JavaScript处理）
 const scriptIntercept = (log: RequestLog) => {
-  console.log("脚本拦截:", toRaw(log));
   // 提取URL模式
   const urlPattern = extractUrlPattern(log.url);
 
@@ -552,11 +626,6 @@ const extractUrlPattern = (url: string): string => {
     }
   }
 };
-
-onMounted(() => {
-  console.log("RequestLogger组件已挂载");
-});
-
 onUnmounted(() => {
   stopRecording();
 });
@@ -647,6 +716,9 @@ onUnmounted(() => {
       .col-method {
         width: 60px;
       }
+      .col-type {
+        width: 60px;
+      }
       .col-url {
         flex: 1;
       }
@@ -701,6 +773,9 @@ onUnmounted(() => {
           width: 60px;
         }
         .col-method {
+          width: 60px;
+        }
+        .col-type {
           width: 60px;
         }
         .col-url {
@@ -791,11 +866,13 @@ onUnmounted(() => {
             color: #666;
             cursor: pointer;
             border-bottom: 2px solid transparent;
+            transition: all 0.2s;
 
             &.active {
               color: #0078d4;
               border-bottom-color: #0078d4;
               font-weight: 600;
+              background: #f8f9fa;
             }
 
             &:hover {
@@ -814,6 +891,17 @@ onUnmounted(() => {
 
             &.active {
               display: block;
+            }
+
+            .content-type-indicator {
+              background: #e6f7ff;
+              border: 1px solid #91d5ff;
+              border-radius: 4px;
+              padding: 8px 12px;
+              margin-bottom: 12px;
+              font-size: 12px;
+              color: #0050b3;
+              font-weight: 500;
             }
 
             .section {
@@ -838,12 +926,15 @@ onUnmounted(() => {
                     width: 140px;
                     color: #605e5c;
                     font-weight: 500;
+                    flex-shrink: 0;
                   }
 
                   .property-value {
                     flex: 1;
                     color: #323130;
                     word-break: break-all;
+                    font-family: "SF Mono", Monaco, "Cascadia Code",
+                      "Roboto Mono", Consolas, "Courier New", monospace;
                   }
                 }
               }
@@ -861,9 +952,37 @@ onUnmounted(() => {
                 Consolas, "Courier New", monospace;
               white-space: pre-wrap;
               word-break: break-all;
-              max-height: 300px;
+              max-height: 400px;
               overflow: auto;
               margin: 0;
+              line-height: 1.4;
+            }
+
+            // JSON语法高亮样式
+            .preview-content pre,
+            .response-content pre {
+              color: #24292e;
+
+              // JSON键名
+              .json-key {
+                color: #d73a49;
+              }
+              // JSON字符串值
+              .json-string {
+                color: #032f62;
+              }
+              // JSON数字
+              .json-number {
+                color: #005cc5;
+              }
+              // JSON布尔值
+              .json-boolean {
+                color: #e36209;
+              }
+              // JSON null
+              .json-null {
+                color: #6a737d;
+              }
             }
 
             .no-content {
@@ -871,6 +990,8 @@ onUnmounted(() => {
               padding: 40px 20px;
               color: #a19f9d;
               font-size: 12px;
+              background: #f8f9fa;
+              border-radius: 4px;
             }
           }
         }

@@ -18,8 +18,8 @@
       </div>
       <div
         class="tab-item"
-        :class="{ active: activeTab === 'network' }"
-        @click="activeTab = 'network'"
+        :class="{ active: activeTab === 'request-interceptor' }"
+        @click="activeTab = 'request-interceptor'"
       >
         请求拦截
       </div>
@@ -27,13 +27,6 @@
 
     <!-- 主内容区域 -->
     <div class="main-content">
-      <!-- 网络调试面板 -->
-      <div class="panel" v-show="activeTab === 'network'">
-        <div class="panel-content">
-          <DeclarativeNetInterceptor ref="requestInterceptorRef" />
-        </div>
-      </div>
-
       <!-- 网络请求记录面板 -->
       <div class="panel" v-show="activeTab === 'request-log'">
         <div class="panel-content">
@@ -47,6 +40,12 @@
           <ScriptInterceptor ref="scriptInterceptorRef" />
         </div>
       </div>
+      <!-- 网络调试面板 -->
+      <div class="panel" v-show="activeTab === 'request-interceptor'">
+        <div class="panel-content">
+          <DeclarativeNetInterceptor ref="requestInterceptorRef" />
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -54,11 +53,11 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import DeclarativeNetInterceptor from "./components/DeclarativeNetInterceptor.vue";
-import RequestLogger from "./components/RequestLogger.vue";
 import ScriptInterceptor from "./components/ScriptInterceptor.vue";
+import RequestLogger from "./components/RequestLogger.vue";
 
 // 响应式数据
-const activeTab = ref("network");
+const activeTab = ref("request-log");
 const requestInterceptorRef =
   ref<InstanceType<typeof DeclarativeNetInterceptor>>();
 const scriptInterceptorRef = ref<InstanceType<typeof ScriptInterceptor>>();
@@ -69,10 +68,12 @@ const handleOpenRuleEditor = (ruleData: any) => {
   const interceptorType = ruleData.interceptorType || "request-log";
   activeTab.value = interceptorType;
 
-  console.log("handleOpenRuleEditor===", ruleData);
   // 延迟执行，确保组件已加载
   setTimeout(() => {
-    if (interceptorType === "network" && requestInterceptorRef.value) {
+    if (
+      interceptorType === "request-interceptor" &&
+      requestInterceptorRef.value
+    ) {
       // 调用RequestInterceptor的方法
       requestInterceptorRef.value.handleQuickAddRule(ruleData);
     } else if (

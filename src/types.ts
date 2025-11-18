@@ -53,6 +53,7 @@ export interface RequestLog {
   responseBody?: any;
   expanded: boolean;
   resourceType?: string;
+  activeTab?: string;
 }
 
 // Chrome消息类型

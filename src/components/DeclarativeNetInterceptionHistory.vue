@@ -170,11 +170,6 @@ onMounted(() => {
 
     // 记录拦截历史
     handleInterceptionRecord(record);
-    console.log(
-      `请求被declarativeNetRequest拦截: ${JSON.stringify(details)}；规则ID: ${
-        details.rule.ruleId
-      }`
-    );
   });
 });
 </script>
@@ -310,12 +305,6 @@ onMounted(() => {
             border-radius: 3px;
             font-size: 11px;
             font-weight: 600;
-          }
-
-          .expand-icon {
-            margin-left: 8px;
-            color: #666;
-            opacity: 0.6;
           }
         }
 

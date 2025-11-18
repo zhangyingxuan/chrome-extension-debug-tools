@@ -33,7 +33,7 @@ export class InterceptorManager {
     (window as any).__interceptorManager__ = this;
     this.interceptFetch();
     this.interceptXMLHttpRequest();
-    console.log('[Interceptor] 拦截器初始化完成');
+    // console.log('[Interceptor] 拦截器初始化完成');
   }
 
   /**
@@ -57,7 +57,7 @@ export class InterceptorManager {
     XMLHttpRequest.prototype.open = this.originalXMLHttpRequestOpen;
     XMLHttpRequest.prototype.send = this.originalXMLHttpRequestSend;
 
-    console.log('[Interceptor] 所有拦截器已恢复完成', new Date().toISOString());
+    // console.log('[Interceptor] 所有拦截器已恢复完成', new Date().toISOString());
   }
 
   /**
@@ -76,12 +76,12 @@ export class InterceptorManager {
         // 修改请求
         const modifiedRequest = this.modifyRequest(init, matchedRule);
 
-        console.log('[Interceptor] 请求修改信息:', {
-          originalHeaders: init.headers,
-          modifiedHeaders: modifiedRequest.headers,
-          originalBody: init.body,
-          modifiedBody: modifiedRequest.body
-        });
+        // console.log('[Interceptor] 请求修改信息:', {
+        //   originalHeaders: init.headers,
+        //   modifiedHeaders: modifiedRequest.headers,
+        //   originalBody: init.body,
+        //   modifiedBody: modifiedRequest.body
+        // });
 
         try {
           // 执行原始fetch
@@ -94,15 +94,15 @@ export class InterceptorManager {
           // 修改响应
           const modifiedResponse = await this.modifyResponse(response, matchedRule);
 
-          console.log('[Interceptor] 响应修改信息:', {
-            originalStatus: response.status,
-            originalStatusText: response.statusText,
-            originalHeaders: this.headersToObject(response.headers),
-            originalResponse: response.body,
-            modifiedStatus: modifiedResponse.status,
-            modifiedHeaders: this.headersToObject(modifiedResponse.headers),
-            modifiedResponseBody: modifiedResponse.body,
-          });
+          // console.log('[Interceptor] 响应修改信息:', {
+          //   originalStatus: response.status,
+          //   originalStatusText: response.statusText,
+          //   originalHeaders: this.headersToObject(response.headers),
+          //   originalResponse: response.body,
+          //   modifiedStatus: modifiedResponse.status,
+          //   modifiedHeaders: this.headersToObject(modifiedResponse.headers),
+          //   modifiedResponseBody: modifiedResponse.body,
+          // });
 
           return modifiedResponse;
         } catch (error) {
@@ -167,10 +167,10 @@ export class InterceptorManager {
       const matchedRule = (this as any)._matchedRule;
 
       if (matchedRule && matchedRule.enabled) {
-        console.log('[Interceptor] XMLHttpRequest请求修改信息:', {
-          originalData: data,
-          requestHeaders: matchedRule.requestHeaders
-        });
+        // console.log('[Interceptor] XMLHttpRequest请求修改信息:', {
+        //   originalData: data,
+        //   requestHeaders: matchedRule.requestHeaders
+        // });
 
         // 修改请求头
         self.modifyXHRHeaders(this, matchedRule);
@@ -178,10 +178,10 @@ export class InterceptorManager {
         // 修改请求体
         const modifiedData = self.modifyXHRBody(data, matchedRule);
 
-        console.log('[Interceptor] XMLHttpRequest请求体修改:', {
-          originalData: data,
-          modifiedData: modifiedData
-        });
+        // console.log('[Interceptor] XMLHttpRequest请求体修改:', {
+        //   originalData: data,
+        //   modifiedData: modifiedData
+        // });
 
         // 重写onreadystatechange
         const originalOnReadyStateChange = this.onreadystatechange;
@@ -247,7 +247,7 @@ export class InterceptorManager {
       } else if (rule.filterType === "regexFilter") {
         try {
           const regex = new RegExp(rule.urlPattern!);
-          console.log(`[Interceptor] 正则匹配结果: ${regex.test(url)}: ${url} 匹配 ${rule.urlPattern}`);
+          // console.log(`[Interceptor] 正则匹配结果: ${regex.test(url)}: ${url} 匹配 ${rule.urlPattern}`);
           if (regex.test(url)) {
             return rule;
           }
@@ -328,20 +328,20 @@ export class InterceptorManager {
     if (rule.enableResponseBody) {
       if (rule.response.bodyType === "function") {
         // 执行JavaScript函数
-        console.log('[Interceptor] 执行JavaScript响应函数:', {
-          functionLength: rule.response.body.length,
-          functionPreview: rule.response.body.substring(0, 100) + '...'
-        });
+        // console.log('[Interceptor] 执行JavaScript响应函数:', {
+        //   functionLength: rule.response.body.length,
+        //   functionPreview: rule.response.body.substring(0, 100) + '...'
+        // });
 
         try {
           const func = new Function("originalResponse", "rule", rule.response.body);
           const result = await func(response, rule);
 
-          console.log('[Interceptor] JavaScript函数执行结果:', {
-            resultType: typeof result,
-            isResponse: result instanceof Response,
-            resultPreview: result instanceof Response ? '[Response Object]' : JSON.stringify(result).substring(0, 200)
-          });
+          // console.log('[Interceptor] JavaScript函数执行结果:', {
+          //   resultType: typeof result,
+          //   isResponse: result instanceof Response,
+          //   resultPreview: result instanceof Response ? '[Response Object]' : JSON.stringify(result).substring(0, 200)
+          // });
 
           if (result instanceof Response) {
             return result;

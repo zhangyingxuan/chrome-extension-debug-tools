@@ -21,7 +21,7 @@ async function injectContent() {
       chrome.storage.local.get(
         ["scriptRequestRules", "scriptRequestRulesEnabled"],
         (result) => {
-          console.log("注入拦截脚本成功【初始化content.js】", result);
+          // console.log("注入拦截脚本成功【初始化content.js】", result);
           const { scriptRequestRulesEnabled = true, scriptRequestRules = [] } =
             result;
           if (scriptRequestRulesEnabled) {
@@ -47,7 +47,7 @@ injectContent();
 // 2. 二次更新（无需刷新）
 chrome.runtime.onMessage.addListener((data) => {
   const { from, action, value } = data;
-  console.log("二次转发消息", from, action, value);
+  // console.log("二次转发消息", from, action, value);
   if (data.from !== "blowsysun-debug-tools") return;
   window.postMessage({ from, action, value });
 });

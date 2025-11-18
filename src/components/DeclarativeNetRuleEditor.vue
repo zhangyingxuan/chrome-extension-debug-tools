@@ -161,14 +161,13 @@ const formRules = {
     {
       validator: (value: string) => {
         if (responseType.value === "json" && value) {
-          console.log("校验JSON格式", value);
           try {
             // 使用修复后的JSON进行验证
             const fixedJson = fixJsonFormat(value);
             JSON.parse(fixedJson);
             return true;
           } catch (e) {
-            console.log("JSON格式错误", e);
+            console.error("JSON格式错误", e);
             return { result: false, message: "JSON格式错误，请检查响应体格式" };
           }
         }
@@ -309,7 +308,7 @@ const saveRule = async () => {
     emit("save", ruleToSave);
     resetForm();
   } catch (error) {
-    console.log("表单校验失败:", error);
+    console.warn("表单校验失败:", error);
   }
 };
 </script>
