@@ -26,7 +26,7 @@
                 @blur="applyFilter"
               >
                 <template #suffix>
-                  <t-icon name="search" />
+                  <SearchIcon />
                 </template>
               </t-input>
               <t-button
@@ -57,7 +57,7 @@
           <!-- 空状态提示 -->
           <div v-if="filteredRules?.length === 0" class="empty-state">
             <div class="empty-content">
-              <t-icon name="file-search" size="48" />
+              <FileSearchIcon size="48" class="empty-icon" />
               <p class="empty-text">
                 {{ filterKeyword ? "未找到匹配的规则" : "暂无拦截规则" }}
               </p>
@@ -122,11 +122,12 @@
                     </t-popconfirm>
                   </div>
                 </div>
-                <t-icon
-                  :name="rule.expanded ? 'chevron-down' : 'chevron-right'"
+                <ChevronDownIcon
+                  v-if="rule.expanded"
                   size="16"
                   class="expand-icon"
                 />
+                <ChevronRightIcon v-else size="16" class="expand-icon" />
               </div>
 
               <!-- 规则详情 -->
@@ -261,6 +262,12 @@ import { reactive, toRefs, ref, onMounted, toRaw, computed } from "vue";
 import { RequestRule } from "@/types";
 import ScriptRuleEditor from "./ScriptRuleEditor.vue";
 import { generateId } from "@/utils/common";
+import {
+  SearchIcon,
+  FileSearchIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+} from "tdesign-icons-vue-next";
 
 const ourRuleIdPrefix = 2000;
 
@@ -642,7 +649,7 @@ defineExpose({
           text-align: center;
           color: #999;
 
-          .t-icon {
+          .empty-icon {
             color: #d9d9d9;
             margin-bottom: 16px;
           }

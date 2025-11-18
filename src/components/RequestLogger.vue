@@ -91,11 +91,8 @@
               脚本拦截
             </t-button>
           </div>
-          <t-icon
-            :name="log.expanded ? 'chevron-down' : 'chevron-right'"
-            size="16"
-            class="expand-icon"
-          />
+          <ChevronDownIcon v-if="log.expanded" size="16" class="expand-icon" />
+          <ChevronRightIcon v-else size="16" class="expand-icon" />
         </div>
 
         <!-- 请求详情 -->
@@ -214,7 +211,7 @@
 
       <!-- 空状态 -->
       <div v-if="requestLogs.length === 0" class="empty-state">
-        <t-icon name="file-search" size="48" />
+        <FileSearchIcon size="48" />
         <p class="empty-text">暂无请求记录</p>
         <p class="empty-desc">
           {{
@@ -227,7 +224,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, toRaw } from "vue";
+import {
+  FileSearchIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+} from "tdesign-icons-vue-next";
+import { ref, computed, onUnmounted } from "vue";
 import { generateId, getStatusClass } from "@/utils/common";
 import { RequestLog } from "@/types";
 
@@ -729,7 +731,7 @@ onUnmounted(() => {
         width: 80px;
       }
       .col-actions {
-        width: 180px;
+        width: 120px;
         text-align: center;
 
         .t-button {
@@ -795,7 +797,7 @@ onUnmounted(() => {
           color: #666;
         }
         .col-actions {
-          width: 180px;
+          width: 120px;
           text-align: center;
 
           .t-button {
