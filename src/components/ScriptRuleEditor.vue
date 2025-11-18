@@ -291,6 +291,7 @@ watch(
   (visible) => {
     if (visible) {
       nextTick(() => {
+        activeTab.value = "responseBody";
         if (props.editingRule) {
           // 编辑模式：填充现有规则数据
           const rule = props.editingRule;
@@ -316,11 +317,12 @@ watch(
           formData.response.bodyType = rule.response?.bodyType || "json";
 
           if (formData.response.bodyType === "json") {
-            formData.responseBodyJson = JSON.stringify(
-              rule.response?.body || {},
-              null,
-              2
-            );
+            let body = rule.response?.body;
+            if (typeof rule.response.body === "string") {
+              body = JSON.parse(body || "{}");
+            }
+            // 处理响应体数据
+            formData.responseBodyJson = JSON.stringify(body || {}, null, 2);
           } else {
             formData.responseBodyJson = rule.response?.body || "";
           }

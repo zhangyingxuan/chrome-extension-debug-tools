@@ -30,7 +30,7 @@
       <!-- 网络调试面板 -->
       <div class="panel" v-show="activeTab === 'network'">
         <div class="panel-content">
-          <RequestInterceptor ref="requestInterceptorRef" />
+          <DeclarativeNetInterceptor ref="requestInterceptorRef" />
         </div>
       </div>
 
@@ -58,16 +58,18 @@ import RequestLogger from "./components/RequestLogger.vue";
 import ScriptInterceptor from "./components/ScriptInterceptor.vue";
 
 // 响应式数据
-const activeTab = ref("script-interceptor");
-const requestInterceptorRef = ref<InstanceType<typeof DeclarativeNetInterceptor>>();
+const activeTab = ref("network");
+const requestInterceptorRef =
+  ref<InstanceType<typeof DeclarativeNetInterceptor>>();
 const scriptInterceptorRef = ref<InstanceType<typeof ScriptInterceptor>>();
 
 // 处理打开规则编辑器事件
 const handleOpenRuleEditor = (ruleData: any) => {
   // 根据拦截类型选择标签页
-  const interceptorType = ruleData.interceptorType || "network";
+  const interceptorType = ruleData.interceptorType || "request-log";
   activeTab.value = interceptorType;
 
+  console.log("handleOpenRuleEditor===", ruleData);
   // 延迟执行，确保组件已加载
   setTimeout(() => {
     if (interceptorType === "network" && requestInterceptorRef.value) {

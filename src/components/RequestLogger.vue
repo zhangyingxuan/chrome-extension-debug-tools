@@ -53,9 +53,8 @@
         :key="log.id"
         class="request-item"
         :class="getRequestItemClass(log)"
-        @click="toggleRequestDetails(log)"
       >
-        <div class="request-row">
+        <div class="request-row" @click="toggleRequestDetails(log)">
           <div class="col-status">
             <span class="status-badge" :class="getStatusClass(log.status)">
               {{ log.status }}
@@ -200,7 +199,6 @@ interface Emits {
   (e: "clear-logs"): void;
   (e: "update-logs", logs: RequestLog[]): void;
   (e: "open-rule-editor", ruleData: any): void;
-  (e: "open-script-editor", ruleData: any): void;
 }
 
 const emit = defineEmits<Emits>();
@@ -469,7 +467,6 @@ const quickAddRule = (log: RequestLog) => {
     method: log.method,
     urlPattern: urlPattern,
     filterType: "urlFilter",
-    responseBody: formattedResponseBody,
     response: {
       status: log.status,
       headers: log.responseHeaders || {},
