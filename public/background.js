@@ -1,6 +1,6 @@
 // 监听扩展安装事件
 chrome.runtime.onInstalled.addListener(async () => {
-  console.log("前端调试增强器已安装");
+  // console.log("前端调试增强器已安装");
 });
 
 // 监听存储变化，当拦截规则变更时通知所有标签页

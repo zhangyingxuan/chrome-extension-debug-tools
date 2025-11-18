@@ -12,10 +12,16 @@
         :data="formData"
         :rules="formRules"
         label-align="top"
+        :label-width="50"
       >
         <!-- 基础信息 -->
         <div class="section">
-          <t-form-item label="拦截规则" name="urlPattern" required>
+          <t-form-item
+            label="规则"
+            name="urlPattern"
+            required
+            labelAlign="left"
+          >
             <t-input
               v-model="formData.urlPattern"
               :placeholder="
@@ -68,70 +74,91 @@
             <t-tab-panel value="responseBody" label="返回体">
               <div class="tab-content">
                 <div class="form-row">
-                  <t-form-item label="响应体类型" name="response.bodyType">
-                    <t-radio-group v-model="formData.response.bodyType">
-                      <t-radio value="json">JSON数据</t-radio>
-                      <t-radio value="function">JavaScript函数</t-radio>
-                    </t-radio-group>
-                  </t-form-item>
-                </div>
-                <div class="form-row">
-                  <t-form-item
-                    :label="
-                      formData.response.bodyType === 'json'
-                        ? '响应体'
-                        : 'JavaScript函数'
-                    "
-                    name="response.body"
-                  >
-                    <t-textarea
-                      v-model="formData.responseBodyJson"
-                      :placeholder="
-                        formData.response.bodyType === 'json'
-                          ? '请输入JSON格式的响应体'
-                          : '请输入JavaScript函数'
-                      "
-                      :autosize="{
-                        minRows: 6,
-                        maxRows: 12,
-                      }"
+                  <t-form-item label="">
+                    <t-switch
+                      v-model="formData.enableResponseBody"
+                      :label="['启用', '禁用']"
                     />
                   </t-form-item>
+                  <t-form-item label="" name="response.bodyType">
+                    <t-select
+                      v-model="formData.response.bodyType"
+                      class="filter-type-select"
+                      :disabled="!formData.enableResponseBody"
+                    >
+                      <t-option key="json" label="JSON" value="json" />
+                      <t-option
+                        key="function"
+                        label="JavaScript"
+                        value="function"
+                      />
+                    </t-select>
+                  </t-form-item>
                 </div>
+                <t-form-item label="" name="response.body">
+                  <t-textarea
+                    v-model="formData.responseBodyJson"
+                    :placeholder="
+                      formData.response.bodyType === 'json'
+                        ? '请输入JSON格式的响应体'
+                        : '请输入JavaScript函数'
+                    "
+                    :autosize="{
+                      minRows: 6,
+                      maxRows: 12,
+                    }"
+                    :disabled="!formData.enableResponseBody"
+                  />
+                </t-form-item>
               </div>
             </t-tab-panel>
             <!-- 返回头 -->
             <t-tab-panel value="responseHeader" label="返回头">
               <div class="tab-content">
                 <div class="form-row">
-                  <t-form-item label="状态码" name="response.status">
+                  <t-form-item label="">
+                    <t-switch
+                      v-model="formData.enableResponseHeaders"
+                      :label="['启用', '禁用']"
+                    />
+                  </t-form-item>
+                  <t-form-item label="" name="response.status">
                     <t-input-number
                       v-model="formData.response.status"
                       :min="100"
                       :max="599"
                       placeholder="请输入HTTP状态码"
+                      :disabled="!formData.enableResponseHeaders"
                     />
                   </t-form-item>
                 </div>
-                <div class="form-row">
-                  <t-form-item label="响应头" name="response.headers">
-                    <t-textarea
-                      v-model="formData.responseHeadersJson"
-                      placeholder='请输入JSON格式的响应头，如：{"Content-Type": "application/json", "Cache-Control": "no-cache"}'
-                      :autosize="{ minRows: 3, maxRows: 6 }"
-                    />
-                  </t-form-item>
-                </div>
+                <t-form-item label="" name="response.headers">
+                  <t-textarea
+                    v-model="formData.responseHeadersJson"
+                    placeholder='请输入JSON格式的响应头，如：{"Content-Type": "application/json", "Cache-Control": "no-cache"}'
+                    :autosize="{ minRows: 3, maxRows: 6 }"
+                    :disabled="!formData.enableResponseHeaders"
+                  />
+                </t-form-item>
               </div>
             </t-tab-panel>
             <!-- 请求头 -->
             <t-tab-panel value="requestHeaders" label="请求头">
               <div class="tab-content">
-                <t-form-item label="请求头修改" name="requestHeaders">
+                <div class="form-row">
+                  <t-form-item label="">
+                    <t-switch
+                      v-model="formData.enableRequestHeaders"
+                      :label="['启用', '禁用']"
+                    />
+                  </t-form-item>
+                </div>
+                <t-form-item label="" name="requestHeaders">
                   <t-textarea
                     v-model="formData.requestHeadersJson"
                     placeholder='请输入JSON格式的请求头，如：{"Content-Type": "application/json", "Authorization": "Bearer token"}'
                     :autosize="{ minRows: 8, maxRows: 12 }"
+                    :disabled="!formData.enableRequestHeaders"
                   />
                 </t-form-item>
               </div>
@@ -140,11 +167,20 @@
             <!-- 请求体 -->
             <t-tab-panel value="requestBody" label="请求体">
               <div class="tab-content">
-                <t-form-item label="请求体修改" name="requestBody">
+                <div class="form-row">
+                  <t-form-item label="">
+                    <t-switch
+                      v-model="formData.enableRequestBody"
+                      :label="['启用', '禁用']"
+                    />
+                  </t-form-item>
+                </div>
+                <t-form-item label="" name="requestBody">
                   <t-textarea
                     v-model="formData.requestBodyJson"
                     placeholder='请输入JSON格式的请求体修改，如：{"userId": 123, "status": "active"}'
                     :autosize="{ minRows: 8, maxRows: 12 }"
+                    :disabled="!formData.enableRequestBody"
                   />
                 </t-form-item>
               </div>
@@ -192,6 +228,11 @@ const formData = reactive({
   },
   responseHeadersJson: "{}",
   responseBodyJson: "{}",
+  // 新增：各部分拦截开关
+  enableRequestBody: false,
+  enableRequestHeaders: false,
+  enableResponseBody: true,
+  enableResponseHeaders: false,
 });
 
 // 表单验证规则
@@ -283,6 +324,12 @@ watch(
           } else {
             formData.responseBodyJson = rule.response?.body || "";
           }
+
+          // 加载开关状态
+          formData.enableRequestBody = rule.enableRequestBody ?? false;
+          formData.enableRequestHeaders = rule.enableRequestHeaders ?? false;
+          formData.enableResponseBody = rule.enableResponseBody ?? true;
+          formData.enableResponseHeaders = rule.enableResponseHeaders ?? false;
         } else {
           // 添加模式：重置表单
           resetForm();
@@ -309,6 +356,11 @@ const resetForm = () => {
     },
     responseHeadersJson: "{}",
     responseBodyJson: "{}",
+    // 重置开关状态：默认只有返回体开启
+    enableRequestBody: false,
+    enableRequestHeaders: false,
+    enableResponseBody: true,
+    enableResponseHeaders: false,
   });
 };
 
@@ -317,16 +369,26 @@ const handleSubmit = async () => {
   const result = await formRef.value.validate();
   if (result === true) {
     try {
-      // 解析JSON数据
-      const requestHeaders = parseJson(formData.requestHeadersJson, "请求头");
-      const requestBody = parseJson(formData.requestBodyJson, "请求体");
-      const responseHeaders = parseJson(formData.responseHeadersJson, "响应头");
+      // 解析JSON数据，根据开关状态决定是否应用
+      const requestHeaders = formData.enableRequestHeaders
+        ? parseJson(formData.requestHeadersJson, "请求头")
+        : {};
+      const requestBody = formData.enableRequestBody
+        ? parseJson(formData.requestBodyJson, "请求体")
+        : {};
+      const responseHeaders = formData.enableResponseHeaders
+        ? parseJson(formData.responseHeadersJson, "响应头")
+        : {};
 
       let responseBody: any;
-      if (formData.response.bodyType === "json") {
-        responseBody = parseJson(formData.responseBodyJson, "响应体");
+      if (formData.enableResponseBody) {
+        if (formData.response.bodyType === "json") {
+          responseBody = parseJson(formData.responseBodyJson, "响应体");
+        } else {
+          responseBody = formData.responseBodyJson;
+        }
       } else {
-        responseBody = formData.responseBodyJson;
+        responseBody = {};
       }
 
       // 构建规则对象
@@ -340,12 +402,17 @@ const handleSubmit = async () => {
         requestHeaders,
         requestBody,
         response: {
-          status: formData.response.status,
+          status: formData.enableResponseHeaders ? formData.response.status : 0,
           headers: responseHeaders,
           body: responseBody,
           bodyType: formData.response.bodyType,
         },
         expanded: props.editingRule?.expanded ?? false,
+        // 新增：保存开关状态
+        enableRequestBody: formData.enableRequestBody,
+        enableRequestHeaders: formData.enableRequestHeaders,
+        enableResponseBody: formData.enableResponseBody,
+        enableResponseHeaders: formData.enableResponseHeaders,
       };
 
       emit("save", rule);
@@ -400,8 +467,8 @@ const handleClose = () => {
   }
 
   .section {
-    margin-bottom: 24px;
-    padding: 16px;
+    margin-bottom: 8px;
+    padding: 4px;
     background: #fafafa;
     border-radius: 6px;
 
@@ -409,13 +476,16 @@ const handleClose = () => {
       font-size: 14px;
       font-weight: 600;
       color: #333;
-      margin-bottom: 16px;
+      margin-bottom: 6px;
       padding-bottom: 8px;
       border-bottom: 1px solid #e8e8e8;
     }
 
     .form-row {
-      margin-bottom: 16px;
+      padding: 0 6px;
+      margin-bottom: 6px;
+      display: flex;
+      // align-items: center;
 
       &:last-child {
         margin-bottom: 0;
@@ -449,7 +519,7 @@ const handleClose = () => {
     padding: 16px 0;
 
     .form-row {
-      margin-bottom: 16px;
+      margin-bottom: 6px;
 
       &:last-child {
         margin-bottom: 0;

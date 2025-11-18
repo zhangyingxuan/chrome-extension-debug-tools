@@ -867,6 +867,7 @@ defineExpose({
                   display: flex;
                   margin-bottom: 6px;
                   font-size: 12px;
+                  align-items: center;
 
                   .detail-label {
                     width: 100px;
@@ -924,7 +925,7 @@ defineExpose({
                   color: #999;
                   font-style: italic;
                   font-size: 12px;
-                  padding: 8px 0;
+                  padding: 2px 0;
                 }
               }
             }

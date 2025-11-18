@@ -91,19 +91,17 @@ export class InterceptorManager {
             modifiedRequest
           );
 
-          console.log('[Interceptor] 原始响应信息:', {
-            status: response.status,
-            statusText: response.statusText,
-            headers: this.headersToObject(response.headers)
-          });
-
           // 修改响应
           const modifiedResponse = await this.modifyResponse(response, matchedRule);
 
-          console.log('[Interceptor] 响应修改完成:', {
+          console.log('[Interceptor] 响应修改信息:', {
             originalStatus: response.status,
+            originalStatusText: response.statusText,
+            originalHeaders: this.headersToObject(response.headers),
+            originalResponse: response.body,
             modifiedStatus: modifiedResponse.status,
-            ruleStatus: matchedRule.response.status
+            modifiedHeaders: this.headersToObject(modifiedResponse.headers),
+            modifiedResponseBody: modifiedResponse.body,
           });
 
           return modifiedResponse;
@@ -169,10 +167,10 @@ export class InterceptorManager {
       const matchedRule = (this as any)._matchedRule;
 
       if (matchedRule && matchedRule.enabled) {
-        // console.log('[Interceptor] XMLHttpRequest请求修改信息:', {
-        //   originalData: data,
-        //   requestHeaders: matchedRule.requestHeaders
-        // });
+        console.log('[Interceptor] XMLHttpRequest请求修改信息:', {
+          originalData: data,
+          requestHeaders: matchedRule.requestHeaders
+        });
 
         // 修改请求头
         self.modifyXHRHeaders(this, matchedRule);
@@ -230,14 +228,14 @@ export class InterceptorManager {
     // });
 
     for (const rule of enabledRules) {
-      console.log(`[Interceptor] 检查规则: ${rule.id} (${rule.ruleId})`, {
-        method: rule.method,
-        filterType: rule.filterType,
-        urlPattern: rule.urlPattern
-      });
+      // console.log(`[Interceptor] 检查规则: ${rule.id} (${rule.ruleId})`, {
+      //   method: rule.method,
+      //   filterType: rule.filterType,
+      //   urlPattern: rule.urlPattern
+      // });
 
       if (rule.method !== "ALL" && rule.method !== method.toUpperCase()) {
-        console.log(`[Interceptor] 方法不匹配: 规则要求 ${rule.method}, 实际 ${method}`);
+        // console.log(`[Interceptor] 方法不匹配: 规则要求 ${rule.method}, 实际 ${method.toUpperCase()}`);
         continue;
       }
 
@@ -268,16 +266,16 @@ export class InterceptorManager {
   private modifyRequest(init: RequestInit, rule: RequestRule): RequestInit {
     const modifiedInit = { ...init };
 
-    // 修改请求头
-    if (rule.requestHeaders) {
+    // 修改请求头 - 仅在启用时应用
+    if (rule.enableRequestHeaders && rule.requestHeaders) {
       modifiedInit.headers = {
         ...init.headers,
         ...rule.requestHeaders,
       };
     }
 
-    // 修改请求体
-    if (rule.requestBody && init.body) {
+    // 修改请求体 - 仅在启用时应用
+    if (rule.enableRequestBody && rule.requestBody && init.body) {
       if (typeof init.body === "string") {
         try {
           const originalBody = JSON.parse(init.body);
@@ -308,63 +306,69 @@ export class InterceptorManager {
       responseHeaders[key] = value;
     });
 
+    // 构建修改后的响应头 - 仅在启用时应用
+    const finalHeaders = { ...responseHeaders };
+    if (rule.enableResponseHeaders && rule.response.headers) {
+      Object.assign(finalHeaders, rule.response.headers);
+    }
+
+    // 构建修改后的状态码 - 仅在启用时应用
+    const finalStatus = rule.enableResponseHeaders && rule.response.status
+      ? rule.response.status
+      : response.status;
+
     const modifiedResponse = new Response(null, {
-      status: rule.response.status || response.status,
+      status: finalStatus,
       statusText: response.statusText,
-      headers: {
-        ...responseHeaders,
-        ...rule.response.headers,
-      },
+      headers: finalHeaders,
     });
 
-    // console.log('[Interceptor] 开始修改响应:', {
-    //   originalStatus: response.status,
-    //   ruleStatus: rule.response.status,
-    //   bodyType: rule.response.bodyType,
-    //   headersModified: Object.keys(rule.response.headers).length > 0
-    // });
-
-    // 修改响应体
-    if (rule.response.bodyType === "function") {
-      // 执行JavaScript函数
-      console.log('[Interceptor] 执行JavaScript响应函数:', {
-        functionLength: rule.response.body.length,
-        functionPreview: rule.response.body.substring(0, 100) + '...'
-      });
-
-      try {
-        const func = new Function("originalResponse", "rule", rule.response.body);
-        const result = await func(response, rule);
-
-        console.log('[Interceptor] JavaScript函数执行结果:', {
-          resultType: typeof result,
-          isResponse: result instanceof Response,
-          resultPreview: result instanceof Response ? '[Response Object]' : JSON.stringify(result).substring(0, 200)
+    // 修改响应体 - 仅在启用时应用
+    if (rule.enableResponseBody) {
+      if (rule.response.bodyType === "function") {
+        // 执行JavaScript函数
+        console.log('[Interceptor] 执行JavaScript响应函数:', {
+          functionLength: rule.response.body.length,
+          functionPreview: rule.response.body.substring(0, 100) + '...'
         });
 
-        if (result instanceof Response) {
-          return result;
-        } else {
-          return new Response(JSON.stringify(result), {
-            status: modifiedResponse.status,
-            headers: modifiedResponse.headers,
+        try {
+          const func = new Function("originalResponse", "rule", rule.response.body);
+          const result = await func(response, rule);
+
+          console.log('[Interceptor] JavaScript函数执行结果:', {
+            resultType: typeof result,
+            isResponse: result instanceof Response,
+            resultPreview: result instanceof Response ? '[Response Object]' : JSON.stringify(result).substring(0, 200)
           });
+
+          if (result instanceof Response) {
+            return result;
+          } else {
+            return new Response(JSON.stringify(result), {
+              status: modifiedResponse.status,
+              headers: modifiedResponse.headers,
+            });
+          }
+        } catch (error) {
+          console.error("执行响应函数错误:", error);
+          return response;
         }
-      } catch (error) {
-        console.error("执行响应函数错误:", error);
-        return response;
+      } else {
+        // JSON响应体
+        console.log('[Interceptor] 使用JSON响应体:', {
+          bodyType: typeof rule.response.body,
+          bodyPreview: JSON.stringify(rule.response.body).substring(0, 200)
+        });
+
+        return new Response(JSON.stringify(rule.response.body), {
+          status: modifiedResponse.status,
+          headers: modifiedResponse.headers,
+        });
       }
     } else {
-      // JSON响应体
-      console.log('[Interceptor] 使用JSON响应体:', {
-        bodyType: typeof rule.response.body,
-        bodyPreview: JSON.stringify(rule.response.body).substring(0, 200)
-      });
-
-      return new Response(JSON.stringify(rule.response.body), {
-        status: modifiedResponse.status,
-        headers: modifiedResponse.headers,
-      });
+      // 响应体拦截未启用，返回原始响应
+      return response;
     }
   }
 
@@ -374,22 +378,39 @@ export class InterceptorManager {
   private createMockResponse(rule: RequestRule): Response {
     let body: string;
 
-    if (rule.response.bodyType === "function") {
-      try {
-        const func = new Function("rule", rule.response.body);
-        const result = func(rule);
-        body = JSON.stringify(result);
-      } catch (error) {
-        console.error("执行模拟响应函数错误:", error);
-        body = JSON.stringify({ error: "Function execution failed" });
+    // 构建响应头 - 仅在启用时应用
+    const finalHeaders = {};
+    if (rule.enableResponseHeaders && rule.response.headers) {
+      Object.assign(finalHeaders, rule.response.headers);
+    }
+
+    // 构建状态码 - 仅在启用时应用
+    const finalStatus = rule.enableResponseHeaders && rule.response.status
+      ? rule.response.status
+      : 200;
+
+    // 构建响应体 - 仅在启用时应用
+    if (rule.enableResponseBody) {
+      if (rule.response.bodyType === "function") {
+        try {
+          const func = new Function("rule", rule.response.body);
+          const result = func(rule);
+          body = JSON.stringify(result);
+        } catch (error) {
+          console.error("执行模拟响应函数错误:", error);
+          body = JSON.stringify({ error: "Function execution failed" });
+        }
+      } else {
+        body = JSON.stringify(rule.response.body);
       }
     } else {
-      body = JSON.stringify(rule.response.body);
+      // 响应体拦截未启用，返回空响应
+      body = JSON.stringify({});
     }
 
     return new Response(body, {
-      status: rule.response.status,
-      headers: rule.response.headers,
+      status: finalStatus,
+      headers: finalHeaders,
     });
   }
 
@@ -397,7 +418,7 @@ export class InterceptorManager {
    * 修改XMLHttpRequest请求头
    */
   private modifyXHRHeaders(xhr: XMLHttpRequest, rule: RequestRule): void {
-    if (rule.requestHeaders) {
+    if (rule.enableRequestHeaders && rule.requestHeaders) {
       Object.entries(rule.requestHeaders).forEach(([key, value]) => {
         xhr.setRequestHeader(key, value);
       });
@@ -408,7 +429,7 @@ export class InterceptorManager {
    * 修改XMLHttpRequest请求体
    */
   private modifyXHRBody(data: any, rule: RequestRule): any {
-    if (rule.requestBody && data) {
+    if (rule.enableRequestBody && rule.requestBody && data) {
       if (typeof data === "string") {
         try {
           const originalBody = JSON.parse(data);
@@ -432,74 +453,84 @@ export class InterceptorManager {
       originalStatus: xhr.status,
       originalResponseText: xhr.responseText?.substring(0, 200),
       ruleStatus: rule.response.status,
-      bodyType: rule.response.bodyType
+      bodyType: rule.response.bodyType,
+      enableResponseHeaders: rule.enableResponseHeaders,
+      enableResponseBody: rule.enableResponseBody
     });
 
-    if (rule.response.bodyType === "function") {
-      console.log('[Interceptor] 执行XMLHttpRequest JavaScript函数:', {
-        functionLength: rule.response.body.length,
-        functionPreview: rule.response.body.substring(0, 100) + '...'
+    // 修改状态码 - 仅在启用时应用
+    if (rule.enableResponseHeaders) {
+      Object.defineProperty(xhr, "status", {
+        value: rule.response.status,
+        writable: true,
       });
+    }
 
-      try {
-        const func = new Function("xhr", "rule", rule.response.body);
-        const result = func(xhr, rule);
-
-        console.log('[Interceptor] XMLHttpRequest函数执行结果:', {
-          resultType: typeof result,
-          resultPreview: typeof result === "string" ? result.substring(0, 200) : JSON.stringify(result).substring(0, 200)
+    // 修改响应体 - 仅在启用时应用
+    if (rule.enableResponseBody) {
+      if (rule.response.bodyType === "function") {
+        console.log('[Interceptor] 执行XMLHttpRequest JavaScript函数:', {
+          functionLength: rule.response.body.length,
+          functionPreview: rule.response.body.substring(0, 100) + '...'
         });
 
-        // 修改响应数据
+        try {
+          const func = new Function("xhr", "rule", rule.response.body);
+          const result = func(xhr, rule);
+
+          console.log('[Interceptor] XMLHttpRequest函数执行结果:', {
+            resultType: typeof result,
+            resultPreview: typeof result === "string" ? result.substring(0, 200) : JSON.stringify(result).substring(0, 200)
+          });
+
+          // 修改响应数据
+          Object.defineProperty(xhr, "responseText", {
+            value: typeof result === "string" ? result : JSON.stringify(result),
+            writable: true,
+          });
+
+          Object.defineProperty(xhr, "response", {
+            value: result,
+            writable: true,
+          });
+          // 修改状态码
+          Object.defineProperty(xhr, "status", {
+            value: rule.response.status,
+            writable: true,
+          });
+          console.log('[Interceptor] XMLHttpRequest响应修改完成:', {
+            newStatus: xhr.status,
+            newResponseTextLength: xhr.responseText?.length
+          });
+        } catch (error) {
+          console.error("执行XHR响应函数错误:", error);
+        }
+      } else {
+        // JSON响应体
+        console.log('[Interceptor] 使用XMLHttpRequest JSON响应体:', {
+          bodyType: typeof rule.response.body,
+          bodyPreview: JSON.stringify(rule.response.body).substring(0, 200)
+        });
+
         Object.defineProperty(xhr, "responseText", {
-          value: typeof result === "string" ? result : JSON.stringify(result),
+          value: JSON.stringify(rule.response.body),
           writable: true,
         });
 
         Object.defineProperty(xhr, "response", {
-          value: result,
+          value: rule.response.body,
           writable: true,
         });
-
-        // 修改状态码
         Object.defineProperty(xhr, "status", {
           value: rule.response.status,
           writable: true,
         });
 
-        console.log('[Interceptor] XMLHttpRequest响应修改完成:', {
+        console.log('[Interceptor] XMLHttpRequest JSON响应修改完成:', {
           newStatus: xhr.status,
           newResponseTextLength: xhr.responseText?.length
         });
-      } catch (error) {
-        console.error("执行XHR响应函数错误:", error);
       }
-    } else {
-      // JSON响应体
-      console.log('[Interceptor] 使用XMLHttpRequest JSON响应体:', {
-        bodyType: typeof rule.response.body,
-        bodyPreview: JSON.stringify(rule.response.body).substring(0, 200)
-      });
-
-      Object.defineProperty(xhr, "responseText", {
-        value: JSON.stringify(rule.response.body),
-        writable: true,
-      });
-
-      Object.defineProperty(xhr, "response", {
-        value: rule.response.body,
-        writable: true,
-      });
-
-      Object.defineProperty(xhr, "status", {
-        value: rule.response.status,
-        writable: true,
-      });
-
-      console.log('[Interceptor] XMLHttpRequest JSON响应修改完成:', {
-        newStatus: xhr.status,
-        newResponseTextLength: xhr.responseText?.length
-      });
     }
   }
 }
