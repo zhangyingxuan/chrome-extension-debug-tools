@@ -308,6 +308,7 @@ const cacheManager = {
   // 保存规则到缓存
   save: async () => {
     try {
+      // console.log("保存规则到缓存:", toRaw(requestRules.value));
       await chrome.storage.local.set({
         scriptRequestRules: toRaw(requestRules.value),
         scriptRequestRulesEnabled: isEnabled.value,
@@ -349,65 +350,6 @@ const cacheManager = {
       console.error("清除脚本规则缓存失败:", error);
     }
   },
-};
-
-// 查找匹配的规则
-const findMatchingRule = (url: string, method: string): RequestRule | null => {
-  const enabledRules = requestRules.value.filter((rule) => rule.enabled);
-
-  for (const rule of enabledRules) {
-    if (rule.method !== "ALL" && rule.method !== method) {
-      continue;
-    }
-
-    if (rule.filterType === "urlFilter") {
-      if (url.includes(rule.urlPattern!)) {
-        return rule;
-      }
-    } else if (rule.filterType === "regexFilter") {
-      try {
-        const regex = new RegExp(rule.urlPattern!);
-        if (regex.test(url)) {
-          return rule;
-        }
-      } catch (error) {
-        console.error("正则表达式错误:", error);
-      }
-    }
-  }
-
-  return null;
-};
-
-// 修改fetch请求
-const modifyRequest = (init: RequestInit, rule: RequestRule): RequestInit => {
-  const modifiedInit = { ...init };
-
-  // 修改请求头
-  if (rule.requestHeaders) {
-    modifiedInit.headers = {
-      ...init.headers,
-      ...rule.requestHeaders,
-    };
-  }
-
-  // 修改请求体
-  if (rule.requestBody && init.body) {
-    if (typeof init.body === "string") {
-      try {
-        const originalBody = JSON.parse(init.body);
-        modifiedInit.body = JSON.stringify({
-          ...originalBody,
-          ...rule.requestBody,
-        });
-      } catch {
-        // 如果不是JSON，直接替换
-        modifiedInit.body = rule.requestBody;
-      }
-    }
-  }
-
-  return modifiedInit;
 };
 
 // 格式化头部
@@ -572,8 +514,8 @@ defineExpose({
       response: {
         status: ruleData.response?.status || 200,
         headers: ruleData.response?.headers || {},
-        body: ruleData.responseBody || {},
-        bodyType: ruleData.responseBodyType || "json",
+        body: ruleData.response?.body || {},
+        bodyType: ruleData.response?.bodyType || "json",
       },
       expanded: false,
     };

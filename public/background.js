@@ -13,11 +13,15 @@ chrome.storage.onChanged.addListener((changes) => {
     );
 
     // 向所有活动标签页发送规则更新消息
+    // 是否会影响iframe 消息
+    // chrome.tabs.query({ url: ["http://*/*", "https://*/*"] }, (tabs) => {
     chrome.tabs.query({}, (tabs) => {
       tabs.forEach((tab) => {
+        if (tab.url?.startsWith("chrome-extension://")) return; // 直接跳过
         if (tab.id) {
           chrome.tabs
             .sendMessage(tab.id, {
+              from: "blowsysun-debug-tools",
               action: "UPDATE_RULES",
               value: newRules,
             })

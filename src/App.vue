@@ -53,13 +53,13 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import RequestInterceptor from "./components/RequestInterceptor.vue";
+import DeclarativeNetInterceptor from "./components/DeclarativeNetInterceptor.vue";
 import RequestLogger from "./components/RequestLogger.vue";
 import ScriptInterceptor from "./components/ScriptInterceptor.vue";
 
 // 响应式数据
 const activeTab = ref("script-interceptor");
-const requestInterceptorRef = ref<InstanceType<typeof RequestInterceptor>>();
+const requestInterceptorRef = ref<InstanceType<typeof DeclarativeNetInterceptor>>();
 const scriptInterceptorRef = ref<InstanceType<typeof ScriptInterceptor>>();
 
 // 处理打开规则编辑器事件

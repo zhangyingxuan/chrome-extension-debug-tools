@@ -162,13 +162,13 @@
     </div>
 
     <!-- 拦截历史抽屉 -->
-    <InterceptionHistory
+    <DeclarativeNetInterceptionHistory
       :visible="showHistoryDrawer"
       @close="showHistoryDrawer = false"
     />
 
     <!-- 规则编辑器抽屉 -->
-    <RuleEditor
+    <DeclarativeNetRuleEditor
       :visible="showAddRuleDialog"
       :editing-rule="editingRule"
       @save="ruleManager.save"
@@ -181,8 +181,8 @@
 import { MessagePlugin } from "tdesign-vue-next";
 import { reactive, toRefs, ref, onMounted, toRaw, computed } from "vue";
 import { RequestRule } from "@/types";
-import RuleEditor from "./RuleEditor.vue";
-import InterceptionHistory from "./InterceptionHistory.vue";
+import DeclarativeNetRuleEditor from "./DeclarativeNetRuleEditor.vue";
+import DeclarativeNetInterceptionHistory from "./DeclarativeNetInterceptionHistory.vue";
 import { generateId } from "@/utils/common";
 
 const ourRuleIdPrefix = 1000;

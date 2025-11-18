@@ -224,7 +224,8 @@ export class InterceptorManager {
 
     // console.log(`[Interceptor] 开始匹配规则: ${url} (${method})`, {
     //   enabledRulesCount: enabledRules.length,
-    //   totalRulesCount: this.requestRules.length
+    //   totalRulesCount: this.requestRules.length,
+    //   enabledRules
     // });
 
     for (const rule of enabledRules) {

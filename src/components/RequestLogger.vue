@@ -11,12 +11,14 @@
             size="small"
             @change="toggleRecording"
           />
-          &nbsp;
           <t-switch
             v-model="showUrlParams"
             :label="['显示参数', '隐藏参数']"
             size="small"
           />
+          <t-button size="small" @click="clearLogs" thetheme="danger">
+            清空记录
+          </t-button>
           <t-input
             v-model="filterKeyword"
             placeholder="输入URL关键词过滤"
@@ -26,9 +28,6 @@
           />
         </h3>
         <div class="control-actions">
-          <t-button size="small" @click="clearLogs" thetheme="danger">
-            清空记录
-          </t-button>
           <t-button size="small" @click="exportLogs" theme="default">
             导出记录
           </t-button>
@@ -82,6 +81,15 @@
               title="快速添加拦截规则"
             >
               拦截
+            </t-button>
+            <t-button
+              size="small"
+              theme="success"
+              variant="text"
+              @click.stop="scriptIntercept(log)"
+              title="脚本拦截（使用JavaScript处理）"
+            >
+              脚本拦截
             </t-button>
           </div>
           <t-icon
@@ -184,7 +192,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted, toRaw } from "vue";
 import { generateId, getStatusClass } from "@/utils/common";
 import { RequestLog } from "@/types";
 
@@ -192,6 +200,7 @@ interface Emits {
   (e: "clear-logs"): void;
   (e: "update-logs", logs: RequestLog[]): void;
   (e: "open-rule-editor", ruleData: any): void;
+  (e: "open-script-editor", ruleData: any): void;
 }
 
 const emit = defineEmits<Emits>();
@@ -472,6 +481,32 @@ const quickAddRule = (log: RequestLog) => {
   emit("open-rule-editor", ruleData);
 };
 
+// 脚本拦截（使用JavaScript处理）
+const scriptIntercept = (log: RequestLog) => {
+  console.log("脚本拦截:", toRaw(log));
+  // 提取URL模式
+  const urlPattern = extractUrlPattern(log.url);
+
+  // 准备规则数据 - 使用JavaScript脚本处理
+  const ruleData = {
+    method: log.method,
+    urlPattern: urlPattern,
+    filterType: "urlFilter",
+    requestHeaders: log.requestHeaders,
+    requestBody: log.requestBody,
+    response: {
+      status: log.status,
+      headers: log.responseHeaders || {},
+      body: log.responseBody,
+      bodyType: "json",
+    },
+    interceptorType: "script-interceptor", // 路由到脚本拦截器
+  };
+
+  // 打开脚本规则编辑器
+  emit("open-rule-editor", ruleData);
+};
+
 // 提取URL后两个/中的内容作为urlPattern
 const extractUrlPattern = (url: string): string => {
   try {
@@ -484,12 +519,12 @@ const extractUrlPattern = (url: string): string => {
     // 获取最后两个路径部分
     if (pathParts.length >= 2) {
       const lastTwoParts = pathParts.slice(-2);
-      return `*/${lastTwoParts.join("/")}*`;
+      return `/${lastTwoParts.join("/")}`;
     } else if (pathParts.length === 1) {
-      return `*/${pathParts[0]}*`;
+      return `/${pathParts[0]}`;
     } else {
       // 如果没有路径部分，使用完整路径
-      return `*${pathname}*`;
+      return pathname;
     }
   } catch (error) {
     console.warn("URL解析失败，使用备用方法:", url, error);
@@ -625,7 +660,16 @@ onUnmounted(() => {
         width: 80px;
       }
       .col-actions {
-        width: 60px;
+        width: 180px;
+        text-align: center;
+
+        .t-button {
+          margin: 0 2px;
+          padding: 2px 6px;
+          font-size: 11px;
+          min-height: 20px;
+          line-height: 1;
+        }
       }
     }
 
@@ -679,8 +723,16 @@ onUnmounted(() => {
           color: #666;
         }
         .col-actions {
-          width: 60px;
+          width: 180px;
           text-align: center;
+
+          .t-button {
+            margin: 0 2px;
+            padding: 2px 6px;
+            font-size: 11px;
+            min-height: 20px;
+            line-height: 1;
+          }
         }
 
         .status-badge {
