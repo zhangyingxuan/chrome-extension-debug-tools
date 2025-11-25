@@ -749,10 +749,6 @@ onUnmounted(() => {
       cursor: pointer;
       transition: background-color 0.1s;
 
-      &:hover {
-        background-color: #f8f9fa;
-      }
-
       &.success {
         background-color: #f6ffed;
       }
@@ -762,7 +758,11 @@ onUnmounted(() => {
       }
 
       &.expanded {
-        background-color: #e6f7ff;
+        background-color: #fff;
+      }
+
+      &:hover {
+        background-color: #f8f9fa;
       }
 
       .request-row {

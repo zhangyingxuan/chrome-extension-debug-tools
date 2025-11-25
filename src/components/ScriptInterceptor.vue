@@ -483,6 +483,14 @@ const ruleManager = {
 // 切换启用状态
 const toggleEnabled = async (enabled: boolean) => {
   isEnabled.value = enabled;
+  requestRules.value.forEach((rule) => {
+    rule.enabled = enabled;
+  });
+
+  chrome.action.setBadgeText({ text: enabled ? "ON" : "OFF" });
+  chrome.action.setBadgeBackgroundColor({
+    color: enabled ? "#52c41a" : "#f5222d",
+  });
 
   await cacheManager.save();
 };

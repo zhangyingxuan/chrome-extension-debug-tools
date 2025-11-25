@@ -454,9 +454,11 @@ export class InterceptorManager {
       originalStatus: xhr.status,
       originalResponseText: xhr.responseText?.substring(0, 200),
       ruleStatus: rule.response.status,
-      bodyType: rule.response.bodyType,
-      enableResponseHeaders: rule.enableResponseHeaders,
-      enableResponseBody: rule.enableResponseBody
+      ruleBodyType: rule.response.bodyType,
+      ruleResponseBody: rule?.response?.body,
+      ruleResponseStatus: rule?.response?.status,
+      ruleEnableResponseHeaders: rule.enableResponseHeaders,
+      ruleEnableResponseBody: rule.enableResponseBody
     });
 
     // 修改状态码 - 仅在启用时应用

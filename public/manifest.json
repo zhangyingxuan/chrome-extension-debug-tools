@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "前端研发专用调试增强器",
+  "name": "网络请求拦截器",
   "version": "1.0",
-  "description": "让前端工程师在浏览器里完成「调试 + 环境切换 + 真机采样」三位一体的私有外挂，无需 Charles、无需 root、一套插件即插即用。",
+  "description": "一款专为研发打造的网络请求拦截器，支持XMLHttpRequest、fetch请求拦截，同时支持declarativeNetRequest拦截",
   "permissions": [
     "storage",
     "unlimitedStorage",

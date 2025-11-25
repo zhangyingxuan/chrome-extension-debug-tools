@@ -506,11 +506,6 @@ const toggleEnabled = async (enabled: boolean) => {
     rule.enabled = enabled;
   });
 
-  chrome.action.setBadgeText({ text: enabled ? "ON" : "OFF" });
-  chrome.action.setBadgeBackgroundColor({
-    color: enabled ? "#52c41a" : "#f5222d",
-  });
-
   await dnrConverter.update();
 };
 

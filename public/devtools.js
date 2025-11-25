@@ -1,3 +1,3 @@
-chrome.devtools.panels.create("netLimit", "icon.png", "index.html", () => {
-  console.log("user switched to this panel");
+chrome.devtools.panels.create("NetLimit", "icon.png", "index.html", () => {
+  console.log("user switched to NetLimit panel");
 });

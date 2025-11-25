@@ -27,5 +27,5 @@
     "vite": "^5.2.8",
     "vue-tsc": "^2.0.10"
   },
-  "description": "前端研发专用调试增强器"
+  "description": "网络请求拦截器"
 }
