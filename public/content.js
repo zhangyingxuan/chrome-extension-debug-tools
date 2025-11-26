@@ -55,7 +55,7 @@ chrome.runtime.onMessage.addListener((data) => {
 
 // 2. 监听页面脚本，传来的消息
 window.addEventListener("message", (e) => {
-  console.log("收到页面脚本消息", e);
+  // console.log("收到页面脚本消息", e);
   if (e.source !== window || !e.data.from) return;
   // 页面 -> devtools
   if (e.data.from === "blowsysun-debug-tools-page") {

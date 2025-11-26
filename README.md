@@ -10,13 +10,7 @@
 - 🎯 **正则匹配**：支持正则表达式匹配 URL 模式
 - ⚡ **实时生效**：规则修改后立即生效，无需刷新页面
 - 💾 **规则持久化**：拦截规则自动保存到本地存储
-
-### 性能监控
-
-- 📊 **实时图表**：使用 ECharts 展示 CPU、内存使用率实时曲线
-- 🔍 **DOM 监控**：监控页面 DOM 节点数量和事件监听器数量
-- 📈 **历史数据**：保留最近性能数据，支持趋势分析
-- 🔄 **进程信息**：显示当前页面的进程和线程信息
+- 🔄 **通信链路**：通过 background.js 中转，确保拦截记录可靠传递到 devtools 页面
 
 ## 🛠️ 技术栈
 
@@ -94,15 +88,24 @@ npm run build
 ```
 src/
 ├── components/          # Vue 组件
-│   ├── RequestInterceptor.vue    # 网络请求拦截组件
+│   ├── ScriptInterceptor.vue    # 脚本拦截管理组件
+│   ├── DeclarativeNetInterceptor.vue    # 声明式网络拦截组件
+│   ├── DeclarativeNetInterceptionHistory.vue    # 拦截历史记录组件
+│   └── DeclarativeNetRuleEditor.vue    # 拦截规则编辑器
 ├── styles/             # 样式文件
 │   └── common.less     # 全局样式
 ├── types.ts            # TypeScript 类型定义
 ├── utils/              # 工具函数
-│   └── index.ts        # 通用工具方法
+│   ├── interceptor.ts  # 网络请求拦截器核心逻辑
+│   └── common.ts       # 通用工具方法
 ├── content.ts          # 内容脚本（性能收集）
 ├── tdesign.ts          # TDesign Vue Next 配置
 └── main.ts            # 应用入口
+
+public/
+├── background.js       # 后台脚本，负责消息中转
+├── content.js          # 内容脚本，负责页面通信
+└── manifest.json       # 扩展配置文件
 ```
 
 ## 🔧 配置说明
@@ -120,6 +123,39 @@ src/
 - TypeScript 支持
 - Vue 3 插件配置
 
+## 🔄 通信机制
+
+### 消息传递流程
+
+插件采用三层通信架构确保消息可靠传递：
+
+```
+页面上下文 (interceptor.ts) → background.js → devtools页面 (ScriptInterceptor.vue)
+```
+
+1. **页面层** (`interceptor.ts`)
+
+   - 运行在网页上下文中
+   - 拦截网络请求（fetch/XHR）
+   - 通过 `chrome.runtime.sendMessage` 发送拦截记录到 background.js
+
+2. **中转层** (`background.js`)
+
+   - 接收来自页面的拦截记录
+   - 通过 `chrome.runtime.sendMessage` 转发到 devtools 页面
+   - 处理消息转发错误，确保不影响正常拦截功能
+
+3. **展示层** (`ScriptInterceptor.vue`)
+   - 接收来自 background.js 的拦截记录
+   - 显示拦截历史和管理拦截规则
+   - 通过 `chrome.runtime.onMessage` 监听消息
+
+### 错误处理
+
+- 消息发送失败时自动降级处理
+- 不影响正常的网络请求拦截功能
+- 支持 devtools 页面未打开时的静默处理
+
 ## 🐛 故障排除
 
 ### 常见问题
@@ -135,7 +171,13 @@ src/
    - 确认规则已启用
    - 检查请求方法是否匹配
 
-3. **性能数据不显示**
+3. **拦截记录不显示**
+
+   - 确认 devtools 页面已打开
+   - 检查 background.js 是否正常运行
+   - 查看浏览器控制台是否有通信错误
+
+4. **性能数据不显示**
    - 确认页面已完全加载
    - 检查 Chrome 性能 API 是否可用
 
@@ -144,6 +186,8 @@ src/
 - 打开 Chrome 扩展程序页面查看背景脚本日志
 - 在内容脚本中使用 `console.log` 调试性能收集
 - 使用 Vue DevTools 调试组件状态
+- 检查 background.js 的消息转发日志
+- 使用 Chrome 扩展调试工具查看消息传递状态
 
 ## 🤝 贡献指南
 
@@ -165,5 +209,4 @@ MIT License
 
 - Vue.js - 渐进式 JavaScript 框架
 - TDesign Vue Next - 企业级 UI 组件库
-- ECharts - 强大的图表库
 - Vite - 下一代前端构建工具

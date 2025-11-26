@@ -77,7 +77,7 @@
               theme="primary"
               variant="text"
               @click.stop="quickAddRule(log)"
-              title="快速添加拦截规则"
+              title="添加拦截规则（declarativeNetRequest拦截）"
             >
               拦截
             </t-button>
@@ -86,7 +86,7 @@
               theme="success"
               variant="text"
               @click.stop="scriptIntercept(log)"
-              title="脚本拦截（使用JavaScript处理）"
+              title="添加脚本拦截（XMLHttpRequest、Fetch拦截）"
             >
               脚本拦截
             </t-button>
@@ -302,6 +302,7 @@ const stopRecording = () => {
 
 // 处理网络请求完成事件
 const handleRequestFinished = (request: any) => {
+  console.log("handleRequestFinished===", request);
   if (!isRecording.value) return;
 
   const resourceType = request._resourceType || request.type || "unknown";
@@ -559,6 +560,8 @@ const quickAddRule = (log: RequestLog) => {
 const scriptIntercept = (log: RequestLog) => {
   // 提取URL模式
   const urlPattern = extractUrlPattern(log.url);
+
+  console.log("scriptIntercept===:", log);
 
   // 准备规则数据 - 使用JavaScript脚本处理
   const ruleData = {

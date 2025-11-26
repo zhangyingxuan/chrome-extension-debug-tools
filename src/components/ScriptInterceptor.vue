@@ -589,6 +589,15 @@ defineExpose({
 </script>
 
 <style lang="less" scoped>
+.history-toggle-btn {
+  background: #1890ff;
+  color: white;
+  border: none;
+
+  &:hover {
+    background: #40a9ff;
+  }
+}
 .script-interceptor {
   height: 100%;
   position: relative;
