@@ -68,22 +68,21 @@ export class InterceptorManager {
       const [input, init = {}] = args;
       const url = typeof input === "string" ? input : (input as Request).url;
 
-      // console.log(`[Interceptor] fetch请求: ${url}`);
       // 检查是否有匹配的规则
       const matchedRule = this.findMatchingRule(url, init.method || "GET");
 
       if (matchedRule && matchedRule.enabled) {
-        // 修改请求
-        const modifiedRequest = this.modifyRequest(init, matchedRule);
-
-        // console.log('[Interceptor] 请求修改信息:', {
-        //   originalHeaders: init.headers,
-        //   modifiedHeaders: modifiedRequest.headers,
-        //   originalBody: init.body,
-        //   modifiedBody: modifiedRequest.body
-        // });
 
         try {
+          // 修改请求
+          const modifiedRequest = this.modifyRequest(init, matchedRule);
+
+          // console.log(`[Interceptor] 请求修改信息 ${url}:`, {
+          //   originalHeaders: init.headers,
+          //   modifiedHeaders: modifiedRequest.headers,
+          //   originalBody: init.body,
+          //   modifiedBody: modifiedRequest.body
+          // });
           // 执行原始fetch
           const response = await this.originalFetch.call(
             window,
@@ -103,6 +102,29 @@ export class InterceptorManager {
           //   modifiedHeaders: this.headersToObject(modifiedResponse.headers),
           //   modifiedResponseBody: modifiedResponse.body,
           // });
+
+          // console.log('[interceptFetch] 返回修改后的响应:', init, response);
+
+          // 发送拦截记录消息给 content.js
+          window.postMessage({
+            from: 'blowsysun-debug-tools-page',
+            action: 'INTERCEPTION_RECORD',
+            value: {
+              ruleId: matchedRule.ruleId,
+              timestamp: Date.now(),
+              method: matchedRule.method || "GET",
+              url: url,
+              requestType: "fetch",
+              filterType: matchedRule.filterType || "urlFilter",
+              matchedRule: matchedRule.urlPattern,
+              // requestHeaders: init?.headers,
+              // requestBody: init?.body,
+              // responseBody: matchedRule.response?.body,
+              // responseHeaders: matchedRule.response?.headers,
+              status: matchedRule.response?.status || 200,
+              expanded: false
+            }
+          }, "*");
 
           return modifiedResponse;
         } catch (error) {
@@ -142,13 +164,13 @@ export class InterceptorManager {
       const matchedRule = self.findMatchingRule(url, method);
 
       if (matchedRule && matchedRule.enabled) {
-        console.log(`[Interceptor] 拦截到XMLHttpRequest请求: ${url}`, {
-          method: method,
-          ruleId: matchedRule.ruleId,
-          ruleName: matchedRule.id,
-          filterType: matchedRule.filterType,
-          urlPattern: matchedRule.urlPattern
-        });
+        // console.log(`[Interceptor] 拦截到XMLHttpRequest请求: ${url},${args}`, {
+        //   method: method,
+        //   ruleId: matchedRule.ruleId,
+        //   ruleName: matchedRule.id,
+        //   filterType: matchedRule.filterType,
+        //   urlPattern: matchedRule.urlPattern
+        // });
 
         // 存储匹配的规则到XHR实例
         (this as any)._matchedRule = matchedRule;
@@ -162,21 +184,14 @@ export class InterceptorManager {
     };
 
     XMLHttpRequest.prototype.send = function (data?: any) {
-      // console.log(`[Interceptor] XMLHttpRequest.send`);
-
       const matchedRule = (this as any)._matchedRule;
 
       if (matchedRule && matchedRule.enabled) {
-        // console.log('[Interceptor] XMLHttpRequest请求修改信息:', {
-        //   originalData: data,
-        //   requestHeaders: matchedRule.requestHeaders
-        // });
-
         // 修改请求头
         self.modifyXHRHeaders(this, matchedRule);
 
         // 修改请求体
-        const modifiedData = self.modifyXHRBody(data, matchedRule);
+        const modifiedData = self.modifyXHRRequestBody(data, matchedRule);
 
         // console.log('[Interceptor] XMLHttpRequest请求体修改:', {
         //   originalData: data,
@@ -187,20 +202,42 @@ export class InterceptorManager {
         const originalOnReadyStateChange = this.onreadystatechange;
         this.onreadystatechange = function () {
           if (this.readyState === 4) {
-            console.log('[Interceptor] XMLHttpRequest响应到达:', {
-              originalStatus: this.status,
-              originalResponseText: this.responseText,
-              ruleStatus: matchedRule.response.status
-            });
+
+            // console.log('[Interceptor] XMLHttpRequest请求修改信息:', {
+            //   originalRequestHeaders: data,
+            //   matchedRule,
+            //   original: this,
+            // });
+
+            // console.log('[Interceptor] XMLHttpRequest响应到达:', {
+            //   originalStatus: this.status,
+            //   originalResponseText: this.responseText,
+            //   ruleStatus: matchedRule.response.status
+            // });
 
             // 修改响应
             self.modifyXHRResponse(this, matchedRule);
-
-            console.log('[Interceptor] XMLHttpRequest响应修改完成:', {
-              modifiedStatus: this.status,
-              modifiedResponseText: this.responseText,
-              bodyType: matchedRule.response.bodyType
-            });
+            // 发送拦截记录消息
+            window.postMessage({
+              from: 'blowsysun-debug-tools-page',
+              action: 'INTERCEPTION_RECORD',
+              value: {
+                ruleId: matchedRule.ruleId,
+                timestamp: Date.now(),
+                method: (this as any)?._originalMethod,
+                requestType: "XMLHttpRequest",
+                url: this?.responseURL,
+                filterType: matchedRule.filterType || "urlFilter",
+                matchedRule: matchedRule.urlPattern,
+                status: matchedRule.response?.status || 200,
+                expanded: false
+              }
+            }, "*");
+            // console.log('[Interceptor] XMLHttpRequest响应修改完成:', {
+            //   modifiedStatus: this.status,
+            //   modifiedResponseText: this.responseText,
+            //   bodyType: matchedRule.response.bodyType
+            // });
           }
           if (originalOnReadyStateChange) {
             originalOnReadyStateChange.call(this, new Event("readystatechange"));
@@ -429,7 +466,7 @@ export class InterceptorManager {
   /**
    * 修改XMLHttpRequest请求体
    */
-  private modifyXHRBody(data: any, rule: RequestRule): any {
+  private modifyXHRRequestBody(data: any, rule: RequestRule): any {
     if (rule.enableRequestBody && rule.requestBody && data) {
       if (typeof data === "string") {
         try {
@@ -450,16 +487,16 @@ export class InterceptorManager {
    * 修改XMLHttpRequest响应
    */
   private modifyXHRResponse(xhr: XMLHttpRequest, rule: RequestRule): void {
-    console.log('[Interceptor] 开始修改XMLHttpRequest响应:', {
-      originalStatus: xhr.status,
-      originalResponseText: xhr.responseText?.substring(0, 200),
-      ruleStatus: rule.response.status,
-      ruleBodyType: rule.response.bodyType,
-      ruleResponseBody: rule?.response?.body,
-      ruleResponseStatus: rule?.response?.status,
-      ruleEnableResponseHeaders: rule.enableResponseHeaders,
-      ruleEnableResponseBody: rule.enableResponseBody
-    });
+    // console.log('[Interceptor] 开始修改XMLHttpRequest响应:', {
+    //   originalStatus: xhr.status,
+    //   originalResponseText: xhr.responseText?.substring(0, 200),
+    //   ruleStatus: rule.response.status,
+    //   ruleBodyType: rule.response.bodyType,
+    //   ruleResponseBody: rule?.response?.body,
+    //   ruleResponseStatus: rule?.response?.status,
+    //   ruleEnableResponseHeaders: rule.enableResponseHeaders,
+    //   ruleEnableResponseBody: rule.enableResponseBody
+    // });
 
     // 修改状态码 - 仅在启用时应用
     if (rule.enableResponseHeaders) {
@@ -481,10 +518,10 @@ export class InterceptorManager {
           const func = new Function("xhr", "rule", rule.response.body);
           const result = func(xhr, rule);
 
-          console.log('[Interceptor] XMLHttpRequest函数执行结果:', {
-            resultType: typeof result,
-            resultPreview: typeof result === "string" ? result.substring(0, 200) : JSON.stringify(result).substring(0, 200)
-          });
+          // console.log('[Interceptor] XMLHttpRequest函数执行结果:', {
+          //   resultType: typeof result,
+          //   resultPreview: typeof result === "string" ? result.substring(0, 200) : JSON.stringify(result).substring(0, 200)
+          // });
 
           // 修改响应数据
           Object.defineProperty(xhr, "responseText", {
@@ -510,10 +547,10 @@ export class InterceptorManager {
         }
       } else {
         // JSON响应体
-        console.log('[Interceptor] 使用XMLHttpRequest JSON响应体:', {
-          bodyType: typeof rule.response.body,
-          bodyPreview: JSON.stringify(rule.response.body).substring(0, 200)
-        });
+        // console.log('[Interceptor] 使用XMLHttpRequest JSON响应体:', {
+        //   bodyType: typeof rule.response.body,
+        //   bodyPreview: JSON.stringify(rule.response.body).substring(0, 200)
+        // });
 
         Object.defineProperty(xhr, "responseText", {
           value: JSON.stringify(rule.response.body),
@@ -527,11 +564,6 @@ export class InterceptorManager {
         Object.defineProperty(xhr, "status", {
           value: rule.response.status,
           writable: true,
-        });
-
-        console.log('[Interceptor] XMLHttpRequest JSON响应修改完成:', {
-          newStatus: xhr.status,
-          newResponseTextLength: xhr.responseText?.length
         });
       }
     }

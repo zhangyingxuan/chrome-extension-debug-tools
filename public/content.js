@@ -44,10 +44,25 @@ async function injectContent() {
 
 injectContent();
 
-// 2. 二次更新（无需刷新）
+// 1. 监听backgroud.js 传来的消息
 chrome.runtime.onMessage.addListener((data) => {
   const { from, action, value } = data;
   // console.log("二次转发消息", from, action, value);
   if (data.from !== "blowsysun-debug-tools") return;
+
   window.postMessage({ from, action, value });
+});
+
+// 2. 监听页面脚本，传来的消息
+window.addEventListener("message", (e) => {
+  console.log("收到页面脚本消息", e);
+  if (e.source !== window || !e.data.from) return;
+  // 页面 -> devtools
+  if (e.data.from === "blowsysun-debug-tools-page") {
+    chrome.runtime.sendMessage({
+      from: e.data.from,
+      action: e.data.action,
+      value: e.data.value,
+    });
+  }
 });

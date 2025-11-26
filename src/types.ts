@@ -39,6 +39,26 @@ export interface InterceptionRecord {
   expanded: boolean;
 }
 
+// 脚本拦截记录类型
+export interface ScriptInterceptionRecord {
+  id: string;
+  ruleId: number;
+  timestamp: number;
+  requestType: string;
+  method: string;
+  url: string;
+  requestId: string;
+  filterType: 'urlFilter' | 'regexFilter';
+  matchedRule?: string;
+  error?: string;
+  expanded: boolean;
+  requestHeaders?: Record<string, string>;
+  responseHeaders?: Record<string, string>;
+  requestBody?: any;
+  responseBody?: any;
+  status?: number;
+}
+
 // 网络请求记录类型
 export interface RequestLog {
   id: string;

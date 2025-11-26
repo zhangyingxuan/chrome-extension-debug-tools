@@ -43,6 +43,14 @@
             <t-button size="small" theme="primary" @click="ruleManager.add()">
               添加规则
             </t-button>
+            <t-button
+              size="small"
+              theme="default"
+              @click="showHistoryDrawer = true"
+              class="history-toggle-btn"
+            >
+              查看拦截历史
+            </t-button>
             <t-popconfirm
               content="确定要清理所有规则吗？此操作不可恢复。"
               @confirm="ruleManager.clearAll()"
@@ -253,6 +261,13 @@
       @save="ruleManager.save"
       @close="showAddRuleDialog = false"
     />
+
+    <!-- 拦截历史记录抽屉 -->
+    <ScriptInterceptorHistory
+      :visible="showHistoryDrawer"
+      @close="showHistoryDrawer = false"
+      ref="historyRef"
+    />
   </div>
 </template>
 
@@ -261,6 +276,7 @@ import { MessagePlugin } from "tdesign-vue-next";
 import { reactive, toRefs, ref, onMounted, toRaw, computed } from "vue";
 import { RequestRule } from "@/types";
 import ScriptRuleEditor from "./ScriptRuleEditor.vue";
+import ScriptInterceptorHistory from "./ScriptInterceptorHistory.vue";
 import { generateId } from "@/utils/common";
 import {
   SearchIcon,
@@ -276,15 +292,24 @@ const reactiveData = reactive({
   isEnabled: false,
   showAddRuleDialog: false,
   editingRule: null as RequestRule | null,
+  showHistoryDrawer: false,
   filterKeyword: "",
 });
 
 // 解构响应式数据以便使用
-const { isEnabled, showAddRuleDialog, editingRule, filterKeyword } =
-  toRefs(reactiveData);
+const {
+  isEnabled,
+  showAddRuleDialog,
+  editingRule,
+  showHistoryDrawer,
+  filterKeyword,
+} = toRefs(reactiveData);
 
 // 当前管理的规则
 const requestRules = ref<RequestRule[]>([]);
+
+// 历史记录组件引用
+const historyRef = ref<InstanceType<typeof ScriptInterceptorHistory>>();
 
 // 过滤后的规则列表
 const filteredRules = computed(() => {
@@ -308,6 +333,7 @@ const loadRules = async () => {
 // 组件挂载时加载规则
 onMounted(() => {
   loadRules();
+  setupInterception();
 });
 
 // 缓存管理函数
@@ -315,7 +341,6 @@ const cacheManager = {
   // 保存规则到缓存
   save: async () => {
     try {
-      // console.log("保存规则到缓存:", toRaw(requestRules.value));
       await chrome.storage.local.set({
         scriptRequestRules: toRaw(requestRules.value),
         scriptRequestRulesEnabled: isEnabled.value,
@@ -508,6 +533,29 @@ const applyFilter = () => {
 // 清除过滤
 const clearFilter = () => {
   filterKeyword.value = "";
+};
+
+/**
+ * 设置拦截记录监听
+ */
+const setupInterception = () => {
+  // 监听来自content.js的拦截记录消息
+  chrome.runtime.onMessage.addListener((message) => {
+    const { from, action, value } = message;
+    if (from !== "blowsysun-debug-tools-page") return;
+
+    if (action === "INTERCEPTION_RECORD") {
+      // 记录拦截事件
+      recordInterception(value);
+    }
+  });
+};
+
+// 记录拦截事件
+const recordInterception = (record: any) => {
+  if (historyRef.value) {
+    historyRef.value.handleInterceptionRecord(record);
+  }
 };
 
 // 暴露方法给父组件
