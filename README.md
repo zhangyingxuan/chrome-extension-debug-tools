@@ -1,16 +1,16 @@
 # 前端调试增强器 Chrome 插件
 
-一个专为前端工程师设计的 Chrome 插件，集成了网络请求拦截和性能监控功能，无需 Charles、无需 root，即插即用。
+一款专为研发打造的网络请求拦截器，集成在 devtools NetLimit 选项卡中，支持网络请求拦截替换为预设的请求体、返回体，支持 XMLHttpRequest、fetch 请求拦截，同时支持 declarativeNetRequest 拦截
 
 ## 🚀 功能特性
 
 ### 网络请求拦截
 
-- 🔧 **Mock 数据**：拦截指定 URL 的请求，返回预设的响应数据
+- 🔧 **Mock 数据**：支持拦截并修改 XMLHttpRequest 和 fetch 请求的响应结果、请求体，同时支持 chrome.declarativeNetRequest 拦截规则
 - 🎯 **正则匹配**：支持正则表达式匹配 URL 模式
 - ⚡ **实时生效**：规则修改后立即生效，无需刷新页面
 - 💾 **规则持久化**：拦截规则自动保存到本地存储
-- 🔄 **通信链路**：通过 background.js 中转，确保拦截记录可靠传递到 devtools 页面
+- 💾 **拦截记录**：匹配并完成拦截的请求，可在拦截历史中查看
 
 ## 🛠️ 技术栈
 
@@ -61,8 +61,8 @@ npm run build
 ### 网络请求拦截
 
 1. 打开 Chrome 开发者工具
-2. 切换到"前端调试"面板
-3. 在"网络请求拦截"区域添加拦截规则：
+2. 切换到"NetLimit"面板
+3. 在左侧"脚本拦截"选项卡添加拦截规则，或在"请求记录"中快速添加"脚本拦截"/"请求拦截"：
 
    - **URL 模式**：使用正则表达式匹配目标 URL
    - **请求方法**：选择要拦截的 HTTP 方法
@@ -72,26 +72,17 @@ npm run build
 
 4. 启用规则后，匹配的请求将被拦截并返回预设响应
 
-### 性能监控
-
-1. 在"性能监控"面板中查看实时数据：
-
-   - **CPU 使用率**：页面 JavaScript 执行占用情况
-   - **内存使用率**：JavaScript 堆内存使用情况
-   - **DOM 节点数**：当前页面的 DOM 元素数量
-   - **事件监听器**：注册的事件监听器数量
-
-2. 查看进程信息，了解页面运行状态
-
 ## 📁 项目结构
 
 ```
 src/
 ├── components/          # Vue 组件
-│   ├── ScriptInterceptor.vue    # 脚本拦截管理组件
-│   ├── DeclarativeNetInterceptor.vue    # 声明式网络拦截组件
+│   ├── RequestLogger.vue              # 请求日志记录组件
+│   ├── ScriptInterceptor.vue          # 脚本拦截管理组件
+│   ├── ScriptInterceptorHistory.vue   # 脚本拦截历史记录组件
+│   ├── DeclarativeNetInterceptor.vue  # 声明式网络拦截组件
 │   ├── DeclarativeNetInterceptionHistory.vue    # 拦截历史记录组件
-│   └── DeclarativeNetRuleEditor.vue    # 拦截规则编辑器
+│   └── DeclarativeNetRuleEditor.vue   # 拦截规则编辑器
 ├── styles/             # 样式文件
 │   └── common.less     # 全局样式
 ├── types.ts            # TypeScript 类型定义

@@ -320,7 +320,19 @@ const handleRequestFinished = (request: any) => {
     duration: request.time?.toFixed(2),
     requestHeaders: request.request.headers || {},
     responseHeaders: request.response.headers || {},
-    requestBody: request.request.postData,
+    requestBody: (() => {
+      const postDataText =
+        request.request.postData?.text || request.request.postData;
+      if (typeof postDataText === "string") {
+        try {
+          return JSON.parse(postDataText);
+        } catch (error) {
+          // 如果解析失败，保持原样
+          return postDataText;
+        }
+      }
+      return postDataText;
+    })(),
     responseBody: null,
     expanded: false,
     resourceType,
