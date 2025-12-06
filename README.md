@@ -1,4 +1,4 @@
-# 🚀 Chrome Extension Debug Tools - 前端调试增强器
+# 🚀 Chrome Extension Debug Tools - 请求拦截增强器
 
 > 一款基于 Vue 3 + TypeScript 的专业级 Chrome 扩展调试工具，提供强大的网络请求拦截和调试功能
 

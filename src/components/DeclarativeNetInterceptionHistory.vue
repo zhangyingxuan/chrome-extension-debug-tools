@@ -10,7 +10,9 @@
     <div class="drawer-content">
       <div class="drawer-header-actions">
         <t-popconfirm content="确定清空历史吗？" @confirm="clearHistory">
-          <t-button size="small" theme="danger">清空历史</t-button>
+          <t-tooltip content="清空历史">
+            <DeleteIcon size="16" title="" />
+          </t-tooltip>
         </t-popconfirm>
         <t-switch
           v-model="autoScroll"
@@ -98,6 +100,7 @@
 import { ref, watch, nextTick, onMounted } from "vue";
 import type { InterceptionRecord } from "@/types";
 import { formatTime } from "@/utils/common";
+import { DeleteIcon } from "tdesign-icons-vue-next";
 
 interface Props {
   visible: boolean;

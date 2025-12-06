@@ -67,8 +67,6 @@
 
         <!-- 请求和响应修改 -->
         <div class="section">
-          <div class="section-title">请求和响应修改</div>
-
           <t-tabs v-model="activeTab" theme="card">
             <!-- 返回体 -->
             <t-tab-panel value="responseBody" label="返回体">

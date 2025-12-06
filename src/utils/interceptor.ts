@@ -225,7 +225,7 @@ export class InterceptorManager {
                 ruleId: matchedRule.ruleId,
                 timestamp: Date.now(),
                 method: (this as any)?._originalMethod,
-                requestType: "XMLHttpRequest",
+                requestType: "xhr",
                 url: this?.responseURL,
                 filterType: matchedRule.filterType || "urlFilter",
                 matchedRule: matchedRule.urlPattern,

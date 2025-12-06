@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import TDesign from './tdesign'
+import './styles/app.less'
 import './styles/common.less'
 
 const app = createApp(App)

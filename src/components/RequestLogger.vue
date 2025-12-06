@@ -16,9 +16,9 @@
             :label="['显示参数', '隐藏参数']"
             size="small"
           />
-          <t-button size="small" @click="clearLogs" thetheme="danger">
-            清空记录
-          </t-button>
+          <t-tooltip content="清空记录">
+            <ClearIcon @click="clearLogs" size="16" />
+          </t-tooltip>
           <t-input
             v-model="filterKeyword"
             placeholder="输入URL关键词过滤"
@@ -28,9 +28,9 @@
           />
         </h3>
         <div class="control-actions">
-          <t-button size="small" @click="exportLogs" theme="default">
-            导出记录
-          </t-button>
+          <t-tooltip content="导出记录">
+            <FileExportIcon @click="exportLogs" size="16" />
+          </t-tooltip>
         </div>
       </div>
     </div>
@@ -228,6 +228,8 @@ import {
   FileSearchIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  ClearIcon,
+  FileExportIcon,
 } from "tdesign-icons-vue-next";
 import { ref, computed, onUnmounted } from "vue";
 import { generateId, getStatusClass } from "@/utils/common";

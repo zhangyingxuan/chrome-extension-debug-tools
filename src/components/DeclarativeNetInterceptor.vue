@@ -30,23 +30,23 @@
             </div>
           </h3>
           <div class="header-actions">
-            <t-button size="small" theme="primary" @click="ruleManager.add()">
-              添加规则
-            </t-button>
-            <t-button
-              v-if="isSupportHistory"
-              size="small"
-              theme="default"
-              @click="showHistoryDrawer = true"
-              class="history-toggle-btn"
-            >
-              查看拦截历史
-            </t-button>
+            <t-tooltip content="添加规则">
+              <AddIcon @click="ruleManager.add()" size="16" />
+            </t-tooltip>
+            <t-tooltip content="查看拦截历史">
+              <HistoryIcon
+                v-if="isSupportHistory"
+                @click="showHistoryDrawer = true"
+                size="16"
+              />
+            </t-tooltip>
             <t-popconfirm
               content="确定要清理所有规则吗？此操作不可恢复。"
               @confirm="ruleManager.clearAll()"
             >
-              <t-button size="small" theme="danger"> 清理所有规则 </t-button>
+              <t-tooltip content="清理所有规则">
+                <DeleteIcon size="16" />
+              </t-tooltip>
             </t-popconfirm>
           </div>
         </div>
@@ -106,14 +106,16 @@
                 </div>
                 <div class="col-actions">
                   <div class="action-buttons" @click.stop>
-                    <t-button size="small" @click="ruleManager.edit(rule)"
-                      >编辑</t-button
-                    >
+                    <t-tooltip content="编辑">
+                      <EditIcon @click="ruleManager.edit(rule)" size="16" />
+                    </t-tooltip>
                     <t-popconfirm
                       content="确定要删除这条拦截规则吗？"
                       @confirm="ruleManager.delete(rule)"
                     >
-                      <t-button size="small" theme="danger">删除</t-button>
+                      <t-tooltip content="删除规则">
+                        <DeleteIcon size="16" />
+                      </t-tooltip>
                     </t-popconfirm>
                   </div>
                 </div>
@@ -190,6 +192,10 @@ import {
   FileSearchIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  AddIcon,
+  HistoryIcon,
+  DeleteIcon,
+  EditIcon,
 } from "tdesign-icons-vue-next";
 
 const ourRuleIdPrefix = 1000;
@@ -697,7 +703,7 @@ defineExpose({
             flex: 1;
           }
           .col-actions {
-            width: 120px;
+            width: 60px;
             text-align: center;
           }
         }
@@ -758,7 +764,7 @@ defineExpose({
             }
 
             .col-actions {
-              width: 120px;
+              width: 60px;
               text-align: center;
 
               .action-buttons {

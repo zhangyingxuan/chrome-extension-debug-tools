@@ -29,33 +29,28 @@
                   <SearchIcon />
                 </template>
               </t-input>
-              <t-button
-                v-if="filterKeyword"
-                size="small"
-                theme="default"
-                @click="clearFilter"
-              >
-                清除
-              </t-button>
             </div>
           </h3>
           <div class="header-actions">
-            <t-button size="small" theme="primary" @click="ruleManager.add()">
-              添加规则
-            </t-button>
-            <t-button
-              size="small"
-              theme="default"
-              @click="showHistoryDrawer = true"
-              class="history-toggle-btn"
-            >
-              查看拦截历史
-            </t-button>
+            <t-tooltip content="添加规则">
+              <AddIcon @click="ruleManager.add()" size="16" />
+            </t-tooltip>
+            <t-tooltip content="查看拦截历史">
+              <HistoryIcon @click="showHistoryDrawer = true" size="16" />
+            </t-tooltip>
+            <t-tooltip content="导入规则">
+              <FileImportIcon @click="importRules" size="16" />
+            </t-tooltip>
+            <t-tooltip content="导出规则">
+              <FileExportIcon @click="exportRules" size="16" />
+            </t-tooltip>
             <t-popconfirm
               content="确定要清理所有规则吗？此操作不可恢复。"
               @confirm="ruleManager.clearAll()"
             >
-              <t-button size="small" theme="danger"> 清理所有规则 </t-button>
+              <t-tooltip content="清理所有规则">
+                <DeleteIcon size="16" />
+              </t-tooltip>
             </t-popconfirm>
           </div>
         </div>
@@ -86,7 +81,7 @@
               <div class="col-status">状态</div>
               <div class="col-filter-type">过滤类型</div>
               <div class="col-method">方法</div>
-              <div class="col-url">URL模式</div>
+              <div class="col-url">URL路径</div>
               <div class="col-actions">操作</div>
             </div>
 
@@ -119,14 +114,16 @@
                 </div>
                 <div class="col-actions">
                   <div class="action-buttons" @click.stop>
-                    <t-button size="small" @click="ruleManager.edit(rule)"
-                      >编辑</t-button
-                    >
+                    <t-tooltip content="编辑">
+                      <EditIcon @click="ruleManager.edit(rule)" size="16" />
+                    </t-tooltip>
                     <t-popconfirm
                       content="确定要删除这条拦截规则吗？"
                       @confirm="ruleManager.delete(rule)"
                     >
-                      <t-button size="small" theme="danger">删除</t-button>
+                      <t-tooltip content="删除">
+                        <DeleteIcon size="16" />
+                      </t-tooltip>
                     </t-popconfirm>
                   </div>
                 </div>
@@ -272,7 +269,7 @@
 </template>
 
 <script setup lang="ts">
-import { MessagePlugin } from "tdesign-vue-next";
+import { MessagePlugin, DialogPlugin } from "tdesign-vue-next";
 import { reactive, toRefs, ref, onMounted, toRaw, computed } from "vue";
 import { RequestRule } from "@/types";
 import ScriptRuleEditor from "./ScriptRuleEditor.vue";
@@ -283,6 +280,13 @@ import {
   FileSearchIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  AddIcon,
+  HistoryIcon,
+  FileImportIcon,
+  FileExportIcon,
+  DeleteIcon,
+  EditIcon,
+  CloseIcon,
 } from "tdesign-icons-vue-next";
 
 const ourRuleIdPrefix = 2000;
@@ -530,11 +534,6 @@ const applyFilter = () => {
   // 过滤逻辑已在computed属性中实现
 };
 
-// 清除过滤
-const clearFilter = () => {
-  filterKeyword.value = "";
-};
-
 /**
  * 设置拦截记录监听
  */
@@ -586,6 +585,238 @@ defineExpose({
     ruleManager.edit(newRule);
   },
 });
+
+// 导入规则
+const importRules = () => {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json";
+  input.onchange = async (event) => {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const importedData = JSON.parse(text);
+
+      // 验证导入数据格式
+      if (!Array.isArray(importedData)) {
+        throw new Error("导入文件格式不正确，应为规则数组");
+      }
+
+      // 验证每个规则的基本结构
+      for (const rule of importedData) {
+        if (!rule.ruleId || !rule.urlPattern || !rule.method) {
+          throw new Error("导入文件包含无效的规则格式");
+        }
+      }
+
+      // 检测重复规则
+      const existingRules = requestRules.value;
+      const duplicateRules = [];
+      const newRules: Array<RequestRule> = [];
+
+      for (const importedRule of importedData) {
+        const isDuplicate = existingRules.some(
+          (existingRule) => existingRule.urlPattern === importedRule.urlPattern
+        );
+
+        if (isDuplicate) {
+          duplicateRules.push(importedRule);
+        } else {
+          newRules.push(importedRule);
+        }
+      }
+
+      // 如果没有重复规则，直接导入所有新规则
+      if (duplicateRules.length === 0) {
+        const confirmDia = await DialogPlugin({
+          header: "确认导入规则",
+          body: `将导入 ${newRules.length} 条新规则到现有规则列表中。是否继续？`,
+          confirmBtn: "导入",
+          cancelBtn: "取消",
+          onConfirm: async () => {
+            await processImport(newRules, existingRules);
+            confirmDia.hide();
+          },
+          onClose: () => {
+            confirmDia.hide();
+          },
+        });
+        return;
+      }
+
+      // 处理重复规则
+      await handleDuplicateRules(duplicateRules, newRules, existingRules);
+    } catch (error: any) {
+      console.error("导入规则失败:", error);
+      MessagePlugin.error(`导入失败: ${error?.message}`);
+    }
+  };
+
+  input.click();
+};
+
+// 处理重复规则
+const handleDuplicateRules = async (
+  duplicateRules: any[],
+  newRules: any[],
+  existingRules: any[]
+) => {
+  const duplicateUrls = duplicateRules
+    .map((rule) => rule.urlPattern)
+    .join(", ");
+
+  // 一次性弹窗提供三个选项
+  const choiceDia = await DialogPlugin({
+    header: "检测到重复规则",
+    body: `发现 ${duplicateRules.length} 条规则与现有规则URL模式重复：${duplicateUrls}\n\n请选择处理方式：\n\n1. 覆盖：用导入的规则替换现有重复规则\n2. 忽略：只导入新规则，保留现有重复规则\n3. 保留两者：为导入的重复规则添加后缀并保存两者`,
+    confirmBtn: "覆盖",
+    cancelBtn: "取消",
+    onConfirm: async () => {
+      // 用户选择覆盖，显示确认对话框
+      const confirmDia = await DialogPlugin({
+        header: "确认覆盖",
+        body: "确定要用导入的规则覆盖现有的重复规则吗？此操作将替换所有重复的规则。",
+        confirmBtn: "确认覆盖",
+        cancelBtn: "取消",
+        onConfirm: async () => {
+          // 覆盖重复规则
+          const updatedExistingRules = existingRules.filter(
+            (existingRule) =>
+              !duplicateRules.some(
+                (duplicateRule) =>
+                  duplicateRule.urlPattern === existingRule.urlPattern
+              )
+          );
+
+          const allRulesToImport = [...newRules, ...duplicateRules];
+          await processImport(allRulesToImport, updatedExistingRules);
+          MessagePlugin.success("已成功覆盖重复规则并导入新规则");
+          confirmDia.hide();
+        },
+        onClose: () => {
+          MessagePlugin.info("覆盖操作已取消");
+          confirmDia.hide();
+        },
+      });
+      choiceDia.hide();
+    },
+    onClose: async () => {
+      // 用户选择取消，提供其他选项
+      const otherOptionsDia = await DialogPlugin({
+        header: "选择处理方式",
+        body: "请选择：\n\n1. 忽略：只导入新规则，保留现有重复规则\n2. 保留两者：为导入的重复规则添加后缀并保存两者",
+        confirmBtn: "忽略",
+        cancelBtn: "保留两者",
+        onConfirm: async () => {
+          // 用户选择忽略
+          MessagePlugin.info("已忽略重复规则，只导入新规则");
+          await processImport(newRules, existingRules);
+          otherOptionsDia.hide();
+        },
+        onClose: async () => {
+          // 用户选择保留两者
+          const renamedRules = duplicateRules.map((rule) => ({
+            ...rule,
+            urlPattern: `${rule.urlPattern}_imported_${Date.now()}`,
+            name: rule.name
+              ? `${rule.name}_导入副本`
+              : `导入规则_${Date.now()}`,
+          }));
+
+          const allRulesToImport = [...newRules, ...renamedRules];
+          await processImport(allRulesToImport, existingRules);
+          MessagePlugin.success("已成功保留所有规则并导入副本");
+          otherOptionsDia.hide();
+        },
+      });
+      choiceDia.hide();
+    },
+  });
+};
+
+// 处理导入过程
+const processImport = async (rulesToImport: any[], existingRules: any[]) => {
+  try {
+    if (rulesToImport.length === 0) {
+      MessagePlugin.info("没有需要导入的规则");
+      return;
+    }
+
+    // 生成新的ID并更新规则ID
+    const maxRuleId =
+      existingRules.length > 0
+        ? Math.max(...existingRules.map((r) => r.ruleId))
+        : ourRuleIdPrefix;
+
+    const importedRules = rulesToImport.map((rule, index) => ({
+      ...rule,
+      id: generateId("script-rule"),
+      ruleId: maxRuleId + index + 1,
+      expanded: false,
+    }));
+
+    // 合并规则列表
+    const finalRules = [...existingRules, ...importedRules];
+    requestRules.value = finalRules;
+    await cacheManager.save();
+
+    MessagePlugin.success(
+      `成功导入 ${importedRules.length} 条规则，现有规则总数：${finalRules.length}`
+    );
+  } catch (error) {
+    console.error("处理导入时发生错误:", error);
+    MessagePlugin.error("导入处理失败，请重试");
+  }
+};
+
+// 导出规则
+const exportRules = () => {
+  if (requestRules.value.length === 0) {
+    MessagePlugin.warning("没有规则可导出");
+    return;
+  }
+
+  try {
+    // 准备导出数据（去除临时属性）
+    const exportData = requestRules.value.map((rule) => ({
+      ruleId: rule.ruleId,
+      enabled: rule.enabled,
+      name: rule.name,
+      urlPattern: rule.urlPattern,
+      regexFilter: rule.regexFilter,
+      filterType: rule.filterType,
+      method: rule.method,
+      requestHeaders: rule.requestHeaders,
+      requestBody: rule.requestBody,
+      response: rule.response,
+      enableRequestBody: rule.enableRequestBody,
+      enableRequestHeaders: rule.enableRequestHeaders,
+      enableResponseBody: rule.enableResponseBody,
+      enableResponseHeaders: rule.enableResponseHeaders,
+    }));
+
+    // 创建JSON文件
+    const jsonString = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    // 创建下载链接
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `script-rules-${new Date().toISOString().split("T")[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    MessagePlugin.success(`成功导出 ${exportData.length} 条规则`);
+  } catch (error) {
+    console.error("导出规则失败:", error);
+    MessagePlugin.error("导出失败，请重试");
+  }
+};
 </script>
 
 <style lang="less" scoped>
@@ -598,6 +829,27 @@ defineExpose({
     background: #40a9ff;
   }
 }
+
+.import-btn {
+  background: #52c41a;
+  color: white;
+  border: none;
+
+  &:hover {
+    background: #73d13d;
+  }
+}
+
+.export-btn {
+  background: #faad14;
+  color: white;
+  border: none;
+
+  &:hover {
+    background: #ffc53d;
+  }
+}
+
 .script-interceptor {
   height: 100%;
   position: relative;
@@ -764,7 +1016,7 @@ defineExpose({
             flex: 1;
           }
           .col-actions {
-            width: 120px;
+            width: 60px;
             text-align: center;
           }
         }
@@ -838,7 +1090,7 @@ defineExpose({
             }
 
             .col-actions {
-              width: 120px;
+              width: 60px;
               text-align: center;
 
               .action-buttons {
