@@ -451,7 +451,7 @@ const ruleManager = {
         requestRules.value[index] = { ...rule };
       }
     } else {
-      requestRules.value.push({
+      requestRules.value.unshift({
         ...rule,
         id: generateId("rule"),
       });

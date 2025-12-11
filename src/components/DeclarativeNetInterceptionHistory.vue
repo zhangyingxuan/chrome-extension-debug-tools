@@ -147,12 +147,12 @@ watch(
 );
 
 function handleInterceptionRecord(record: any) {
-  // 添加到历史记录
-  interceptionHistory.value.push(record);
+  // 添加到历史记录（头插）
+  interceptionHistory.value.unshift(record);
 
   // 限制历史记录数量，避免内存溢出
   if (interceptionHistory.value.length > 1000) {
-    interceptionHistory.value = interceptionHistory.value.slice(-500);
+    interceptionHistory.value = interceptionHistory.value.slice(0, 500);
   }
 }
 
@@ -194,9 +194,7 @@ onMounted(() => {
 
       @media (max-width: 768px) {
         padding: 12px 0;
-        flex-direction: column;
         gap: 12px;
-        align-items: stretch;
       }
     }
 

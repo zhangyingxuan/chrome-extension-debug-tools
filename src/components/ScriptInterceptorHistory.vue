@@ -150,7 +150,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted } from "vue";
+import { ref, watch, nextTick } from "vue";
 import type { ScriptInterceptionRecord } from "@/types";
 import { formatTime } from "@/utils/common";
 import { DeleteIcon } from "tdesign-icons-vue-next";
@@ -242,12 +242,12 @@ watch(
 );
 
 function handleInterceptionRecord(record: any) {
-  // 添加到历史记录
-  interceptionHistory.value.push(record);
+  // 添加到历史记录（头插）
+  interceptionHistory.value.unshift(record);
 
   // 限制历史记录数量，避免内存溢出
   if (interceptionHistory.value.length > 1000) {
-    interceptionHistory.value = interceptionHistory.value.slice(-500);
+    interceptionHistory.value = interceptionHistory.value.slice(0, 500);
   }
 }
 
@@ -274,9 +274,7 @@ defineExpose({
 
       @media (max-width: 768px) {
         padding: 12px 0;
-        flex-direction: column;
         gap: 12px;
-        align-items: stretch;
       }
     }
 

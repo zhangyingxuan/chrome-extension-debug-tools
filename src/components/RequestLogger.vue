@@ -49,7 +49,7 @@
       </div>
 
       <div
-        v-for="log in reversedLogs"
+        v-for="log in filterLogs"
         :key="log.id"
         class="request-item"
         :class="getRequestItemClass(log)"
@@ -255,7 +255,7 @@ const getActiveTab = (log: RequestLog): string => {
 };
 
 // 计算属性
-const reversedLogs = computed(() => {
+const filterLogs = computed(() => {
   let logs = [...requestLogs.value];
 
   // 应用URL过滤
@@ -264,7 +264,7 @@ const reversedLogs = computed(() => {
     logs = logs.filter((log) => log.url.toLowerCase().includes(keyword));
   }
 
-  return logs.reverse();
+  return logs;
 });
 
 // 网络请求监听器
@@ -354,11 +354,11 @@ const handleRequestFinished = (request: any) => {
 
 // 保存请求记录
 const saveRequestLog = (log: RequestLog) => {
-  requestLogs.value.push(log);
+  requestLogs.value.unshift(log);
 
   // 限制记录数量，避免内存溢出
   if (requestLogs.value.length > 1000) {
-    requestLogs.value = requestLogs.value.slice(-500);
+    requestLogs.value = requestLogs.value.slice(0, 500);
   }
 
   // 通知父组件
@@ -785,7 +785,7 @@ onUnmounted(() => {
       .request-row {
         display: flex;
         align-items: center;
-        padding: 4px 8px;
+        padding: 0px 2px;
         min-height: 24px;
 
         .col-status {

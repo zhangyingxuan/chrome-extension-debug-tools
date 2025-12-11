@@ -531,10 +531,11 @@ const ruleManager = {
           ? Math.max(...requestRules.value.map((r) => r.ruleId)) + 1
           : ourRuleIdPrefix;
 
-      requestRules.value.push({
+      requestRules.value.unshift({
         ...rule,
         id: generateId("script-rule"),
         ruleId: maxRuleId,
+        expanded: false,
       });
     }
 
