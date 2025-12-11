@@ -6,7 +6,9 @@
       <div class="rules-section">
         <div class="section-header">
           <h3 class="header-actions">
-            脚本拦截规则
+            <t-tooltip content="XMLHttpRequest、Fetch拦截">
+              脚本拦截规则
+            </t-tooltip>
             <!-- 启用/禁用开关 -->
             <t-switch
               v-model="isEnabled"
@@ -114,27 +116,22 @@
                 </div>
                 <div class="col-actions">
                   <div class="action-buttons" @click.stop>
-                    <t-tooltip content="编辑">
-                      <EditIcon @click="ruleManager.edit(rule)" size="16" />
-                    </t-tooltip>
+                    <EditIcon @click="ruleManager.edit(rule)" size="16" />
                     <t-popconfirm
                       content="确定要删除这条拦截规则吗？"
                       @confirm="ruleManager.delete(rule)"
                     >
-                      <t-tooltip content="删除">
-                        <DeleteIcon size="16" />
-                      </t-tooltip>
+                      <DeleteIcon size="16" />
                     </t-popconfirm>
                   </div>
+                  <ChevronDownIcon
+                    v-if="rule.expanded"
+                    size="16"
+                    class="expand-icon"
+                  />
+                  <ChevronRightIcon v-else size="16" class="expand-icon" />
                 </div>
-                <ChevronDownIcon
-                  v-if="rule.expanded"
-                  size="16"
-                  class="expand-icon"
-                />
-                <ChevronRightIcon v-else size="16" class="expand-icon" />
               </div>
-
               <!-- 规则详情 -->
               <div v-if="rule.expanded" class="rule-details">
                 <div class="detail-section">
@@ -265,6 +262,49 @@
       @close="showHistoryDrawer = false"
       ref="historyRef"
     />
+    <t-dialog
+      :visible="importRulesData.showDuplicateRulesDialogVisible"
+      @close="importRulesData.showDuplicateRulesDialogVisible = false"
+    >
+      <template #header>slot header</template>
+      <template #body
+        >发现
+        {{ importRulesData.duplicateRules.length }}
+        条规则与现有规则URL模式重复：{{
+          importRulesData.duplicateRules
+            .map((rule) => rule.urlPattern)
+            .join(", ")
+        }}</template
+      >
+      <template #footer>
+        <div class="btns-group">
+          <t-button
+            size="small"
+            theme="primary"
+            variant="text"
+            @click.stop="saveRulesNeglect"
+          >
+            忽略
+          </t-button>
+          <t-button
+            size="small"
+            theme="primary"
+            variant="text"
+            @click.stop="saveRulesCover"
+          >
+            覆盖
+          </t-button>
+          <t-button
+            size="small"
+            theme="primary"
+            variant="text"
+            @click.stop="saveRulesBoth"
+          >
+            保留两者
+          </t-button>
+        </div>
+      </template>
+    </t-dialog>
   </div>
 </template>
 
@@ -298,6 +338,13 @@ const reactiveData = reactive({
   editingRule: null as RequestRule | null,
   showHistoryDrawer: false,
   filterKeyword: "",
+});
+
+const importRulesData = reactive({
+  showDuplicateRulesDialogVisible: false,
+  duplicateRules: [] as RequestRule[],
+  newRules: [] as RequestRule[],
+  existingRules: [] as RequestRule[],
 });
 
 // 解构响应式数据以便使用
@@ -647,7 +694,10 @@ const importRules = () => {
       }
 
       // 处理重复规则
-      await handleDuplicateRules(duplicateRules, newRules, existingRules);
+      importRulesData.duplicateRules = duplicateRules;
+      importRulesData.newRules = newRules;
+      importRulesData.existingRules = existingRules;
+      importRulesData.showDuplicateRulesDialogVisible = true;
     } catch (error: any) {
       console.error("导入规则失败:", error);
       MessagePlugin.error(`导入失败: ${error?.message}`);
@@ -657,83 +707,45 @@ const importRules = () => {
   input.click();
 };
 
-// 处理重复规则
-const handleDuplicateRules = async (
-  duplicateRules: any[],
-  newRules: any[],
-  existingRules: any[]
-) => {
-  const duplicateUrls = duplicateRules
-    .map((rule) => rule.urlPattern)
-    .join(", ");
+// 覆盖
+const saveRulesCover = async () => {
+  // 覆盖重复规则
+  const updatedExistingRules = importRulesData.existingRules.filter(
+    (existingRule) =>
+      !importRulesData.duplicateRules.some(
+        (duplicateRule) => duplicateRule.urlPattern === existingRule.urlPattern
+      )
+  );
 
-  // 一次性弹窗提供三个选项
-  const choiceDia = await DialogPlugin({
-    header: "检测到重复规则",
-    body: `发现 ${duplicateRules.length} 条规则与现有规则URL模式重复：${duplicateUrls}\n\n请选择处理方式：\n\n1. 覆盖：用导入的规则替换现有重复规则\n2. 忽略：只导入新规则，保留现有重复规则\n3. 保留两者：为导入的重复规则添加后缀并保存两者`,
-    confirmBtn: "覆盖",
-    cancelBtn: "取消",
-    onConfirm: async () => {
-      // 用户选择覆盖，显示确认对话框
-      const confirmDia = await DialogPlugin({
-        header: "确认覆盖",
-        body: "确定要用导入的规则覆盖现有的重复规则吗？此操作将替换所有重复的规则。",
-        confirmBtn: "确认覆盖",
-        cancelBtn: "取消",
-        onConfirm: async () => {
-          // 覆盖重复规则
-          const updatedExistingRules = existingRules.filter(
-            (existingRule) =>
-              !duplicateRules.some(
-                (duplicateRule) =>
-                  duplicateRule.urlPattern === existingRule.urlPattern
-              )
-          );
+  const allRulesToImport = [
+    ...importRulesData.newRules,
+    ...importRulesData.duplicateRules,
+  ];
+  await processImport(allRulesToImport, updatedExistingRules);
+  importRulesData.showDuplicateRulesDialogVisible = false;
+};
 
-          const allRulesToImport = [...newRules, ...duplicateRules];
-          await processImport(allRulesToImport, updatedExistingRules);
-          MessagePlugin.success("已成功覆盖重复规则并导入新规则");
-          confirmDia.hide();
-        },
-        onClose: () => {
-          MessagePlugin.info("覆盖操作已取消");
-          confirmDia.hide();
-        },
-      });
-      choiceDia.hide();
-    },
-    onClose: async () => {
-      // 用户选择取消，提供其他选项
-      const otherOptionsDia = await DialogPlugin({
-        header: "选择处理方式",
-        body: "请选择：\n\n1. 忽略：只导入新规则，保留现有重复规则\n2. 保留两者：为导入的重复规则添加后缀并保存两者",
-        confirmBtn: "忽略",
-        cancelBtn: "保留两者",
-        onConfirm: async () => {
-          // 用户选择忽略
-          MessagePlugin.info("已忽略重复规则，只导入新规则");
-          await processImport(newRules, existingRules);
-          otherOptionsDia.hide();
-        },
-        onClose: async () => {
-          // 用户选择保留两者
-          const renamedRules = duplicateRules.map((rule) => ({
-            ...rule,
-            urlPattern: `${rule.urlPattern}_imported_${Date.now()}`,
-            name: rule.name
-              ? `${rule.name}_导入副本`
-              : `导入规则_${Date.now()}`,
-          }));
+/**
+ * 忽略
+ */
+const saveRulesNeglect = async () => {
+  // 用户选择忽略
+  await processImport(importRulesData.newRules, importRulesData.existingRules);
+  importRulesData.showDuplicateRulesDialogVisible = false;
+};
 
-          const allRulesToImport = [...newRules, ...renamedRules];
-          await processImport(allRulesToImport, existingRules);
-          MessagePlugin.success("已成功保留所有规则并导入副本");
-          otherOptionsDia.hide();
-        },
-      });
-      choiceDia.hide();
-    },
-  });
+// 保留两者
+const saveRulesBoth = async () => {
+  // 用户选择保留两者
+  const renamedRules = importRulesData.duplicateRules.map((rule) => ({
+    ...rule,
+    urlPattern: `${rule.urlPattern}_imported_${Date.now()}`,
+    name: rule.name ? `${rule.name}_导入副本` : `导入规则_${Date.now()}`,
+  }));
+
+  const allRulesToImport = [...importRulesData.newRules, ...renamedRules];
+  await processImport(allRulesToImport, importRulesData.existingRules);
+  importRulesData.showDuplicateRulesDialogVisible = false;
 };
 
 // 处理导入过程
@@ -858,10 +870,6 @@ const exportRules = () => {
     height: 100%;
     display: flex;
     flex-direction: column;
-
-    @media (max-width: 768px) {
-      padding: 8px;
-    }
   }
 
   .rules-section {
@@ -873,40 +881,22 @@ const exportRules = () => {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     overflow: hidden;
 
-    @media (max-width: 768px) {
-      border-radius: 4px;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-    }
-
     .section-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 8px;
+      padding: 4px;
       background: #fafafa;
       border-bottom: 1px solid #e8e8e8;
-
-      @media (max-width: 768px) {
-        padding: 12px 16px;
-        flex-direction: column;
-        gap: 12px;
-        align-items: stretch;
-      }
 
       h3 {
         margin: 0;
         font-size: 16px;
         font-weight: 600;
         color: #333;
-        display: flex;
-        align-items: center;
-        gap: 16px;
 
         @media (max-width: 768px) {
           font-size: 14px;
-          flex-direction: column;
-          align-items: stretch;
-          gap: 8px;
         }
       }
 
@@ -915,22 +905,11 @@ const exportRules = () => {
         gap: 8px;
         align-items: center;
         flex-wrap: wrap;
-
-        @media (max-width: 768px) {
-          justify-content: space-between;
-        }
-
         .filter-section {
           display: flex;
           align-items: center;
           gap: 8px;
           margin-right: 8px;
-
-          @media (max-width: 768px) {
-            margin-right: 0;
-            width: 100%;
-            justify-content: space-between;
-          }
         }
 
         .t-switch {
@@ -1016,7 +995,7 @@ const exportRules = () => {
             flex: 1;
           }
           .col-actions {
-            width: 60px;
+            width: 80px;
             text-align: center;
           }
         }
@@ -1090,8 +1069,10 @@ const exportRules = () => {
             }
 
             .col-actions {
-              width: 60px;
+              width: 80px;
               text-align: center;
+              display: flex;
+              justify-content: end;
 
               .action-buttons {
                 display: flex;

@@ -1,6 +1,11 @@
-# 🚀 Chrome Extension Debug Tools - 请求拦截增强器
+# 🚀 Chrome Extension Debug Tools - 网络请求拦截器
 
-> 一款基于 Vue 3 + TypeScript 的专业级 Chrome 扩展调试工具，提供强大的网络请求拦截和调试功能
+> 一款专为研发打造的网络请求拦截器，集成在 devtools NetLimit 选项卡中，支持网络请求拦截替换为预设的请求体、返回体，支持 XMLHttpRequest、fetch 请求拦截，同时支持 declarativeNetRequest 拦截
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Vue 3](https://img.shields.io/badge/Vue-3.x-brightgreen.svg)](https://vuejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
+[![Version](https://img.shields.io/badge/Version-1.2.0-blue.svg)](https://github.com/yxuanzhang/chrome-extension-debug-tools)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Vue 3](https://img.shields.io/badge/Vue-3.x-brightgreen.svg)](https://vuejs.org/)
@@ -41,6 +46,8 @@
 - **UI 组件库**：TDesign Vue Next
 - **样式预处理器**：Less
 - **浏览器扩展**：Chrome Extensions Manifest V3
+- **核心权限**：storage, unlimitedStorage, declarativeNetRequest, declarativeNetRequestFeedback, declarativeNetRequestWithHostAccess
+- **主机权限**：http://_/_, https://_/_
 
 ### 核心模块
 
@@ -50,7 +57,8 @@
 │   │   ├── ScriptInterceptor.vue          # 脚本拦截管理
 │   │   ├── RequestLogger.vue              # 请求日志记录
 │   │   ├── ScriptInterceptorHistory.vue   # 拦截历史
-│   │   └── DeclarativeNetInterceptor.vue  # 声明式拦截
+│   │   ├── DeclarativeNetInterceptor.vue  # 声明式拦截
+│   │   └── DeclarativeNetInterceptionHistory.vue # 声明式拦截历史
 │   ├── utils/
 │   │   └── interceptor.ts    # 核心拦截器逻辑
 │   ├── types.ts             # TypeScript 类型定义
@@ -58,6 +66,8 @@
 ├── public/
 │   ├── background.js        # 后台脚本（消息中转）
 │   ├── content.js           # 内容脚本（页面通信）
+│   ├── interceptor.js       # 拦截器脚本（web可访问资源）
+│   ├── devtools.html        # 开发者工具页面
 │   └── manifest.json        # 扩展配置
 └── dist/                    # 构建输出目录
 ```
@@ -108,6 +118,7 @@ npm run build
 3. 点击"加载已解压的扩展程序"按钮
 4. 选择项目根目录下的 `dist` 文件夹
 5. 扩展安装完成，可在 Chrome 工具栏看到扩展图标
+6. 打开开发者工具（F12），在选项卡中找到 "NetLimit" 面板开始使用
 
 ## 📖 使用教程
 
@@ -120,15 +131,21 @@ npm run build
 
 2. **配置拦截规则**
 
-   - 在"脚本拦截"选项卡中添加新规则
-   - 设置 URL 模式（支持正则表达式）
+   - 在"脚本拦截"选项卡中添加新规则，支持 XMLHttpRequest 和 fetch 请求拦截
+   - 在"声明式拦截"选项卡中配置 declarativeNetRequest 规则
+   - 设置 URL 模式（支持正则表达式和包含匹配）
    - 配置响应状态码、响应头和响应体
    - 启用规则使其生效
 
 3. **查看拦截记录**
+
    - 在"拦截历史"选项卡中查看所有拦截请求
    - 分析请求耗时、响应大小等性能指标
    - 支持导出拦截记录用于分析
+
+4. **管理请求日志**
+   - 在"请求记录器"中查看详细的网络请求信息
+   - 支持清空记录和导出日志数据
 
 ### 高级功能
 

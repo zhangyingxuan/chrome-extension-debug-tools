@@ -16,9 +16,6 @@
             :label="['显示参数', '隐藏参数']"
             size="small"
           />
-          <t-tooltip content="清空记录">
-            <ClearIcon @click="clearLogs" size="16" />
-          </t-tooltip>
           <t-input
             v-model="filterKeyword"
             placeholder="输入URL关键词过滤"
@@ -28,6 +25,9 @@
           />
         </h3>
         <div class="control-actions">
+          <t-tooltip content="清空记录">
+            <ClearIcon @click="clearLogs" size="16" />
+          </t-tooltip>
           <t-tooltip content="导出记录">
             <FileExportIcon @click="exportLogs" size="16" />
           </t-tooltip>

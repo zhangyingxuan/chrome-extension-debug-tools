@@ -6,7 +6,9 @@
       <div class="rules-section">
         <div class="section-header">
           <h3 class="header-actions">
-            网络请求拦截规则
+            <t-tooltip content="declarativeNetRequest拦截">
+              网络请求拦截规则
+            </t-tooltip>
             <!-- 启用/禁用开关 -->
             <t-switch
               v-model="isEnabled"
@@ -106,25 +108,21 @@
                 </div>
                 <div class="col-actions">
                   <div class="action-buttons" @click.stop>
-                    <t-tooltip content="编辑">
-                      <EditIcon @click="ruleManager.edit(rule)" size="16" />
-                    </t-tooltip>
+                    <EditIcon @click="ruleManager.edit(rule)" size="16" />
                     <t-popconfirm
                       content="确定要删除这条拦截规则吗？"
                       @confirm="ruleManager.delete(rule)"
                     >
-                      <t-tooltip content="删除规则">
-                        <DeleteIcon size="16" />
-                      </t-tooltip>
+                      <DeleteIcon size="16" />
                     </t-popconfirm>
                   </div>
+                  <ChevronDownIcon
+                    v-if="rule.expanded"
+                    size="16"
+                    class="expand-icon"
+                  />
+                  <ChevronRightIcon v-else size="16" class="expand-icon" />
                 </div>
-                <ChevronDownIcon
-                  v-if="rule.expanded"
-                  size="16"
-                  class="expand-icon"
-                />
-                <ChevronRightIcon v-else size="16" class="expand-icon" />
               </div>
 
               <!-- 规则详情 -->
@@ -534,10 +532,6 @@ defineExpose({
     height: 100%;
     display: flex;
     flex-direction: column;
-
-    @media (max-width: 768px) {
-      padding: 8px;
-    }
   }
 
   .rules-section {
@@ -549,25 +543,13 @@ defineExpose({
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     overflow: hidden;
 
-    @media (max-width: 768px) {
-      border-radius: 4px;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-    }
-
     .section-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 8px;
+      padding: 4px;
       background: #fafafa;
       border-bottom: 1px solid #e8e8e8;
-
-      @media (max-width: 768px) {
-        padding: 12px 16px;
-        flex-direction: column;
-        gap: 12px;
-        align-items: stretch;
-      }
 
       h3 {
         margin: 0;
@@ -586,21 +568,11 @@ defineExpose({
         align-items: center;
         flex-wrap: wrap;
 
-        @media (max-width: 768px) {
-          justify-content: space-between;
-        }
-
         .filter-section {
           display: flex;
           align-items: center;
           gap: 8px;
           margin-right: 8px;
-
-          @media (max-width: 768px) {
-            margin-right: 0;
-            width: 100%;
-            justify-content: space-between;
-          }
         }
 
         .t-switch {
@@ -703,7 +675,7 @@ defineExpose({
             flex: 1;
           }
           .col-actions {
-            width: 60px;
+            width: 80px;
             text-align: center;
           }
         }
@@ -764,8 +736,10 @@ defineExpose({
             }
 
             .col-actions {
-              width: 60px;
+              width: 80px;
               text-align: center;
+              display: flex;
+              justify-content: end;
 
               .action-buttons {
                 display: flex;
