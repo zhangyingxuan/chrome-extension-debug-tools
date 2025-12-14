@@ -1,6 +1,6 @@
 // 格式化时间
 export const formatTime = (timestamp: number): string => {
-  return new Date(timestamp).toLocaleTimeString('zh-CN', {
+  return new Date(timestamp).toLocaleTimeString(undefined, {
     hour12: false,
     hour: '2-digit',
     minute: '2-digit',

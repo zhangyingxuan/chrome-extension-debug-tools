@@ -1,7 +1,6 @@
 <template>
   <t-drawer
     :visible="visible"
-    :header="editingRule ? '编辑规则' : '添加规则'"
     @close="closeDrawer"
     @confirm="saveRule"
     size="70%"
@@ -15,29 +14,28 @@
         :rules="formRules"
         label-width="120px"
       >
-        <t-form-item label="拦截规则" name="urlPattern" required>
+        <t-form-item :label="$t('interceptRule')" name="urlPattern" required>
           <t-input
             v-model="ruleData.urlPattern"
             :placeholder="
               ruleData.filterType === 'urlFilter'
-                ? '例如: */api/users*'
-                : '例如: ^https://api\\.example\\.com/.*'
+                ? $t('placeholderUrlFilter')
+                : $t('placeholderRegexFilter')
             "
           >
-            <!-- :tips="
-              rule.filterType === 'urlFilter'
-                ? '支持通配符匹配，如: */api/*，不能包含中文等非ASCII字符'
-                : '支持正则表达式，如: ^https://api\\.example\\.com/.*'
-            " -->
             <template #prefixIcon>
               <t-select
                 v-model="ruleData.filterType"
                 class="filter-type-select"
               >
-                <t-option key="urlFilter" label="URL匹配" value="urlFilter" />
+                <t-option
+                  key="urlFilter"
+                  :label="$t('urlFilter')"
+                  value="urlFilter"
+                />
                 <t-option
                   key="regexFilter"
-                  label="Reg匹配"
+                  :label="$t('regexFilter')"
                   value="regexFilter"
                 />
               </t-select>
@@ -53,18 +51,20 @@
             </template>
           </t-input>
         </t-form-item>
-        <t-form-item label="响应体类型">
+        <t-form-item :label="$t('responseType')">
           <t-radio-group v-model="responseType">
             <t-radio value="json">JSON</t-radio>
-            <t-radio value="text">文本</t-radio>
+            <t-radio value="text">{{ $t("text") }}</t-radio>
           </t-radio-group>
         </t-form-item>
-        <t-form-item label="响应体" name="responseBody">
+        <t-form-item :label="$t('responseBody')" name="responseBody">
           <t-textarea
             v-model="ruleData.responseBody"
             :autosize="{ minRows: 6 }"
             :placeholder="
-              responseType === 'json' ? 'JSON格式的响应体' : '文本响应体'
+              responseType === 'json'
+                ? $t('placeholderJsonBody')
+                : $t('placeholderTextBody')
             "
             @blur="formatJson"
           />
@@ -76,8 +76,10 @@
 
 <script setup lang="ts">
 import { reactive, ref, watch } from "vue";
+import { t } from "@/utils/i18n";
 import { RequestRule } from "@/types";
 import { generateId } from "@/utils/common";
+
 interface Props {
   visible: boolean;
   editingRule?: RequestRule | null;
@@ -115,7 +117,7 @@ const formRules = {
   urlPattern: [
     {
       required: true,
-      message: "响应体不能为空",
+      message: t("validationUrlPatternRequired"),
       trigger: "blur",
     },
     {
@@ -129,8 +131,7 @@ const formRules = {
           if (hasNonAscii) {
             return {
               result: false,
-              message:
-                "URL模式不能包含中文等非ASCII字符，请使用英文或ASCII字符",
+              message: t("validationUrlPatternAscii"),
             };
           }
 
@@ -144,7 +145,7 @@ const formRules = {
           } catch {
             return {
               result: false,
-              message: "正则表达式格式错误，请输入有效的正则表达式",
+              message: t("validationRegexInvalid"),
             };
           }
         }
@@ -155,7 +156,7 @@ const formRules = {
   responseBody: [
     {
       required: true,
-      message: "响应体不能为空，请输入有效的响应体内容",
+      message: t("validationResponseBodyRequired"),
       trigger: "blur",
     },
     {
@@ -168,7 +169,10 @@ const formRules = {
             return true;
           } catch (e) {
             console.error("JSON格式错误", e);
-            return { result: false, message: "JSON格式错误，请检查响应体格式" };
+            return {
+              result: false,
+              message: t("validationJsonInvalid"),
+            };
           }
         }
         return true;
@@ -196,7 +200,7 @@ const closeDrawer = () => {
 // 监听编辑规则变化
 watch(
   () => props.editingRule,
-  (newRule) => {
+  (newRule: RequestRule | null | undefined) => {
     if (newRule) {
       Object.assign(ruleData, JSON.parse(JSON.stringify(newRule)));
 
@@ -222,7 +226,7 @@ watch(
         // 处理空对象或其他情况
         responseType.value = "json";
         ruleData.responseBody = JSON.stringify(
-          { message: "默认响应体" },
+          { message: t("defaultResponseBody") },
           null,
           2
         );

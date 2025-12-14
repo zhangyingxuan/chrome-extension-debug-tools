@@ -4,31 +4,31 @@
     <div class="control-section">
       <div class="control-header">
         <h3 class="control-actions">
-          网络请求记录
+          {{ $t("requestLogTitle") }}
           <t-switch
             v-model="isRecording"
-            :label="['记录中', '已停止']"
+            :label="[$t('recording'), $t('stopped')]"
             size="small"
             @change="toggleRecording"
           />
           <t-switch
             v-model="showUrlParams"
-            :label="['显示参数', '隐藏参数']"
+            :label="[$t('showParams'), $t('hideParams')]"
             size="small"
           />
           <t-input
             v-model="filterKeyword"
-            placeholder="输入URL关键词过滤"
+            :placeholder="$t('filterPlaceholder')"
             size="small"
             style="width: 200px; margin-right: 8px"
             clearable
           />
         </h3>
         <div class="control-actions">
-          <t-tooltip content="清空记录">
+          <t-tooltip :content="$t('clearLogs')">
             <ClearIcon @click="clearLogs" size="16" />
           </t-tooltip>
-          <t-tooltip content="导出记录">
+          <t-tooltip :content="$t('exportLogs')">
             <FileExportIcon @click="exportLogs" size="16" />
           </t-tooltip>
         </div>
@@ -39,13 +39,13 @@
     <div class="request-list" ref="requestList">
       <!-- 列标题 -->
       <div class="table-header">
-        <div class="col-status">状态</div>
-        <div class="col-method">方法</div>
-        <div class="col-type">类型</div>
-        <div class="col-url">URL</div>
-        <div class="col-duration">时间</div>
-        <div class="col-size">大小</div>
-        <div class="col-actions">操作</div>
+        <div class="col-status">{{ $t("colStatus") }}</div>
+        <div class="col-method">{{ $t("colMethod") }}</div>
+        <div class="col-type">{{ $t("colType") }}</div>
+        <div class="col-url">{{ $t("colUrl") }}</div>
+        <div class="col-duration">{{ $t("colDuration") }}</div>
+        <div class="col-size">{{ $t("colSize") }}</div>
+        <div class="col-actions">{{ $t("colActions") }}</div>
       </div>
 
       <div
@@ -77,18 +77,18 @@
               theme="primary"
               variant="text"
               @click.stop="quickAddRule(log)"
-              title="添加拦截规则（declarativeNetRequest拦截）"
+              :title="$t('interceptTooltip')"
             >
-              拦截
+              {{ $t("actionIntercept") }}
             </t-button>
             <t-button
               size="small"
               theme="success"
               variant="text"
               @click.stop="scriptIntercept(log)"
-              title="添加脚本拦截（XMLHttpRequest、Fetch拦截）"
+              :title="$t('scriptInterceptTooltip')"
             >
-              脚本拦截
+              {{ $t("actionScriptIntercept") }}
             </t-button>
           </div>
           <ChevronDownIcon v-if="log.expanded" size="16" class="expand-icon" />
@@ -212,10 +212,10 @@
       <!-- 空状态 -->
       <div v-if="requestLogs.length === 0" class="empty-state">
         <FileSearchIcon size="48" />
-        <p class="empty-text">暂无请求记录</p>
+        <p class="empty-text">{{ $t("emptyLogs") }}</p>
         <p class="empty-desc">
           {{
-            isRecording ? "等待网络请求..." : "请开启记录功能开始记录网络请求"
+            isRecording ? $t("waitingForRequests") : $t("startRecordingHint")
           }}
         </p>
       </div>
@@ -658,7 +658,7 @@ onUnmounted(() => {
 
   .control-section {
     background: #fff;
-    padding: 8px;
+    padding: 4px;
     border-bottom: 1px solid #e8e8e8;
 
     .control-header {
@@ -668,7 +668,7 @@ onUnmounted(() => {
 
       h3 {
         margin: 0;
-        font-size: 16px;
+        font-size: 14px;
         color: #333;
       }
 

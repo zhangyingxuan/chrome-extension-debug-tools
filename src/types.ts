@@ -27,9 +27,9 @@ export interface RequestRule {
 
 // 拦截记录类型
 export interface InterceptionRecord {
-  id: string;
+  id: number;
   ruleId: number;
-  rulesetId: number;
+  rulesetId: string;
   timestamp: number;
   method: string;
   url: string;

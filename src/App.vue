@@ -2,26 +2,42 @@
   <div class="debug-tool">
     <!-- 选项卡头部 -->
     <div class="tab-header">
-      <div
-        class="tab-item"
-        :class="{ active: activeTab === 'request-log' }"
-        @click="activeTab = 'request-log'"
-      >
-        请求记录
+      <div class="tabs-container">
+        <div
+          class="tab-item"
+          :class="{ active: activeTab === 'request-log' }"
+          @click="activeTab = 'request-log'"
+        >
+          {{ $t("tabRequestLog") }}
+        </div>
+        <div
+          class="tab-item"
+          :class="{ active: activeTab === 'script-interceptor' }"
+          @click="activeTab = 'script-interceptor'"
+        >
+          {{ $t("tabScriptInterceptor") }}
+        </div>
+        <div
+          class="tab-item"
+          :class="{ active: activeTab === 'request-interceptor' }"
+          @click="activeTab = 'request-interceptor'"
+        >
+          {{ $t("tabRequestInterceptor") }}
+        </div>
       </div>
-      <div
-        class="tab-item"
-        :class="{ active: activeTab === 'script-interceptor' }"
-        @click="activeTab = 'script-interceptor'"
-      >
-        脚本拦截
-      </div>
-      <div
-        class="tab-item"
-        :class="{ active: activeTab === 'request-interceptor' }"
-        @click="activeTab = 'request-interceptor'"
-      >
-        请求拦截
+
+      <!-- 语言切换 -->
+      <div class="language-switch">
+        <t-dropdown
+          :options="LOCALE_OPTIONS"
+          @click="handleLocaleChange"
+          trigger="click"
+          placement="right-bottom"
+        >
+          <div class="tab-item language-btn">
+            <TranslateIcon size="20" />
+          </div>
+        </t-dropdown>
       </div>
     </div>
 
@@ -52,15 +68,22 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
+import { TranslateIcon } from "tdesign-icons-vue-next";
 import DeclarativeNetInterceptor from "./components/DeclarativeNetInterceptor.vue";
 import ScriptInterceptor from "./components/ScriptInterceptor.vue";
 import RequestLogger from "./components/RequestLogger.vue";
+import { LOCALE_OPTIONS, setLocale } from "@/utils/i18n";
 
 // 响应式数据
 const activeTab = ref("request-log");
 const requestInterceptorRef =
   ref<InstanceType<typeof DeclarativeNetInterceptor>>();
 const scriptInterceptorRef = ref<InstanceType<typeof ScriptInterceptor>>();
+
+// 处理语言切换
+const handleLocaleChange = (data: any) => {
+  setLocale(data.value);
+};
 
 // 处理打开规则编辑器事件
 const handleOpenRuleEditor = (ruleData: any) => {
@@ -118,6 +141,15 @@ const handleOpenRuleEditor = (ruleData: any) => {
   .tab-header {
     background: #fff;
     border-right: 1px solid #e8e8e8;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding-bottom: 8px;
+
+    .tabs-container {
+      display: flex;
+      flex-direction: column;
+    }
 
     .tab-item {
       writing-mode: vertical-rl;
@@ -136,6 +168,23 @@ const handleOpenRuleEditor = (ruleData: any) => {
         color: #1890ff;
         border-right: 2px solid #1890ff;
         font-weight: 500;
+      }
+    }
+
+    .language-switch {
+      display: flex;
+      justify-content: center;
+
+      .language-btn {
+        writing-mode: horizontal-tb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-right: none;
+
+        &:hover {
+          color: #1890ff;
+        }
       }
     }
   }

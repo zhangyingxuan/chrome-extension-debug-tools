@@ -7,9 +7,6 @@ export class InterceptorManager {
   private originalFetch: typeof window.fetch;
   private originalXMLHttpRequestOpen: typeof XMLHttpRequest.prototype.open;
   private originalXMLHttpRequestSend: typeof XMLHttpRequest.prototype.send;
-
-  private currentXhr: XMLHttpRequest | null = null;
-  private currentRule: RequestRule | null = null;
   private requestRules: RequestRule[] = [];
 
   constructor() {

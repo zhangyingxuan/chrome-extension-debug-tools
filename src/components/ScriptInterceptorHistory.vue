@@ -9,26 +9,29 @@
   >
     <div class="drawer-content">
       <div class="drawer-header-actions">
-        <t-popconfirm content="确定清空历史吗？" @confirm="clearHistory">
-          <t-tooltip content="清空历史">
+        <t-popconfirm
+          :content="$t('clearHistoryConfirm')"
+          @confirm="clearHistory"
+        >
+          <t-tooltip :content="$t('clearHistory')">
             <DeleteIcon size="16" />
           </t-tooltip>
         </t-popconfirm>
         <t-switch
           v-model="autoScroll"
           size="small"
-          :label="['自动滚动', '固定']"
+          :label="[$t('autoScroll'), $t('fixed')]"
         />
       </div>
 
       <div class="history-list" ref="historyList">
         <!-- 表格标题 -->
         <div class="table-header">
-          <div class="col-requestType">请求类型</div>
-          <div class="col-method">方法</div>
-          <div class="col-filterType">过滤类型</div>
-          <div class="col-url">URL</div>
-          <div class="col-time">时间</div>
+          <div class="col-requestType">{{ $t("colRequestType") }}</div>
+          <div class="col-method">{{ $t("colMethod") }}</div>
+          <div class="col-filterType">{{ $t("colFilterType") }}</div>
+          <div class="col-url">{{ $t("colUrl") }}</div>
+          <div class="col-time">{{ $t("colTime") }}</div>
         </div>
 
         <!-- 拦截记录项 -->
@@ -56,34 +59,34 @@
           <!-- 详情面板 -->
           <div v-if="record.expanded" class="history-details">
             <div class="detail-section">
-              <div class="detail-title">拦截详情</div>
+              <div class="detail-title">{{ $t("interceptionDetails") }}</div>
               <div class="detail-content">
                 <div class="detail-row">
-                  <span class="detail-label">规则ID:</span>
+                  <span class="detail-label">{{ $t("ruleId") }}:</span>
                   <span class="detail-value">{{
-                    record.ruleId || "未知"
+                    record.ruleId || $t("unknown")
                   }}</span>
                 </div>
                 <div class="detail-row">
-                  <span class="detail-label">过滤类型:</span>
+                  <span class="detail-label">{{ $t("colFilterType") }}:</span>
                   <span class="detail-value">{{ record.filterType }}</span>
                 </div>
                 <div class="detail-row">
-                  <span class="detail-label">匹配规则:</span>
+                  <span class="detail-label">{{ $t("matchedRule") }}:</span>
                   <span class="detail-value">{{
-                    record.matchedRule || "无匹配"
+                    record.matchedRule || $t("noMatch")
                   }}</span>
                 </div>
                 <div class="detail-row">
-                  <span class="detail-label">完整URL:</span>
+                  <span class="detail-label">{{ $t("fullUrl") }}:</span>
                   <span class="detail-value">{{ record.url }}</span>
                 </div>
                 <div v-if="record.status" class="detail-row">
-                  <span class="detail-label">状态码:</span>
+                  <span class="detail-label">{{ $t("statusCode") }}:</span>
                   <span class="detail-value">{{ record.status }}</span>
                 </div>
                 <div v-if="record.error" class="detail-row">
-                  <span class="detail-label">错误信息:</span>
+                  <span class="detail-label">{{ $t("errorMessage") }}:</span>
                   <span class="detail-value error-text">{{
                     record.error
                   }}</span>
@@ -98,7 +101,7 @@
               "
               class="detail-section"
             >
-              <div class="detail-title">请求头</div>
+              <div class="detail-title">{{ $t("requestHeaders") }}</div>
               <div class="detail-content">
                 <div class="headers-content">
                   <pre>{{ formatHeaders(record.requestHeaders) }}</pre>
@@ -113,7 +116,7 @@
               "
               class="detail-section"
             >
-              <div class="detail-title">响应头</div>
+              <div class="detail-title">{{ $t("responseHeaders") }}</div>
               <div class="detail-content">
                 <div class="headers-content">
                   <pre>{{ formatHeaders(record.responseHeaders) }}</pre>
@@ -122,7 +125,7 @@
             </div>
 
             <div v-if="record.requestBody" class="detail-section">
-              <div class="detail-title">请求体</div>
+              <div class="detail-title">{{ $t("requestBody") }}</div>
               <div class="detail-content">
                 <div class="json-content">
                   <pre>{{ formatBody(record.requestBody) }}</pre>
@@ -131,7 +134,7 @@
             </div>
 
             <div v-if="record.responseBody" class="detail-section">
-              <div class="detail-title">响应体</div>
+              <div class="detail-title">{{ $t("responseBody") }}</div>
               <div class="detail-content">
                 <div class="json-content">
                   <pre>{{ formatBody(record.responseBody) }}</pre>
@@ -142,7 +145,7 @@
         </div>
 
         <div v-if="interceptionHistory.length === 0" class="empty-state">
-          暂无脚本拦截记录
+          {{ $t("noScriptInterceptionHistory") }}
         </div>
       </div>
     </div>
@@ -151,6 +154,7 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick } from "vue";
+import { t } from "@/utils/i18n";
 import type { ScriptInterceptionRecord } from "@/types";
 import { formatTime } from "@/utils/common";
 import { DeleteIcon } from "tdesign-icons-vue-next";
@@ -188,7 +192,7 @@ const clearHistory = () => {
 
 const formatHeaders = (headers: Record<string, string>) => {
   if (!headers || Object.keys(headers).length === 0) {
-    return "无数据";
+    return t("noData");
   }
   return Object.entries(headers)
     .map(([key, value]) => `${key}: ${value}`)
@@ -197,7 +201,7 @@ const formatHeaders = (headers: Record<string, string>) => {
 
 const formatBody = (body: any) => {
   if (!body) {
-    return "无数据";
+    return t("noData");
   }
 
   if (typeof body === "string") {
@@ -231,7 +235,7 @@ const formatBody = (body: any) => {
 // 监听历史记录变化，实现自动滚动
 watch(
   [() => interceptionHistory, () => autoScroll],
-  ([interceptionHistory, shouldScroll]) => {
+  ([interceptionHistory, shouldScroll]: [any, any]) => {
     if (shouldScroll && interceptionHistory.value.length > 0) {
       nextTick(() => {
         historyList.value?.scrollTo({ top: 0, behavior: "smooth" });
@@ -241,7 +245,7 @@ watch(
   { deep: true }
 );
 
-function handleInterceptionRecord(record: any) {
+function handleInterceptionRecord(record: ScriptInterceptionRecord) {
   // 添加到历史记录（头插）
   interceptionHistory.value.unshift(record);
 

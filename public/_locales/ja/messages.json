@@ -1,0 +1,203 @@
+{
+  "appName": { "message": "ネットワークリクエストインターセプター" },
+  "appDescription": {
+    "message": "開発者向けに設計されたネットワークリクエストインターセプターで、devtoolsのNetLimitタブに統合されています。ネットワークリクエストをインターセプトしてプリセットのリクエスト/レスポンスボディに置き換えることができ、XMLHttpRequestおよびfetchリクエストのインターセプトをサポートし、declarativeNetRequestインターセプトもサポートしています。"
+  },
+  "tabRequestLog": { "message": "リクエストログ" },
+  "tabScriptInterceptor": { "message": "スクリプトインターセプト" },
+  "tabRequestInterceptor": { "message": "リクエストインターセプト" },
+  "requestLogTitle": { "message": "ネットワークリクエストログ" },
+  "recording": { "message": "記録中" },
+  "stopped": { "message": "停止" },
+  "showParams": { "message": "パラメータを表示" },
+  "hideParams": { "message": "パラメータを隠す" },
+  "filterPlaceholder": { "message": "URLキーワードでフィルタリング" },
+  "clearLogs": { "message": "ログをクリア" },
+  "exportLogs": { "message": "ログをエクスポート" },
+  "colStatus": { "message": "ステータス" },
+  "colMethod": { "message": "メソッド" },
+  "colType": { "message": "タイプ" },
+  "colUrl": { "message": "URL" },
+  "colDuration": { "message": "時間" },
+  "colSize": { "message": "サイズ" },
+  "colActions": { "message": "操作" },
+  "actionIntercept": { "message": "インターセプト" },
+  "actionScriptIntercept": { "message": "スクリプトインターセプト" },
+  "interceptTooltip": {
+    "message": "インターセプト・ルールを追加 (declarativeNetRequest)"
+  },
+  "scriptInterceptTooltip": {
+    "message": "スクリプトインターセプトを追加 (XMLHttpRequest, Fetch)"
+  },
+  "emptyLogs": { "message": "リクエストログはありません" },
+  "waitingForRequests": { "message": "ネットワークリクエストを待機中..." },
+  "startRecordingHint": {
+    "message": "記録機能を有効にしてネットワークリクエストの記録を開始してください"
+  },
+  "scriptInterceptorTitle": { "message": "スクリプトインターセプト・ルール" },
+  "enabled": { "message": "有効" },
+  "disabled": { "message": "無効" },
+  "filterRulesPlaceholder": {
+    "message": "URLキーワードでルールをフィルタリング"
+  },
+  "addRule": { "message": "ルールを追加" },
+  "viewHistory": { "message": "履歴を表示" },
+  "importRules": { "message": "ルールをインポート" },
+  "exportRules": { "message": "ルールをエクスポート" },
+  "clearRulesConfirm": {
+    "message": "すべてのルールをクリアしてもよろしいですか？この操作は元に戻せません。"
+  },
+  "clearRules": { "message": "すべてのルールをクリア" },
+  "noMatchingRules": { "message": "一致するルールが見つかりません" },
+  "noRules": { "message": "インターセプト・ルールはありません" },
+  "tryOtherKeywords": { "message": "他のキーワードを試してください" },
+  "addFirstRuleHint": {
+    "message": "最初のインターセプト・ルールを追加して開始してください"
+  },
+  "colFilterType": { "message": "フィルタタイプ" },
+  "colUrlPath": { "message": "URLパス" },
+  "deleteRuleConfirm": { "message": "このルールを削除してもよろしいですか？" },
+  "ruleDetails": { "message": "ルールの詳細" },
+  "ruleId": { "message": "ルールID" },
+  "urlPattern": { "message": "URLパターン" },
+  "requestMethod": { "message": "リクエストメソッド" },
+  "requestModification": { "message": "リクエスト変更" },
+  "requestHeaders": { "message": "リクエストヘッダー" },
+  "noRequestHeadersModification": { "message": "リクエストヘッダーの変更なし" },
+  "requestBody": { "message": "リクエストボディ" },
+  "noRequestBodyModification": { "message": "リクエストボディの変更なし" },
+  "responseModification": { "message": "レスポンス変更" },
+  "statusCode": { "message": "ステータスコード" },
+  "responseHeaders": { "message": "レスポンスヘッダー" },
+  "noResponseHeadersModification": {
+    "message": "レスポンスヘッダーの変更なし"
+  },
+  "responseBodyType": { "message": "レスポンスボディタイプ" },
+  "responseBody": { "message": "レスポンスボディ" },
+  "noResponseBodyModification": { "message": "レスポンスボディの変更なし" },
+  "found": { "message": "発見" },
+  "duplicateRulesHint": {
+    "message": "件のルールが既存のルールのURLパターンと重複しています："
+  },
+  "ignore": { "message": "無視" },
+  "overwrite": { "message": "上書き" },
+  "keepBoth": { "message": "両方保持" },
+  "confirmImportRules": { "message": "ルールのインポートを確認" },
+  "willImport": { "message": "インポート予定" },
+  "importRulesConfirmSuffix": {
+    "message": "件の新しいルールを既存のリストに追加します。続けますか？"
+  },
+  "noRulesToImport": { "message": "インポートするルールがありません" },
+  "importSuccessPrefix": { "message": "正常にインポートしました" },
+  "importSuccessSuffix": { "message": "件のルール、現在のルール総数：" },
+  "importFailed": { "message": "インポートに失敗しました。再試行してください" },
+  "noRulesToExport": { "message": "エクスポートするルールがありません" },
+  "exportSuccessPrefix": { "message": "正常にエクスポートしました" },
+  "exportSuccessSuffix": { "message": "件のルール" },
+  "exportFailed": {
+    "message": "エクスポートに失敗しました。再試行してください"
+  },
+  "allRulesCleared": { "message": "すべてのルールがクリアされました" },
+  "clearRulesFailed": {
+    "message": "ルールのクリアに失敗しました。再試行してください"
+  },
+  "noData": { "message": "データなし" },
+  "invalidImportFormat": {
+    "message": "インポート形式が正しくありません。ルールの配列である必要があります"
+  },
+  "invalidRuleFormat": {
+    "message": "インポートファイルに無効なルール形式が含まれています"
+  },
+  "importError": { "message": "インポート失敗" },
+  "requestInterceptorTitle": {
+    "message": "ネットワークリクエスト・インターセプト・ルール"
+  },
+  "colUrlPattern": { "message": "URLパターン" },
+  "responseContent": { "message": "レスポンス内容" },
+  "defaultResponseBody": { "message": "デフォルトのレスポンスボディ" },
+  "defaultTextResponseBody": {
+    "message": "デフォルトのテキストレスポンスボディ"
+  },
+  "interceptRule": { "message": "インターセプト・ルール" },
+  "placeholderUrlFilter": {
+    "message": "URLパターンを入力、*ワイルドカードをサポート"
+  },
+  "placeholderRegexFilter": { "message": "正規表現を入力" },
+  "urlFilter": { "message": "URL一致" },
+  "regexFilter": { "message": "正規表現一致" },
+  "responseType": { "message": "レスポンスタイプ" },
+  "text": { "message": "テキスト" },
+  "placeholderJsonBody": {
+    "message": "JSON形式のレスポンスボディを入力してください"
+  },
+  "placeholderTextBody": {
+    "message": "テキスト形式のレスポンスボディを入力してください"
+  },
+  "validationUrlPatternRequired": {
+    "message": "URLパターンを入力してください"
+  },
+  "validationUrlPatternAscii": {
+    "message": "URLパターンに非ASCII文字を含めることはできません"
+  },
+  "validationRegexInvalid": { "message": "正規表現の形式が無効です" },
+  "validationResponseBodyRequired": {
+    "message": "レスポンスボディの内容を入力してください"
+  },
+  "validationJsonInvalid": { "message": "JSON形式が無効です" },
+  "rule": { "message": "ルール" },
+  "placeholderUrlFilterExample": {
+    "message": "URLキーワードを入力（例：api/user）"
+  },
+  "placeholderRegexFilterExample": {
+    "message": "正規表現を入力（例：.*api.*）"
+  },
+  "allMethods": { "message": "すべてのメソッド" },
+  "placeholderJsFunction": { "message": "JavaScript関数を入力してください" },
+  "placeholderStatusCode": {
+    "message": "HTTPステータスコードを入力してください"
+  },
+  "placeholderResponseHeaders": {
+    "message": "JSON形式のレスポンスヘッダーを入力してください。例：{\"Content-Type\": \"application/json\", \"Cache-Control\": \"no-cache\"}"
+  },
+  "placeholderRequestHeaders": {
+    "message": "JSON形式のリクエストヘッダーを入力してください。例：{\"Content-Type\": \"application/json\", \"Authorization\": \"Bearer token\"}"
+  },
+  "placeholderRequestBody": {
+    "message": "JSON形式のリクエストボディ変更を入力してください。例：{\"userId\": 123, \"status\": \"active\"}"
+  },
+  "validationMethodRequired": {
+    "message": "リクエストメソッドを選択してください"
+  },
+  "validationStatusCodeRequired": {
+    "message": "ステータスコードを入力してください"
+  },
+  "validationStatusCodeRange": {
+    "message": "ステータスコードは100-599の間である必要があります"
+  },
+  "updateSuccess": { "message": "ルールが正常に更新されました" },
+  "addSuccess": { "message": "ルールが正常に追加されました" },
+  "saveFailed": { "message": "保存に失敗しました" },
+  "validationJsonObjRequired": {
+    "message": "有効なJSONオブジェクトである必要があります"
+  },
+  "validationFormatError": { "message": "形式エラー：" },
+  "unknownError": { "message": "不明なエラー" },
+  "clearHistoryConfirm": { "message": "履歴をクリアしてもよろしいですか？" },
+  "clearHistory": { "message": "履歴をクリア" },
+  "autoScroll": { "message": "自動スクロール" },
+  "fixed": { "message": "固定" },
+  "colRequestId": { "message": "リクエストID" },
+  "colTime": { "message": "時間" },
+  "interceptionDetails": { "message": "インターセプト詳細" },
+  "unknown": { "message": "不明" },
+  "ruleType": { "message": "ルールタイプ" },
+  "matchedRule": { "message": "一致したルール" },
+  "noMatch": { "message": "一致なし" },
+  "fullUrl": { "message": "完全なURL" },
+  "errorMessage": { "message": "エラーメッセージ" },
+  "noInterceptionHistory": { "message": "インターセプト履歴はありません" },
+  "colRequestType": { "message": "リクエストタイプ" },
+  "noScriptInterceptionHistory": {
+    "message": "スクリプトインターセプト履歴はありません"
+  }
+}

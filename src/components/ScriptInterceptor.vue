@@ -7,12 +7,12 @@
         <div class="section-header">
           <h3 class="header-actions">
             <t-tooltip content="XMLHttpRequest、Fetch拦截">
-              脚本拦截规则
+              {{ $t("scriptInterceptorTitle") }}
             </t-tooltip>
             <!-- 启用/禁用开关 -->
             <t-switch
               v-model="isEnabled"
-              :label="['启用', '禁用']"
+              :label="[$t('enabled'), $t('disabled')]"
               size="small"
               @change="toggleEnabled"
             />
@@ -20,7 +20,7 @@
             <div class="filter-section">
               <t-input
                 v-model="filterKeyword"
-                placeholder="输入URL关键词过滤规则"
+                :placeholder="$t('filterRulesPlaceholder')"
                 size="small"
                 style="width: 200px"
                 clearable
@@ -34,23 +34,23 @@
             </div>
           </h3>
           <div class="header-actions">
-            <t-tooltip content="添加规则">
+            <t-tooltip :content="$t('addRule')">
               <AddIcon @click="ruleManager.add()" size="16" />
             </t-tooltip>
-            <t-tooltip content="查看拦截历史">
+            <t-tooltip :content="$t('viewHistory')">
               <HistoryIcon @click="showHistoryDrawer = true" size="16" />
             </t-tooltip>
-            <t-tooltip content="导入规则">
+            <t-tooltip :content="$t('importRules')">
               <FileImportIcon @click="importRules" size="16" />
             </t-tooltip>
-            <t-tooltip content="导出规则">
+            <t-tooltip :content="$t('exportRules')">
               <FileExportIcon @click="exportRules" size="16" />
             </t-tooltip>
             <t-popconfirm
-              content="确定要清理所有规则吗？此操作不可恢复。"
+              :content="$t('clearRulesConfirm')"
               @confirm="ruleManager.clearAll()"
             >
-              <t-tooltip content="清理所有规则">
+              <t-tooltip :content="$t('clearRules')">
                 <DeleteIcon size="16" />
               </t-tooltip>
             </t-popconfirm>
@@ -64,13 +64,13 @@
             <div class="empty-content">
               <FileSearchIcon size="48" class="empty-icon" />
               <p class="empty-text">
-                {{ filterKeyword ? "未找到匹配的规则" : "暂无拦截规则" }}
+                {{ filterKeyword ? $t("noMatchingRules") : $t("noRules") }}
               </p>
               <p class="empty-desc">
                 {{
                   filterKeyword
-                    ? "请尝试其他关键词"
-                    : "请添加第一条拦截规则开始使用"
+                    ? $t("tryOtherKeywords")
+                    : $t("addFirstRuleHint")
                 }}
               </p>
             </div>
@@ -80,11 +80,11 @@
           <div v-else class="rules-table">
             <!-- 表格标题 -->
             <div class="table-header">
-              <div class="col-status">状态</div>
-              <div class="col-filter-type">过滤类型</div>
-              <div class="col-method">方法</div>
-              <div class="col-url">URL路径</div>
-              <div class="col-actions">操作</div>
+              <div class="col-status">{{ $t("colStatus") }}</div>
+              <div class="col-filter-type">{{ $t("colFilterType") }}</div>
+              <div class="col-method">{{ $t("colMethod") }}</div>
+              <div class="col-url">{{ $t("colUrlPath") }}</div>
+              <div class="col-actions">{{ $t("colActions") }}</div>
             </div>
 
             <!-- 规则项 -->
@@ -118,7 +118,7 @@
                   <div class="action-buttons" @click.stop>
                     <EditIcon @click="ruleManager.edit(rule)" size="16" />
                     <t-popconfirm
-                      content="确定要删除这条拦截规则吗？"
+                      :content="$t('deleteRuleConfirm')"
                       @confirm="ruleManager.delete(rule)"
                     >
                       <DeleteIcon size="16" />
@@ -135,34 +135,42 @@
               <!-- 规则详情 -->
               <div v-if="rule.expanded" class="rule-details">
                 <div class="detail-section">
-                  <div class="detail-title">规则详情</div>
+                  <div class="detail-title">{{ $t("ruleDetails") }}</div>
                   <div class="detail-content">
                     <div class="detail-row">
-                      <span class="detail-label">规则ID:</span>
+                      <span class="detail-label">{{ $t("ruleId") }}:</span>
                       <span class="detail-value">
                         [{{ rule.ruleId }}]{{ rule.id }}
                       </span>
                     </div>
                     <div class="detail-row">
-                      <span class="detail-label">过滤类型:</span>
+                      <span class="detail-label"
+                        >{{ $t("colFilterType") }}:</span
+                      >
                       <span class="detail-value">{{ rule.filterType }}</span>
                     </div>
                     <div class="detail-row">
-                      <span class="detail-label">URL模式:</span>
+                      <span class="detail-label">{{ $t("urlPattern") }}:</span>
                       <span class="detail-value">{{ rule.urlPattern }}</span>
                     </div>
                     <div class="detail-row">
-                      <span class="detail-label">请求方法:</span>
+                      <span class="detail-label"
+                        >{{ $t("requestMethod") }}:</span
+                      >
                       <span class="detail-value">{{ rule.method }}</span>
                     </div>
                   </div>
                 </div>
 
                 <div class="detail-section">
-                  <div class="detail-title">请求修改</div>
+                  <div class="detail-title">
+                    {{ $t("requestModification") }}
+                  </div>
                   <div class="detail-content">
                     <div class="detail-row">
-                      <span class="detail-label">请求头:</span>
+                      <span class="detail-label"
+                        >{{ $t("requestHeaders") }}:</span
+                      >
                       <span class="detail-value">
                         <div
                           v-if="
@@ -172,11 +180,13 @@
                         >
                           <pre>{{ formatHeaders(rule.requestHeaders) }}</pre>
                         </div>
-                        <div v-else class="no-content">无请求头修改</div>
+                        <div v-else class="no-content">
+                          {{ $t("noRequestHeadersModification") }}
+                        </div>
                       </span>
                     </div>
                     <div class="detail-row">
-                      <span class="detail-label">请求体:</span>
+                      <span class="detail-label">{{ $t("requestBody") }}:</span>
                       <span class="detail-value">
                         <div
                           v-if="
@@ -187,23 +197,29 @@
                         >
                           <pre>{{ formatBody(rule.requestBody) }}</pre>
                         </div>
-                        <div v-else class="no-content">无请求体修改</div>
+                        <div v-else class="no-content">
+                          {{ $t("noRequestBodyModification") }}
+                        </div>
                       </span>
                     </div>
                   </div>
                 </div>
 
                 <div class="detail-section">
-                  <div class="detail-title">响应修改</div>
+                  <div class="detail-title">
+                    {{ $t("responseModification") }}
+                  </div>
                   <div class="detail-content">
                     <div class="detail-row">
-                      <span class="detail-label">状态码:</span>
+                      <span class="detail-label">{{ $t("statusCode") }}:</span>
                       <span class="detail-value">{{
                         rule.response.status
                       }}</span>
                     </div>
                     <div class="detail-row">
-                      <span class="detail-label">响应头:</span>
+                      <span class="detail-label"
+                        >{{ $t("responseHeaders") }}:</span
+                      >
                       <span class="detail-value">
                         <div
                           v-if="
@@ -213,17 +229,23 @@
                         >
                           <pre>{{ formatHeaders(rule.response.headers) }}</pre>
                         </div>
-                        <div v-else class="no-content">无响应头修改</div>
+                        <div v-else class="no-content">
+                          {{ $t("noResponseHeadersModification") }}
+                        </div>
                       </span>
                     </div>
                     <div class="detail-row">
-                      <span class="detail-label">响应体类型:</span>
+                      <span class="detail-label"
+                        >{{ $t("responseBodyType") }}:</span
+                      >
                       <span class="detail-value">{{
                         rule.response.bodyType
                       }}</span>
                     </div>
                     <div class="detail-row">
-                      <span class="detail-label">响应体:</span>
+                      <span class="detail-label"
+                        >{{ $t("responseBody") }}:</span
+                      >
                       <span class="detail-value">
                         <div
                           v-if="
@@ -236,7 +258,9 @@
                         >
                           <pre>{{ formatBody(rule.response.body) }}</pre>
                         </div>
-                        <div v-else class="no-content">无响应体修改</div>
+                        <div v-else class="no-content">
+                          {{ $t("noResponseBodyModification") }}
+                        </div>
                       </span>
                     </div>
                   </div>
@@ -268,9 +292,10 @@
     >
       <template #header>slot header</template>
       <template #body
-        >发现
+        >{{ $t("found") }}
         {{ importRulesData.duplicateRules.length }}
-        条规则与现有规则URL模式重复：{{
+        {{ $t("duplicateRulesHint")
+        }}{{
           importRulesData.duplicateRules
             .map((rule) => rule.urlPattern)
             .join(", ")
@@ -284,7 +309,7 @@
             variant="text"
             @click.stop="saveRulesNeglect"
           >
-            忽略
+            {{ $t("ignore") }}
           </t-button>
           <t-button
             size="small"
@@ -292,7 +317,7 @@
             variant="text"
             @click.stop="saveRulesCover"
           >
-            覆盖
+            {{ $t("overwrite") }}
           </t-button>
           <t-button
             size="small"
@@ -300,7 +325,7 @@
             variant="text"
             @click.stop="saveRulesBoth"
           >
-            保留两者
+            {{ $t("keepBoth") }}
           </t-button>
         </div>
       </template>
@@ -315,6 +340,7 @@ import { RequestRule } from "@/types";
 import ScriptRuleEditor from "./ScriptRuleEditor.vue";
 import ScriptInterceptorHistory from "./ScriptInterceptorHistory.vue";
 import { generateId } from "@/utils/common";
+import { t } from "@/utils/i18n";
 import {
   SearchIcon,
   FileSearchIcon,
@@ -368,8 +394,8 @@ const filteredRules = computed(() => {
     return requestRules.value;
   }
   const keyword = filterKeyword.value.toLowerCase();
-  return requestRules.value.filter((rule: any) =>
-    rule.urlPattern.toLowerCase().includes(keyword)
+  return requestRules.value.filter((rule: RequestRule) =>
+    (rule.urlPattern || "").toLowerCase().includes(keyword)
   );
 });
 
@@ -438,7 +464,7 @@ const cacheManager = {
 // 格式化头部
 const formatHeaders = (headers: Record<string, string> | undefined) => {
   if (!headers || Object.keys(headers).length === 0) {
-    return "无数据";
+    return t("noData");
   }
   return Object.entries(headers)
     .map(([key, value]) => `${key}: ${value}`)
@@ -448,7 +474,7 @@ const formatHeaders = (headers: Record<string, string> | undefined) => {
 // 格式化请求体
 const formatBody = (body: any) => {
   if (!body) {
-    return "无数据";
+    return t("noData");
   }
 
   if (typeof body === "string") {
@@ -496,7 +522,9 @@ const ruleManager = {
   // 删除规则
   delete: async (rule: RequestRule) => {
     try {
-      requestRules.value = requestRules.value.filter((r) => r.id !== rule.id);
+      requestRules.value = requestRules.value.filter(
+        (r: RequestRule) => r.id !== rule.id
+      );
       await cacheManager.save();
     } catch (error) {
       console.error("删除规则时发生错误:", error);
@@ -505,7 +533,9 @@ const ruleManager = {
 
   // 更新规则状态
   update: async (rule: RequestRule) => {
-    const index = requestRules.value.findIndex((r) => r.id === rule.id);
+    const index = requestRules.value.findIndex(
+      (r: RequestRule) => r.id === rule.id
+    );
     if (index !== -1) {
       requestRules.value[index] = { ...rule };
       await cacheManager.save();
@@ -516,7 +546,7 @@ const ruleManager = {
   save: async (rule: RequestRule) => {
     if (editingRule.value?.id) {
       const index = requestRules.value.findIndex(
-        (r) => r.id === editingRule.value!.id
+        (r: RequestRule) => r.id === editingRule.value!.id
       );
       if (index !== -1) {
         requestRules.value[index] = {
@@ -528,7 +558,8 @@ const ruleManager = {
     } else {
       const maxRuleId =
         requestRules.value.length > 0
-          ? Math.max(...requestRules.value.map((r) => r.ruleId)) + 1
+          ? Math.max(...requestRules.value.map((r: RequestRule) => r.ruleId)) +
+            1
           : ourRuleIdPrefix;
 
       requestRules.value.unshift({
@@ -549,10 +580,10 @@ const ruleManager = {
     try {
       requestRules.value = [];
       await cacheManager.clear();
-      MessagePlugin.success("所有脚本规则已清理完成");
+      MessagePlugin.success(t("allRulesCleared"));
     } catch (error) {
       console.error("清理所有脚本规则时发生错误:", error);
-      MessagePlugin.error("清理脚本规则失败，请重试");
+      MessagePlugin.error(t("clearRulesFailed"));
     }
   },
 };
@@ -610,7 +641,7 @@ defineExpose({
   handleQuickAddRule: (ruleData: any) => {
     const maxRuleId =
       requestRules.value.length > 0
-        ? Math.max(...requestRules.value.map((r) => r.ruleId)) + 1
+        ? Math.max(...requestRules.value.map((r: RequestRule) => r.ruleId)) + 1
         : ourRuleIdPrefix;
 
     const newRule: RequestRule = {
@@ -649,13 +680,13 @@ const importRules = () => {
 
       // 验证导入数据格式
       if (!Array.isArray(importedData)) {
-        throw new Error("导入文件格式不正确，应为规则数组");
+        throw new Error(t("invalidImportFormat"));
       }
 
       // 验证每个规则的基本结构
       for (const rule of importedData) {
         if (!rule.ruleId || !rule.urlPattern || !rule.method) {
-          throw new Error("导入文件包含无效的规则格式");
+          throw new Error(t("invalidRuleFormat"));
         }
       }
 
@@ -679,9 +710,11 @@ const importRules = () => {
       // 如果没有重复规则，直接导入所有新规则
       if (duplicateRules.length === 0) {
         const confirmDia = await DialogPlugin({
-          header: "确认导入规则",
-          body: `将导入 ${newRules.length} 条新规则到现有规则列表中。是否继续？`,
-          confirmBtn: "导入",
+          header: t("confirmImportRules"),
+          body: `${t("willImport")} ${newRules.length} ${t(
+            "importRulesConfirmSuffix"
+          )}`,
+          confirmBtn: t("importRules"),
           cancelBtn: "取消",
           onConfirm: async () => {
             await processImport(newRules, existingRules);
@@ -701,7 +734,7 @@ const importRules = () => {
       importRulesData.showDuplicateRulesDialogVisible = true;
     } catch (error: any) {
       console.error("导入规则失败:", error);
-      MessagePlugin.error(`导入失败: ${error?.message}`);
+      MessagePlugin.error(`${t("importError")}: ${error?.message}`);
     }
   };
 
@@ -750,17 +783,20 @@ const saveRulesBoth = async () => {
 };
 
 // 处理导入过程
-const processImport = async (rulesToImport: any[], existingRules: any[]) => {
+const processImport = async (
+  rulesToImport: RequestRule[],
+  existingRules: RequestRule[]
+) => {
   try {
     if (rulesToImport.length === 0) {
-      MessagePlugin.info("没有需要导入的规则");
+      MessagePlugin.info(t("noRulesToImport"));
       return;
     }
 
     // 生成新的ID并更新规则ID
     const maxRuleId =
       existingRules.length > 0
-        ? Math.max(...existingRules.map((r) => r.ruleId))
+        ? Math.max(...existingRules.map((r: RequestRule) => r.ruleId))
         : ourRuleIdPrefix;
 
     const importedRules = rulesToImport.map((rule, index) => ({
@@ -776,11 +812,13 @@ const processImport = async (rulesToImport: any[], existingRules: any[]) => {
     await cacheManager.save();
 
     MessagePlugin.success(
-      `成功导入 ${importedRules.length} 条规则，现有规则总数：${finalRules.length}`
+      `${t("importSuccessPrefix")} ${importedRules.length} ${t(
+        "importSuccessSuffix"
+      )}${finalRules.length}`
     );
   } catch (error) {
     console.error("处理导入时发生错误:", error);
-    MessagePlugin.error("导入处理失败，请重试");
+    MessagePlugin.error(t("importFailed"));
   }
 };
 

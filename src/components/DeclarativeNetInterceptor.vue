@@ -6,13 +6,13 @@
       <div class="rules-section">
         <div class="section-header">
           <h3 class="header-actions">
-            <t-tooltip content="declarativeNetRequest拦截">
-              网络请求拦截规则
+            <t-tooltip content="添加拦截规则（declarativeNetRequest拦截）">
+              {{ $t("requestInterceptorTitle") }}
             </t-tooltip>
             <!-- 启用/禁用开关 -->
             <t-switch
               v-model="isEnabled"
-              :label="['启用', '禁用']"
+              :label="[$t('enabled'), $t('disabled')]"
               size="small"
               @change="toggleEnabled"
             />
@@ -20,7 +20,7 @@
             <div class="filter-section">
               <t-input
                 v-model="filterKeyword"
-                placeholder="输入URL关键词过滤规则"
+                :placeholder="$t('filterRulesPlaceholder')"
                 size="small"
                 style="width: 200px"
                 clearable
@@ -32,10 +32,10 @@
             </div>
           </h3>
           <div class="header-actions">
-            <t-tooltip content="添加规则">
+            <t-tooltip :content="$t('addRule')">
               <AddIcon @click="ruleManager.add()" size="16" />
             </t-tooltip>
-            <t-tooltip content="查看拦截历史">
+            <t-tooltip :content="$t('viewHistory')">
               <HistoryIcon
                 v-if="isSupportHistory"
                 @click="showHistoryDrawer = true"
@@ -43,10 +43,10 @@
               />
             </t-tooltip>
             <t-popconfirm
-              content="确定要清理所有规则吗？此操作不可恢复。"
+              :content="$t('clearRulesConfirm')"
               @confirm="ruleManager.clearAll()"
             >
-              <t-tooltip content="清理所有规则">
+              <t-tooltip :content="$t('clearRules')">
                 <DeleteIcon size="16" />
               </t-tooltip>
             </t-popconfirm>
@@ -60,13 +60,13 @@
             <div class="empty-content">
               <FileSearchIcon size="48" class="empty-icon" />
               <p class="empty-text">
-                {{ filterKeyword ? "未找到匹配的规则" : "暂无拦截规则" }}
+                {{ filterKeyword ? $t("noMatchingRules") : $t("noRules") }}
               </p>
               <p class="empty-desc">
                 {{
                   filterKeyword
-                    ? "请尝试其他关键词"
-                    : "请添加第一条拦截规则开始使用"
+                    ? $t("tryOtherKeywords")
+                    : $t("addFirstRuleHint")
                 }}
               </p>
             </div>
@@ -76,10 +76,10 @@
           <div v-else class="rules-table">
             <!-- 表格标题 -->
             <div class="table-header">
-              <div class="col-status">状态</div>
-              <div class="col-method">方法</div>
-              <div class="col-url">URL模式</div>
-              <div class="col-actions">操作</div>
+              <div class="col-status">{{ $t("colStatus") }}</div>
+              <div class="col-method">{{ $t("colMethod") }}</div>
+              <div class="col-url">{{ $t("colUrlPattern") }}</div>
+              <div class="col-actions">{{ $t("colActions") }}</div>
             </div>
 
             <!-- 规则项 -->
@@ -110,7 +110,7 @@
                   <div class="action-buttons" @click.stop>
                     <EditIcon @click="ruleManager.edit(rule)" size="16" />
                     <t-popconfirm
-                      content="确定要删除这条拦截规则吗？"
+                      :content="$t('deleteRuleConfirm')"
                       @confirm="ruleManager.delete(rule)"
                     >
                       <DeleteIcon size="16" />
@@ -128,27 +128,29 @@
               <!-- 规则详情 -->
               <div v-if="rule.expanded" class="rule-details">
                 <div class="detail-section">
-                  <div class="detail-title">规则详情</div>
+                  <div class="detail-title">{{ $t("ruleDetails") }}</div>
                   <div class="detail-content">
                     <div class="detail-row">
-                      <span class="detail-label">规则ID:</span>
+                      <span class="detail-label">{{ $t("ruleId") }}:</span>
                       <span class="detail-value">
                         [{{ rule.ruleId }}]{{ rule.id }}
                       </span>
                     </div>
                     <div class="detail-row">
-                      <span class="detail-label">URL模式:</span>
+                      <span class="detail-label">{{ $t("urlPattern") }}:</span>
                       <span class="detail-value">{{ rule.urlPattern }}</span>
                     </div>
                     <div class="detail-row">
-                      <span class="detail-label">请求方法:</span>
+                      <span class="detail-label"
+                        >{{ $t("requestMethod") }}:</span
+                      >
                       <span class="detail-value">{{ rule.method }}</span>
                     </div>
                   </div>
                 </div>
 
                 <div class="detail-section">
-                  <div class="detail-title">响应内容</div>
+                  <div class="detail-title">{{ $t("responseContent") }}</div>
                   <div class="detail-content">
                     <pre class="response-body">{{
                       formatResponseBody(rule.response.body)
@@ -185,6 +187,7 @@ import { RequestRule } from "@/types";
 import DeclarativeNetRuleEditor from "./DeclarativeNetRuleEditor.vue";
 import DeclarativeNetInterceptionHistory from "./DeclarativeNetInterceptionHistory.vue";
 import { generateId } from "@/utils/common";
+import { t } from "@/utils/i18n";
 import {
   SearchIcon,
   FileSearchIcon,
@@ -228,8 +231,8 @@ const filteredRules = computed(() => {
     return requestRules.value;
   }
   const keyword = filterKeyword.value.toLowerCase();
-  return requestRules.value.filter((rule: any) =>
-    rule.urlPattern.toLowerCase().includes(keyword)
+  return requestRules.value.filter((rule: RequestRule) =>
+    (rule.urlPattern || "").toLowerCase().includes(keyword)
   );
 });
 
@@ -306,13 +309,13 @@ const loadRules = async () => {
               const jsonStr = decodeURIComponent(url.split(",")[1]);
               responseBody = JSON.parse(jsonStr);
             } catch {
-              responseBody = { message: "默认响应体" };
+              responseBody = { message: t("defaultResponseBody") };
             }
           } else if (url.startsWith("data:text/plain")) {
             try {
               responseBody = decodeURIComponent(url.split(",")[1]);
             } catch {
-              responseBody = "默认文本响应体";
+              responseBody = t("defaultTextResponseBody");
             }
           }
         }
@@ -377,7 +380,7 @@ const dnrConverter = {
   update: async () => {
     try {
       const enabledRules = requestRules.value.filter((rule) => rule.enabled);
-      const dnrRules: any = enabledRules.map((rule) =>
+      const dnrRules: any = enabledRules.map((rule: RequestRule) =>
         dnrConverter.convert(rule, rule.ruleId)
       );
 
@@ -422,7 +425,9 @@ const ruleManager = {
   // 删除规则
   delete: async (rule: RequestRule) => {
     try {
-      requestRules.value = requestRules.value.filter((r) => r.id !== rule.id);
+      requestRules.value = requestRules.value.filter(
+        (r: RequestRule) => r.id !== rule.id
+      );
       await chrome.declarativeNetRequest.updateDynamicRules({
         removeRuleIds: [rule.ruleId],
       });
@@ -434,7 +439,9 @@ const ruleManager = {
 
   // 更新规则状态
   update: async (rule: RequestRule) => {
-    const index = requestRules.value.findIndex((r) => r.id === rule.id);
+    const index = requestRules.value.findIndex(
+      (r: RequestRule) => r.id === rule.id
+    );
     if (index !== -1) {
       requestRules.value[index] = { ...rule };
       await dnrConverter.update();
@@ -445,7 +452,7 @@ const ruleManager = {
   save: async (rule: RequestRule) => {
     if (editingRule.value?.id) {
       const index = requestRules.value.findIndex(
-        (r) => r.id === editingRule.value!.id
+        (r: RequestRule) => r.id === editingRule.value!.id
       );
       if (index !== -1) {
         requestRules.value[index] = { ...rule };
@@ -471,10 +478,10 @@ const ruleManager = {
       });
       requestRules.value = [];
       await cacheManager.clear();
-      MessagePlugin.success("所有规则已清理完成");
+      MessagePlugin.success(t("allRulesCleared"));
     } catch (error) {
       console.error("清理所有规则时发生错误:", error);
-      MessagePlugin.error("清理规则失败，请重试");
+      MessagePlugin.error(t("clearRulesFailed"));
     }
   },
 };
@@ -483,7 +490,7 @@ const ruleManager = {
 const handleQuickAddRule = (ruleData: any) => {
   const maxRuleId =
     requestRules.value.length > 0
-      ? Math.max(...requestRules.value.map((r) => r.ruleId)) + 1
+      ? Math.max(...requestRules.value.map((r: RequestRule) => r.ruleId)) + 1
       : ourRuleIdPrefix;
 
   const newRule: RequestRule = {

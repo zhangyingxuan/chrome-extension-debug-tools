@@ -1,0 +1,183 @@
+{
+  "appName": { "message": "Network Request Interceptor" },
+  "appDescription": {
+    "message": "A network request interceptor designed for developers, integrated into the devtools NetLimit tab. It supports intercepting and replacing network requests with preset request/response bodies, supports XMLHttpRequest and fetch request interception, and also supports declarativeNetRequest interception."
+  },
+  "tabRequestLog": { "message": "Request Log" },
+  "tabScriptInterceptor": { "message": "Script Interceptor" },
+  "tabRequestInterceptor": { "message": "Request Interceptor" },
+  "requestLogTitle": { "message": "Network Request Log" },
+  "recording": { "message": "Recording" },
+  "stopped": { "message": "Stopped" },
+  "showParams": { "message": "Show Params" },
+  "hideParams": { "message": "Hide Params" },
+  "filterPlaceholder": { "message": "Filter by URL keyword" },
+  "clearLogs": { "message": "Clear Logs" },
+  "exportLogs": { "message": "Export Logs" },
+  "colStatus": { "message": "Status" },
+  "colMethod": { "message": "Method" },
+  "colType": { "message": "Type" },
+  "colUrl": { "message": "URL" },
+  "colDuration": { "message": "Time" },
+  "colSize": { "message": "Size" },
+  "colActions": { "message": "Actions" },
+  "actionIntercept": { "message": "Intercept" },
+  "actionScriptIntercept": { "message": "Script Intercept" },
+  "interceptTooltip": {
+    "message": "Add Intercept Rule (declarativeNetRequest)"
+  },
+  "scriptInterceptTooltip": {
+    "message": "Add Script Intercept (XMLHttpRequest, Fetch)"
+  },
+  "emptyLogs": { "message": "No request logs" },
+  "waitingForRequests": { "message": "Waiting for network requests..." },
+  "startRecordingHint": {
+    "message": "Please enable recording to start logging network requests"
+  },
+  "scriptInterceptorTitle": { "message": "Script Interception Rules" },
+  "enabled": { "message": "Enabled" },
+  "disabled": { "message": "Disabled" },
+  "filterRulesPlaceholder": { "message": "Filter rules by URL keyword" },
+  "addRule": { "message": "Add Rule" },
+  "viewHistory": { "message": "View History" },
+  "importRules": { "message": "Import Rules" },
+  "exportRules": { "message": "Export Rules" },
+  "clearRulesConfirm": {
+    "message": "Are you sure you want to clear all rules? This cannot be undone."
+  },
+  "clearRules": { "message": "Clear All Rules" },
+  "noMatchingRules": { "message": "No matching rules found" },
+  "noRules": { "message": "No interception rules" },
+  "tryOtherKeywords": { "message": "Please try other keywords" },
+  "addFirstRuleHint": {
+    "message": "Please add your first interception rule to start"
+  },
+  "colFilterType": { "message": "Filter Type" },
+  "colUrlPath": { "message": "URL Path" },
+  "deleteRuleConfirm": {
+    "message": "Are you sure you want to delete this rule?"
+  },
+  "ruleDetails": { "message": "Rule Details" },
+  "ruleId": { "message": "Rule ID" },
+  "urlPattern": { "message": "URL Pattern" },
+  "requestMethod": { "message": "Request Method" },
+  "requestModification": { "message": "Request Modification" },
+  "requestHeaders": { "message": "Request Headers" },
+  "noRequestHeadersModification": {
+    "message": "No request headers modification"
+  },
+  "requestBody": { "message": "Request Body" },
+  "noRequestBodyModification": { "message": "No request body modification" },
+  "responseModification": { "message": "Response Modification" },
+  "statusCode": { "message": "Status Code" },
+  "responseHeaders": { "message": "Response Headers" },
+  "noResponseHeadersModification": {
+    "message": "No response headers modification"
+  },
+  "responseBodyType": { "message": "Response Body Type" },
+  "responseBody": { "message": "Response Body" },
+  "noResponseBodyModification": { "message": "No response body modification" },
+  "found": { "message": "Found" },
+  "duplicateRulesHint": {
+    "message": "rules duplicate with existing rules URL pattern:"
+  },
+  "ignore": { "message": "Ignore" },
+  "overwrite": { "message": "Overwrite" },
+  "keepBoth": { "message": "Keep Both" },
+  "confirmImportRules": { "message": "Confirm Import Rules" },
+  "willImport": { "message": "Will import" },
+  "importRulesConfirmSuffix": {
+    "message": "new rules to existing list. Continue?"
+  },
+  "noRulesToImport": { "message": "No rules to import" },
+  "importSuccessPrefix": { "message": "Successfully imported" },
+  "importSuccessSuffix": { "message": "rules, total rules:" },
+  "importFailed": { "message": "Import failed, please try again" },
+  "noRulesToExport": { "message": "No rules to export" },
+  "exportSuccessPrefix": { "message": "Successfully exported" },
+  "exportSuccessSuffix": { "message": "rules" },
+  "exportFailed": { "message": "Export failed, please try again" },
+  "allRulesCleared": { "message": "All rules cleared" },
+  "clearRulesFailed": { "message": "Failed to clear rules, please try again" },
+  "noData": { "message": "No Data" },
+  "invalidImportFormat": {
+    "message": "Invalid import format, should be an array of rules"
+  },
+  "invalidRuleFormat": {
+    "message": "Import file contains invalid rule format"
+  },
+  "importError": { "message": "Import Failed" },
+  "requestInterceptorTitle": {
+    "message": "Network Request Interception Rules"
+  },
+  "colUrlPattern": { "message": "URL Pattern" },
+  "responseContent": { "message": "Response Content" },
+  "defaultResponseBody": { "message": "Default Response Body" },
+  "defaultTextResponseBody": { "message": "Default Text Response Body" },
+  "interceptRule": { "message": "Intercept Rule" },
+  "placeholderUrlFilter": {
+    "message": "Enter URL pattern, supports * wildcard"
+  },
+  "placeholderRegexFilter": { "message": "Enter regular expression" },
+  "urlFilter": { "message": "URL Match" },
+  "regexFilter": { "message": "Regex Match" },
+  "responseType": { "message": "Response Type" },
+  "text": { "message": "Text" },
+  "placeholderJsonBody": { "message": "Enter JSON format response body" },
+  "placeholderTextBody": { "message": "Enter text format response body" },
+  "validationUrlPatternRequired": { "message": "Please enter URL pattern" },
+  "validationUrlPatternAscii": {
+    "message": "URL pattern cannot contain non-ASCII characters"
+  },
+  "validationRegexInvalid": { "message": "Invalid regular expression format" },
+  "validationResponseBodyRequired": {
+    "message": "Please enter response body content"
+  },
+  "validationJsonInvalid": { "message": "Invalid JSON format" },
+  "rule": { "message": "Rule" },
+  "placeholderUrlFilterExample": {
+    "message": "Enter URL keyword (e.g. api/user)"
+  },
+  "placeholderRegexFilterExample": {
+    "message": "Enter regular expression (e.g. .*api.*)"
+  },
+  "allMethods": { "message": "All Methods" },
+  "placeholderJsFunction": { "message": "Enter JavaScript function" },
+  "placeholderStatusCode": { "message": "Enter HTTP status code" },
+  "placeholderResponseHeaders": {
+    "message": "Enter JSON format response headers"
+  },
+  "placeholderRequestHeaders": {
+    "message": "Enter JSON format request headers"
+  },
+  "placeholderRequestBody": {
+    "message": "Enter JSON format request body modification"
+  },
+  "validationMethodRequired": { "message": "Please select request method" },
+  "validationStatusCodeRequired": { "message": "Please enter status code" },
+  "validationStatusCodeRange": {
+    "message": "Status code must be between 100-599"
+  },
+  "updateSuccess": { "message": "Rule updated successfully" },
+  "addSuccess": { "message": "Rule added successfully" },
+  "saveFailed": { "message": "Save failed" },
+  "validationJsonObjRequired": { "message": "Must be a valid JSON object" },
+  "validationFormatError": { "message": "Format error: " },
+  "unknownError": { "message": "Unknown error" },
+  "clearHistoryConfirm": { "message": "Are you sure to clear history?" },
+  "clearHistory": { "message": "Clear History" },
+  "autoScroll": { "message": "Auto Scroll" },
+  "fixed": { "message": "Fixed" },
+  "colRequestId": { "message": "Request ID" },
+  "colTime": { "message": "Time" },
+  "interceptionDetails": { "message": "Interception Details" },
+  "unknown": { "message": "Unknown" },
+  "ruleType": { "message": "Rule Type" },
+  "matchedRule": { "message": "Matched Rule" },
+  "noMatch": { "message": "No Match" },
+  "fullUrl": { "message": "Full URL" },
+  "errorMessage": { "message": "Error Message" },
+  "noInterceptionHistory": { "message": "No interception history" },
+  "colRequestType": { "message": "Request Type" },
+  "noScriptInterceptionHistory": { "message": "No script interception history" }
+}

@@ -17,7 +17,7 @@
         <!-- 基础信息 -->
         <div class="section">
           <t-form-item
-            label="规则"
+            :label="$t('rule')"
             name="urlPattern"
             required
             labelAlign="left"
@@ -26,8 +26,8 @@
               v-model="formData.urlPattern"
               :placeholder="
                 formData.filterType === 'urlFilter'
-                  ? '请输入URL关键词（如：api/user）'
-                  : '请输入正则表达式（如：.*api.*）'
+                  ? $t('placeholderUrlFilterExample')
+                  : $t('placeholderRegexFilterExample')
               "
             >
               <!-- :tips="
@@ -40,10 +40,14 @@
                   v-model="formData.filterType"
                   class="filter-type-select"
                 >
-                  <t-option key="urlFilter" label="URL匹配" value="urlFilter" />
+                  <t-option
+                    key="urlFilter"
+                    :label="$t('urlFilter')"
+                    value="urlFilter"
+                  />
                   <t-option
                     key="regexFilter"
-                    label="Reg匹配"
+                    :label="$t('regexFilter')"
                     value="regexFilter"
                   />
                 </t-select>
@@ -51,7 +55,7 @@
                   v-model="formData.method"
                   class="filter-method-select"
                 >
-                  <t-option label="所有方法" value="ALL" />
+                  <t-option :label="$t('allMethods')" value="ALL" />
                   <t-option label="GET" value="GET" />
                   <t-option label="POST" value="POST" />
                   <t-option label="PUT" value="PUT" />
@@ -69,13 +73,13 @@
         <div class="section">
           <t-tabs v-model="activeTab" theme="card">
             <!-- 返回体 -->
-            <t-tab-panel value="responseBody" label="返回体">
+            <t-tab-panel value="responseBody" :label="$t('responseBody')">
               <div class="tab-content">
                 <div class="form-row">
                   <t-form-item label="">
                     <t-switch
                       v-model="formData.enableResponseBody"
-                      :label="['启用', '禁用']"
+                      :label="[$t('enabled'), $t('disabled')]"
                     />
                   </t-form-item>
                   <t-form-item label="" name="response.bodyType">
@@ -98,8 +102,8 @@
                     v-model="formData.responseBodyJson"
                     :placeholder="
                       formData.response.bodyType === 'json'
-                        ? '请输入JSON格式的响应体'
-                        : '请输入JavaScript函数'
+                        ? $t('placeholderJsonBody')
+                        : $t('placeholderJsFunction')
                     "
                     :autosize="{
                       minRows: 6,
@@ -111,13 +115,13 @@
               </div>
             </t-tab-panel>
             <!-- 返回头 -->
-            <t-tab-panel value="responseHeader" label="返回头">
+            <t-tab-panel value="responseHeader" :label="$t('responseHeaders')">
               <div class="tab-content">
                 <div class="form-row">
                   <t-form-item label="">
                     <t-switch
                       v-model="formData.enableResponseHeaders"
-                      :label="['启用', '禁用']"
+                      :label="[$t('enabled'), $t('disabled')]"
                     />
                   </t-form-item>
                   <t-form-item label="" name="response.status">
@@ -125,7 +129,7 @@
                       v-model="formData.response.status"
                       :min="100"
                       :max="599"
-                      placeholder="请输入HTTP状态码"
+                      :placeholder="$t('placeholderStatusCode')"
                       :disabled="!formData.enableResponseHeaders"
                     />
                   </t-form-item>
@@ -133,7 +137,7 @@
                 <t-form-item label="" name="response.headers">
                   <t-textarea
                     v-model="formData.responseHeadersJson"
-                    placeholder='请输入JSON格式的响应头，如：{"Content-Type": "application/json", "Cache-Control": "no-cache"}'
+                    :placeholder="$t('placeholderResponseHeaders')"
                     :autosize="{ minRows: 3, maxRows: 6 }"
                     :disabled="!formData.enableResponseHeaders"
                   />
@@ -141,20 +145,20 @@
               </div>
             </t-tab-panel>
             <!-- 请求头 -->
-            <t-tab-panel value="requestHeaders" label="请求头">
+            <t-tab-panel value="requestHeaders" :label="$t('requestHeaders')">
               <div class="tab-content">
                 <div class="form-row">
                   <t-form-item label="">
                     <t-switch
                       v-model="formData.enableRequestHeaders"
-                      :label="['启用', '禁用']"
+                      :label="[$t('enabled'), $t('disabled')]"
                     />
                   </t-form-item>
                 </div>
                 <t-form-item label="" name="requestHeaders">
                   <t-textarea
                     v-model="formData.requestHeadersJson"
-                    placeholder='请输入JSON格式的请求头，如：{"Content-Type": "application/json", "Authorization": "Bearer token"}'
+                    :placeholder="$t('placeholderRequestHeaders')"
                     :autosize="{ minRows: 8, maxRows: 12 }"
                     :disabled="!formData.enableRequestHeaders"
                   />
@@ -163,20 +167,20 @@
             </t-tab-panel>
 
             <!-- 请求体 -->
-            <t-tab-panel value="requestBody" label="请求体">
+            <t-tab-panel value="requestBody" :label="$t('requestBody')">
               <div class="tab-content">
                 <div class="form-row">
                   <t-form-item label="">
                     <t-switch
                       v-model="formData.enableRequestBody"
-                      :label="['启用', '禁用']"
+                      :label="[$t('enabled'), $t('disabled')]"
                     />
                   </t-form-item>
                 </div>
                 <t-form-item label="" name="requestBody">
                   <t-textarea
                     v-model="formData.requestBodyJson"
-                    placeholder='请输入JSON格式的请求体修改，如：{"userId": 123, "status": "active"}'
+                    :placeholder="$t('placeholderRequestBody')"
                     :autosize="{ minRows: 8, maxRows: 12 }"
                     :disabled="!formData.enableRequestBody"
                   />
@@ -193,6 +197,7 @@
 <script setup lang="ts">
 import { MessagePlugin } from "tdesign-vue-next";
 import { reactive, ref, watch, nextTick } from "vue";
+import { t } from "@/utils/i18n";
 import { RequestRule } from "@/types";
 
 interface Props {
@@ -236,7 +241,11 @@ const formData = reactive({
 // 表单验证规则
 const formRules = {
   urlPattern: [
-    { required: true, message: "请输入URL模式", trigger: "blur" },
+    {
+      required: true,
+      message: t("validationUrlPatternRequired"),
+      trigger: "blur",
+    },
     {
       validator: (value: string) => {
         if (formData.filterType === "regexFilter") {
@@ -249,18 +258,28 @@ const formRules = {
         }
         return true;
       },
-      message: "正则表达式格式错误",
+      message: t("validationRegexInvalid"),
       trigger: "blur",
     },
   ],
-  method: [{ required: true, message: "请选择请求方法", trigger: "change" }],
+  method: [
+    {
+      required: true,
+      message: t("validationMethodRequired"),
+      trigger: "change",
+    },
+  ],
   "response.status": [
-    { required: true, message: "请输入状态码", trigger: "blur" },
+    {
+      required: true,
+      message: t("validationStatusCodeRequired"),
+      trigger: "blur",
+    },
     {
       type: "number",
       min: 100,
       max: 599,
-      message: "状态码必须在100-599之间",
+      message: t("validationStatusCodeRange"),
       trigger: "blur",
     },
   ],
@@ -277,7 +296,7 @@ const formRules = {
         }
         return true;
       },
-      message: "JSON格式错误",
+      message: t("validationJsonInvalid"),
       trigger: "blur",
     },
   ],
@@ -286,7 +305,7 @@ const formRules = {
 // 监听visible变化，初始化表单数据
 watch(
   () => props.visible,
-  (visible) => {
+  (visible: boolean) => {
     if (visible) {
       nextTick(() => {
         activeTab.value = "responseBody";
@@ -417,10 +436,12 @@ const handleSubmit = async () => {
 
       emit("save", rule);
       MessagePlugin.success(
-        props.editingRule ? "规则更新成功" : "规则添加成功"
+        props.editingRule ? t("updateSuccess") : t("addSuccess")
       );
     } catch (error) {
-      MessagePlugin.error(error instanceof Error ? error.message : "保存失败");
+      MessagePlugin.error(
+        error instanceof Error ? error.message : t("saveFailed")
+      );
     }
   }
 };
@@ -432,13 +453,13 @@ const parseJson = (jsonStr: string, fieldName: string): any => {
   try {
     const parsed = JSON.parse(jsonStr);
     if (typeof parsed !== "object" || parsed === null) {
-      throw new Error(`${fieldName}必须是有效的JSON对象`);
+      throw new Error(`${fieldName}${t("validationJsonObjRequired")}`);
     }
     return parsed;
   } catch (error) {
     throw new Error(
-      `${fieldName}格式错误：${
-        error instanceof Error ? error.message : "未知错误"
+      `${fieldName}${t("validationFormatError")}${
+        error instanceof Error ? error.message : t("unknownError")
       }`
     );
   }

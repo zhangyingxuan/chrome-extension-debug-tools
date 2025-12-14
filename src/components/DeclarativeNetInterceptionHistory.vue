@@ -9,25 +9,28 @@
   >
     <div class="drawer-content">
       <div class="drawer-header-actions">
-        <t-popconfirm content="确定清空历史吗？" @confirm="clearHistory">
-          <t-tooltip content="清空历史">
+        <t-popconfirm
+          :content="$t('clearHistoryConfirm')"
+          @confirm="clearHistory"
+        >
+          <t-tooltip :content="$t('clearHistory')">
             <DeleteIcon size="16" title="" />
           </t-tooltip>
         </t-popconfirm>
         <t-switch
           v-model="autoScroll"
           size="small"
-          :label="['自动滚动', '固定']"
+          :label="[$t('autoScroll'), $t('fixed')]"
         />
       </div>
 
       <div class="history-list" ref="historyList">
         <!-- 表格标题 -->
         <div class="table-header">
-          <div class="col-requestId">链接ID</div>
-          <div class="col-method">方法</div>
-          <div class="col-url">URL</div>
-          <div class="col-time">时间</div>
+          <div class="col-requestId">{{ $t("colRequestId") }}</div>
+          <div class="col-method">{{ $t("colMethod") }}</div>
+          <div class="col-url">{{ $t("colUrl") }}</div>
+          <div class="col-time">{{ $t("colTime") }}</div>
         </div>
 
         <!-- 拦截记录项 -->
@@ -53,32 +56,32 @@
           <!-- 详情面板 -->
           <div v-if="record.expanded" class="history-details">
             <div class="detail-section">
-              <div class="detail-title">拦截详情</div>
+              <div class="detail-title">{{ $t("interceptionDetails") }}</div>
               <div class="detail-content">
                 <div class="detail-row">
-                  <span class="detail-label">规则ID:</span>
+                  <span class="detail-label">{{ $t("ruleId") }}:</span>
                   <span class="detail-value">{{
-                    record.ruleId || "未知"
+                    record.ruleId || $t("unknown")
                   }}</span>
                 </div>
                 <div class="detail-row">
-                  <span class="detail-label">规则类型:</span>
+                  <span class="detail-label">{{ $t("ruleType") }}:</span>
                   <span class="detail-value">{{
-                    record.rulesetId || "未知"
+                    record.rulesetId || $t("unknown")
                   }}</span>
                 </div>
                 <div class="detail-row">
-                  <span class="detail-label">匹配规则:</span>
+                  <span class="detail-label">{{ $t("matchedRule") }}:</span>
                   <span class="detail-value">{{
-                    record.matchedRule || "无匹配"
+                    record.matchedRule || $t("noMatch")
                   }}</span>
                 </div>
                 <div class="detail-row">
-                  <span class="detail-label">完整URL:</span>
+                  <span class="detail-label">{{ $t("fullUrl") }}:</span>
                   <span class="detail-value">{{ record.url }}</span>
                 </div>
                 <div v-if="record.error" class="detail-row">
-                  <span class="detail-label">错误信息:</span>
+                  <span class="detail-label">{{ $t("errorMessage") }}:</span>
                   <span class="detail-value error-text">{{
                     record.error
                   }}</span>
@@ -89,7 +92,7 @@
         </div>
 
         <div v-if="interceptionHistory.length === 0" class="empty-state">
-          暂无拦截记录
+          {{ $t("noInterceptionHistory") }}
         </div>
       </div>
     </div>
@@ -98,6 +101,7 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted } from "vue";
+import { t } from "@/utils/i18n";
 import type { InterceptionRecord } from "@/types";
 import { formatTime } from "@/utils/common";
 import { DeleteIcon } from "tdesign-icons-vue-next";
@@ -136,7 +140,7 @@ const clearHistory = () => {
 // 监听历史记录变化，实现自动滚动
 watch(
   [() => interceptionHistory, () => autoScroll],
-  ([interceptionHistory, shouldScroll]) => {
+  ([interceptionHistory, shouldScroll]: [any, any]) => {
     if (shouldScroll && interceptionHistory.value.length > 0) {
       nextTick(() => {
         historyList.value?.scrollTo({ top: 0, behavior: "smooth" });
@@ -146,7 +150,7 @@ watch(
   { deep: true }
 );
 
-function handleInterceptionRecord(record: any) {
+function handleInterceptionRecord(record: InterceptionRecord) {
   // 添加到历史记录（头插）
   interceptionHistory.value.unshift(record);
 
@@ -169,6 +173,7 @@ onMounted(() => {
       ruleId: details.rule.ruleId,
       rulesetId: details.rule.rulesetId,
       timestamp: Date.now(),
+      expanded: false,
     };
 
     // 记录拦截历史
