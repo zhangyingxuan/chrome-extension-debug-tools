@@ -151,5 +151,6 @@
   "errorMessage": { "message": "错误信息" },
   "noInterceptionHistory": { "message": "暂无拦截记录" },
   "colRequestType": { "message": "请求类型" },
-  "noScriptInterceptionHistory": { "message": "暂无脚本拦截记录" }
+  "noScriptInterceptionHistory": { "message": "暂无脚本拦截记录" },
+  "about": { "message": "关于" }
 }

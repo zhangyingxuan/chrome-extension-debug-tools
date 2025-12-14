@@ -26,18 +26,26 @@
         </div>
       </div>
 
-      <!-- 语言切换 -->
-      <div class="language-switch">
-        <t-dropdown
-          :options="LOCALE_OPTIONS"
-          @click="handleLocaleChange"
-          trigger="click"
-          placement="right-bottom"
-        >
-          <div class="tab-item language-btn">
-            <TranslateIcon size="20" />
-          </div>
-        </t-dropdown>
+      <!-- 底部操作区 -->
+      <div class="bottom-controls">
+        <!-- 关于按钮 -->
+        <div class="tab-item icon-btn" @click="openAbout" :title="$t('about')">
+          <InfoCircleIcon size="20" />
+        </div>
+
+        <!-- 语言切换 -->
+        <div class="language-switch">
+          <t-dropdown
+            :options="LOCALE_OPTIONS"
+            @click="handleLocaleChange"
+            trigger="click"
+            placement="right-bottom"
+          >
+            <div class="tab-item icon-btn">
+              <TranslateIcon size="20" />
+            </div>
+          </t-dropdown>
+        </div>
       </div>
     </div>
 
@@ -68,7 +76,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { TranslateIcon } from "tdesign-icons-vue-next";
+import { TranslateIcon, InfoCircleIcon } from "tdesign-icons-vue-next";
 import DeclarativeNetInterceptor from "./components/DeclarativeNetInterceptor.vue";
 import ScriptInterceptor from "./components/ScriptInterceptor.vue";
 import RequestLogger from "./components/RequestLogger.vue";
@@ -83,6 +91,11 @@ const scriptInterceptorRef = ref<InstanceType<typeof ScriptInterceptor>>();
 // 处理语言切换
 const handleLocaleChange = (data: any) => {
   setLocale(data.value);
+};
+
+// 打开关于页面
+const openAbout = () => {
+  window.open("https://zhangyingxuan.github.io/about", "_blank");
 };
 
 // 处理打开规则编辑器事件
@@ -171,21 +184,27 @@ const handleOpenRuleEditor = (ruleData: any) => {
       }
     }
 
+    .bottom-controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .icon-btn {
+      writing-mode: horizontal-tb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-right: none;
+
+      &:hover {
+        color: #1890ff;
+      }
+    }
+
     .language-switch {
       display: flex;
       justify-content: center;
-
-      .language-btn {
-        writing-mode: horizontal-tb;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-right: none;
-
-        &:hover {
-          color: #1890ff;
-        }
-      }
     }
   }
 

@@ -179,5 +179,8 @@
   "errorMessage": { "message": "Error Message" },
   "noInterceptionHistory": { "message": "No interception history" },
   "colRequestType": { "message": "Request Type" },
-  "noScriptInterceptionHistory": { "message": "No script interception history" }
+  "noScriptInterceptionHistory": {
+    "message": "No script interception history"
+  },
+  "about": { "message": "About" }
 }
