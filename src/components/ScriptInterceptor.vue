@@ -359,7 +359,7 @@ const ourRuleIdPrefix = 2000;
 
 // 响应式数据
 const reactiveData = reactive({
-  isEnabled: false,
+  isEnabled: true,
   showAddRuleDialog: false,
   editingRule: null as RequestRule | null,
   showHistoryDrawer: false,

@@ -8,6 +8,7 @@ export class InterceptorManager {
   private originalXMLHttpRequestOpen: typeof XMLHttpRequest.prototype.open;
   private originalXMLHttpRequestSend: typeof XMLHttpRequest.prototype.send;
   private requestRules: RequestRule[] = [];
+  private isInitialized = false;
 
   constructor() {
     this.originalFetch = window.fetch;
@@ -26,10 +27,11 @@ export class InterceptorManager {
    * 初始化拦截器
    */
   initialize(): void {
-    // 将实例存储到window对象中，以便在XMLHttpRequest拦截方法中访问
-    (window as any).__interceptorManager__ = this;
+    if (this.isInitialized) return;
+
     this.interceptFetch();
     this.interceptXMLHttpRequest();
+    this.isInitialized = true;
     // console.log('[Interceptor] 拦截器初始化完成');
   }
 
@@ -48,12 +50,14 @@ export class InterceptorManager {
    * 恢复原始方法
    */
   restore(): void {
+    if (!this.isInitialized) return;
 
     window.fetch = this.originalFetch;
 
     XMLHttpRequest.prototype.open = this.originalXMLHttpRequestOpen;
     XMLHttpRequest.prototype.send = this.originalXMLHttpRequestSend;
 
+    this.isInitialized = false;
     // console.log('[Interceptor] 所有拦截器已恢复完成', new Date().toISOString());
   }
 
@@ -567,27 +571,32 @@ export class InterceptorManager {
   }
 }
 
-// 拦截器管理
-const interceptorManager = new InterceptorManager();
+// 防止重复注入
+if (!(window as any).__INTERCEPTOR_LOADED__) {
+  (window as any).__INTERCEPTOR_LOADED__ = true;
 
-// 监听来自页面的消息，允许页面查询当前规则状态
-window.addEventListener("message", (event) => {
-  const data = event.data;
-  if (event.source !== window || data.from !== 'blowsysun-debug-tools') return;
+  // 拦截器管理
+  const interceptorManager = new InterceptorManager();
 
-  switch (data.action) {
-    case 'RULES_UPDATE':
-      interceptorManager.setRules(data.value);
-      interceptorManager.initialize();
-      break;
-    case 'OPEN_RULES_ENABLED':
-      data.value && interceptorManager.setRules(data.value);
-      interceptorManager.initialize();
-      break;
-    case 'CLOSE_RULES_ENABLED':
-      interceptorManager.restore();
-      break;
-    default:
-      break;
-  }
-}, false);
+  // 监听来自页面的消息，允许页面查询当前规则状态
+  window.addEventListener("message", (event) => {
+    const data = event.data;
+    if (event.source !== window || data.from !== 'blowsysun-debug-tools') return;
+
+    switch (data.action) {
+      case 'RULES_UPDATE':
+        interceptorManager.setRules(data.value);
+        interceptorManager.initialize();
+        break;
+      case 'OPEN_RULES_ENABLED':
+        data.value && interceptorManager.setRules(data.value);
+        interceptorManager.initialize();
+        break;
+      case 'CLOSE_RULES_ENABLED':
+        interceptorManager.restore();
+        break;
+      default:
+        break;
+    }
+  }, false);
+}

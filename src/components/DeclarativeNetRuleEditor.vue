@@ -5,7 +5,7 @@
     @confirm="saveRule"
     size="70%"
     placement="right"
-    class="rule-editor-drawer"
+    class="declare-rule-editor-drawer"
   >
     <div class="drawer-content">
       <t-form
@@ -60,7 +60,10 @@
         <t-form-item :label="$t('responseBody')" name="responseBody">
           <t-textarea
             v-model="ruleData.responseBody"
-            :autosize="{ minRows: 6 }"
+            :autosize="{
+              minRows: 8,
+              maxRows: 28,
+            }"
             :placeholder="
               responseType === 'json'
                 ? $t('placeholderJsonBody')
@@ -318,7 +321,7 @@ const saveRule = async () => {
 </script>
 
 <style lang="less" scoped>
-.rule-editor-drawer {
+.declare-rule-editor-drawer {
   .drawer-content {
     height: 100%;
     display: flex;
@@ -328,7 +331,6 @@ const saveRule = async () => {
     .t-form {
       flex: 1;
       overflow-y: auto;
-      padding: 20px;
     }
   }
   .filter-type-select {
@@ -339,6 +341,17 @@ const saveRule = async () => {
   }
   .t-input--prefix {
     padding: 0;
+  }
+}
+</style>
+
+<style lang="less">
+.declare-rule-editor-drawer {
+  .t-drawer__footer {
+    padding: 4px 16px;
+  }
+  .t-form__item {
+    margin-bottom: 4px;
   }
 }
 </style>

@@ -3,8 +3,7 @@
     :visible="visible"
     size="70%"
     placement="right"
-    @close="handleClose"
-    @confirm="handleSubmit"
+    class="rule-editor-drawer"
   >
     <div class="rule-editor">
       <t-form
@@ -76,14 +75,24 @@
             <t-tab-panel value="responseBody" :label="$t('responseBody')">
               <div class="tab-content">
                 <div class="form-row">
-                  <t-form-item label="">
-                    <t-switch
-                      v-model="formData.enableResponseBody"
-                      :label="[$t('enabled'), $t('disabled')]"
+                  <t-form-item
+                    label=""
+                    label-width="16px"
+                    name="response.status"
+                    style="margin-right: 10px"
+                  >
+                    <t-input-number
+                      size="small"
+                      v-model="formData.response.status"
+                      :min="100"
+                      :max="599"
+                      :placeholder="$t('placeholderStatusCode')"
+                      :disabled="!formData.enableResponseBody"
                     />
                   </t-form-item>
                   <t-form-item label="" name="response.bodyType">
                     <t-select
+                      size="small"
                       v-model="formData.response.bodyType"
                       class="filter-type-select"
                       :disabled="!formData.enableResponseBody"
@@ -96,6 +105,13 @@
                       />
                     </t-select>
                   </t-form-item>
+                  <t-form-item label="">
+                    <t-switch
+                      size="small"
+                      v-model="formData.enableResponseBody"
+                      :label="[$t('enabled'), $t('disabled')]"
+                    />
+                  </t-form-item>
                 </div>
                 <t-form-item label="" name="response.body">
                   <t-textarea
@@ -106,8 +122,8 @@
                         : $t('placeholderJsFunction')
                     "
                     :autosize="{
-                      minRows: 6,
-                      maxRows: 12,
+                      minRows: 8,
+                      maxRows: 28,
                     }"
                     :disabled="!formData.enableResponseBody"
                   />
@@ -120,17 +136,9 @@
                 <div class="form-row">
                   <t-form-item label="">
                     <t-switch
+                      size="small"
                       v-model="formData.enableResponseHeaders"
                       :label="[$t('enabled'), $t('disabled')]"
-                    />
-                  </t-form-item>
-                  <t-form-item label="" name="response.status">
-                    <t-input-number
-                      v-model="formData.response.status"
-                      :min="100"
-                      :max="599"
-                      :placeholder="$t('placeholderStatusCode')"
-                      :disabled="!formData.enableResponseHeaders"
                     />
                   </t-form-item>
                 </div>
@@ -138,7 +146,10 @@
                   <t-textarea
                     v-model="formData.responseHeadersJson"
                     :placeholder="$t('placeholderResponseHeaders')"
-                    :autosize="{ minRows: 3, maxRows: 6 }"
+                    :autosize="{
+                      minRows: 8,
+                      maxRows: 28,
+                    }"
                     :disabled="!formData.enableResponseHeaders"
                   />
                 </t-form-item>
@@ -150,6 +161,7 @@
                 <div class="form-row">
                   <t-form-item label="">
                     <t-switch
+                      size="small"
                       v-model="formData.enableRequestHeaders"
                       :label="[$t('enabled'), $t('disabled')]"
                     />
@@ -159,7 +171,10 @@
                   <t-textarea
                     v-model="formData.requestHeadersJson"
                     :placeholder="$t('placeholderRequestHeaders')"
-                    :autosize="{ minRows: 8, maxRows: 12 }"
+                    :autosize="{
+                      minRows: 8,
+                      maxRows: 28,
+                    }"
                     :disabled="!formData.enableRequestHeaders"
                   />
                 </t-form-item>
@@ -172,6 +187,7 @@
                 <div class="form-row">
                   <t-form-item label="">
                     <t-switch
+                      size="small"
                       v-model="formData.enableRequestBody"
                       :label="[$t('enabled'), $t('disabled')]"
                     />
@@ -181,7 +197,10 @@
                   <t-textarea
                     v-model="formData.requestBodyJson"
                     :placeholder="$t('placeholderRequestBody')"
-                    :autosize="{ minRows: 8, maxRows: 12 }"
+                    :autosize="{
+                      minRows: 8,
+                      maxRows: 28,
+                    }"
                     :disabled="!formData.enableRequestBody"
                   />
                 </t-form-item>
@@ -191,6 +210,12 @@
         </div>
       </t-form>
     </div>
+    <template #footer>
+      <t-button size="medium" @click="handleSubmit">保存</t-button>
+      <t-button size="medium" @click="handleClose" variant="outline">
+        取消
+      </t-button>
+    </template>
   </t-drawer>
 </template>
 
@@ -506,6 +531,7 @@ const handleClose = () => {
       padding: 0 6px;
       margin-bottom: 6px;
       display: flex;
+      height: 30px;
       // align-items: center;
 
       &:last-child {
@@ -537,7 +563,7 @@ const handleClose = () => {
   }
 
   .tab-content {
-    padding: 16px 0;
+    padding: 4px 0;
 
     .form-row {
       margin-bottom: 6px;
@@ -563,6 +589,15 @@ const handleClose = () => {
 
   :deep(.t-tabs__nav-item) {
     padding: 8px 16px;
+    height: 36px;
+  }
+}
+</style>
+
+<style lang="less">
+.rule-editor-drawer {
+  .t-drawer__footer {
+    padding: 4px 16px;
   }
 }
 </style>
