@@ -65,6 +65,17 @@ export class InterceptorManager {
    * 拦截fetch请求
    */
   private interceptFetch(): void {
+    try {
+      Object.defineProperty(window, 'fetch', {
+        configurable: true, // 允许配置
+        writable: true,     // 允许赋值
+        value: this.originalFetch // 初始值设为原始 fetch
+      });
+    } catch (e) {
+      // 捕获权限错误，虽然在 V3 注入脚本中不常见，但作为防御性编程
+      console.warn("无法使用 defineProperty 修改 window.fetch:", e);
+    }
+
     window.fetch = async (...args) => {
       const [input, init = {}] = args;
       const url = typeof input === "string" ? input : (input as Request).url;
