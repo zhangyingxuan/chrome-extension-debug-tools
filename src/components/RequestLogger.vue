@@ -16,6 +16,9 @@
             :label="[$t('showParams'), $t('hideParams')]"
             size="small"
           />
+          <t-tooltip :content="$t('clearLogs')">
+            <ClearIcon @click="clearLogs" size="16" />
+          </t-tooltip>
           <t-input
             v-model="filterKeyword"
             :placeholder="$t('filterPlaceholder')"
@@ -25,8 +28,9 @@
           />
         </h3>
         <div class="control-actions">
-          <t-tooltip :content="$t('clearLogs')">
-            <ClearIcon @click="clearLogs" size="16" />
+          <!-- 关于按钮 -->
+          <t-tooltip :content="$t('about')">
+            <InfoCircleIcon @click="openAbout" size="16" />
           </t-tooltip>
           <t-tooltip :content="$t('exportLogs')">
             <FileExportIcon @click="exportLogs" size="16" />
@@ -36,7 +40,7 @@
     </div>
 
     <!-- 请求列表 -->
-    <div class="request-list" ref="requestList">
+    <div class="request-list">
       <!-- 列标题 -->
       <div class="table-header">
         <div class="col-status">{{ $t("colStatus") }}</div>
@@ -230,6 +234,7 @@ import {
   ChevronRightIcon,
   ClearIcon,
   FileExportIcon,
+  InfoCircleIcon,
 } from "tdesign-icons-vue-next";
 import { ref, computed, onUnmounted } from "vue";
 import { generateId, getStatusClass } from "@/utils/common";
@@ -247,7 +252,11 @@ const isRecording = ref(false);
 const showUrlParams = ref(true);
 const filterKeyword = ref("");
 const requestLogs = ref<RequestLog[]>([]);
-const requestList = ref<HTMLElement>();
+
+// 打开关于页面
+const openAbout = () => {
+  window.open("https://zhangyingxuan.github.io/about", "_blank");
+};
 
 // 为每个请求设置独立的tab状态
 const getActiveTab = (log: RequestLog): string => {
@@ -304,7 +313,7 @@ const stopRecording = () => {
 
 // 处理网络请求完成事件
 const handleRequestFinished = (request: any) => {
-  console.log("handleRequestFinished===", request);
+  // console.log("handleRequestFinished===", request);
   if (!isRecording.value) return;
 
   const resourceType = request._resourceType || request.type || "unknown";

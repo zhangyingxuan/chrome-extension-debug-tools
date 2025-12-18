@@ -4,6 +4,8 @@
     size="70%"
     placement="right"
     class="rule-editor-drawer"
+    @close="handleClose"
+    @confirm="handleSubmit"
   >
     <div class="rule-editor">
       <t-form
@@ -210,12 +212,6 @@
         </div>
       </t-form>
     </div>
-    <template #footer>
-      <t-button size="medium" @click="handleSubmit">保存</t-button>
-      <t-button size="medium" @click="handleClose" variant="outline">
-        取消
-      </t-button>
-    </template>
   </t-drawer>
 </template>
 
@@ -590,14 +586,6 @@ const handleClose = () => {
   :deep(.t-tabs__nav-item) {
     padding: 8px 16px;
     height: 36px;
-  }
-}
-</style>
-
-<style lang="less">
-.rule-editor-drawer {
-  .t-drawer__footer {
-    padding: 4px 16px;
   }
 }
 </style>
