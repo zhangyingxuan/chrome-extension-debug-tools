@@ -18,11 +18,12 @@ export interface RequestRule {
   };
   expanded?: boolean;
   responseBody?: string;
-  // 新增：各部分拦截开关
+  // 各部分拦截开关
   enableRequestBody?: boolean;
   enableRequestHeaders?: boolean;
   enableResponseBody?: boolean;
   enableResponseHeaders?: boolean;
+  enableStatusCode?: boolean;
 }
 
 // 拦截记录类型

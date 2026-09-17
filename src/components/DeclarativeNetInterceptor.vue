@@ -150,6 +150,18 @@
                 <div class="detail-section">
                   <div class="detail-title">响应内容</div>
                   <div class="detail-content">
+                    <div class="detail-row">
+                      <span class="detail-label">状态码:</span>
+                      <span class="detail-value">{{ rule.response.status }}</span>
+                    </div>
+                    <div v-if="rule.response.headers && Object.keys(rule.response.headers).length > 0" class="detail-row">
+                      <span class="detail-label">响应头:</span>
+                      <span class="detail-value">{{ JSON.stringify(rule.response.headers) }}</span>
+                    </div>
+                    <div v-if="rule.requestHeaders && Object.keys(rule.requestHeaders).length > 0" class="detail-row">
+                      <span class="detail-label">请求头:</span>
+                      <span class="detail-value">{{ JSON.stringify(rule.requestHeaders) }}</span>
+                    </div>
                     <pre class="response-body">{{
                       formatResponseBody(rule.response.body)
                     }}</pre>
@@ -349,7 +361,7 @@ const dnrConverter = {
     const condition = {
       urlFilter: rule.urlPattern,
       regexFilter: rule.urlPattern,
-      resourceTypes: ["xmlhttprequest"],
+      resourceTypes: ["xmlhttprequest", "fetch"],
       requestMethods: [rule.method.toLowerCase()],
     };
     if (rule.filterType === "urlFilter") {
@@ -358,7 +370,10 @@ const dnrConverter = {
       delete condition.urlFilter;
     }
 
-    return {
+    const dnrRules: any[] = [];
+
+    // 主规则：重定向响应体
+    dnrRules.push({
       id: ruleId,
       priority: 1,
       action: {
@@ -370,19 +385,68 @@ const dnrConverter = {
         },
       },
       condition,
-    };
+    });
+
+    // 附加规则：修改响应头（如果有配置）
+    if (rule.enableResponseHeaders && rule.response.headers && Object.keys(rule.response.headers).length > 0) {
+      const responseHeaders = Object.entries(rule.response.headers).map(([header, operation]) => ({
+        header,
+        operation: "set" as const,
+        value: operation,
+      }));
+      dnrRules.push({
+        id: ruleId + 100000,
+        priority: 1,
+        action: {
+          type: "modifyHeaders",
+          responseHeaders,
+        },
+        condition: { ...condition },
+      });
+    }
+
+    // 附加规则：修改请求头（如果有配置）
+    if (rule.enableRequestHeaders && rule.requestHeaders && Object.keys(rule.requestHeaders).length > 0) {
+      const requestHeaders = Object.entries(rule.requestHeaders).map(([header, value]) => ({
+        header,
+        operation: "set" as const,
+        value,
+      }));
+      dnrRules.push({
+        id: ruleId + 200000,
+        priority: 1,
+        action: {
+          type: "modifyHeaders",
+          requestHeaders,
+        },
+        condition: { ...condition },
+      });
+    }
+
+    return dnrRules;
   },
 
   // 更新declarativeNetRequest规则
   update: async () => {
     try {
       const enabledRules = requestRules.value.filter((rule) => rule.enabled);
-      const dnrRules: any = enabledRules.map((rule) =>
-        dnrConverter.convert(rule, rule.ruleId)
-      );
+      const dnrRules: any[] = [];
+      const allRuleIds: number[] = [];
+
+      enabledRules.forEach((rule) => {
+        const converted = dnrConverter.convert(rule, rule.ruleId);
+        dnrRules.push(...converted);
+      });
+
+      // 收集所有需要删除的规则ID（包括附加的header规则）
+      requestRules.value.forEach((rule) => {
+        allRuleIds.push(rule.ruleId);
+        allRuleIds.push(rule.ruleId + 100000);
+        allRuleIds.push(rule.ruleId + 200000);
+      });
 
       await chrome.declarativeNetRequest.updateDynamicRules({
-        removeRuleIds: requestRules.value.map((rule) => rule.ruleId) || [],
+        removeRuleIds: allRuleIds,
         addRules: dnrRules,
       });
 
@@ -424,7 +488,7 @@ const ruleManager = {
     try {
       requestRules.value = requestRules.value.filter((r) => r.id !== rule.id);
       await chrome.declarativeNetRequest.updateDynamicRules({
-        removeRuleIds: [rule.ruleId],
+        removeRuleIds: [rule.ruleId, rule.ruleId + 100000, rule.ruleId + 200000],
       });
       await cacheManager.save();
     } catch (error) {
@@ -465,7 +529,10 @@ const ruleManager = {
   // 清理所有规则
   clearAll: async () => {
     try {
-      const ruleIds = requestRules.value.map((rule) => rule.ruleId);
+      const ruleIds: number[] = [];
+      requestRules.value.forEach((rule) => {
+        ruleIds.push(rule.ruleId, rule.ruleId + 100000, rule.ruleId + 200000);
+      });
       await chrome.declarativeNetRequest.updateDynamicRules({
         removeRuleIds: ruleIds,
       });

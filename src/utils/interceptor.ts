@@ -8,9 +8,10 @@ export class InterceptorManager {
   private originalXMLHttpRequestOpen: typeof XMLHttpRequest.prototype.open;
   private originalXMLHttpRequestSend: typeof XMLHttpRequest.prototype.send;
 
-  private currentXhr: XMLHttpRequest | null = null;
-  private currentRule: RequestRule | null = null;
   private requestRules: RequestRule[] = [];
+  private enabledRules: RequestRule[] = [];
+  private regexCache: Map<string, RegExp | null> = new Map();
+  private initialized = false;
 
   constructor() {
     this.originalFetch = window.fetch;
@@ -23,17 +24,30 @@ export class InterceptorManager {
    */
   setRules(rules: RequestRule[]): void {
     this.requestRules = rules;
+    this.enabledRules = rules.filter((rule) => rule.enabled);
+    this.regexCache.clear();
+    for (const rule of this.enabledRules) {
+      if (rule.filterType === 'regexFilter' && rule.urlPattern) {
+        try {
+          this.regexCache.set(rule.urlPattern, new RegExp(rule.urlPattern));
+        } catch {
+          this.regexCache.set(rule.urlPattern, null);
+        }
+      }
+    }
   }
 
   /**
    * 初始化拦截器
    */
   initialize(): void {
-    // 将实例存储到window对象中，以便在XMLHttpRequest拦截方法中访问
+    if (this.initialized) {
+      this.restore();
+    }
     (window as any).__interceptorManager__ = this;
     this.interceptFetch();
     this.interceptXMLHttpRequest();
-    // console.log('[Interceptor] 拦截器初始化完成');
+    this.initialized = true;
   }
 
   /**
@@ -51,13 +65,10 @@ export class InterceptorManager {
    * 恢复原始方法
    */
   restore(): void {
-
     window.fetch = this.originalFetch;
-
     XMLHttpRequest.prototype.open = this.originalXMLHttpRequestOpen;
     XMLHttpRequest.prototype.send = this.originalXMLHttpRequestSend;
-
-    // console.log('[Interceptor] 所有拦截器已恢复完成', new Date().toISOString());
+    this.initialized = false;
   }
 
   /**
@@ -106,6 +117,14 @@ export class InterceptorManager {
           // console.log('[interceptFetch] 返回修改后的响应:', init, response);
 
           // 发送拦截记录消息给 content.js
+          const fetchReqHeaders: Record<string, string> = {};
+          if (init.headers) {
+            if (init.headers instanceof Headers) {
+              init.headers.forEach((v, k) => { fetchReqHeaders[k] = v; });
+            } else if (typeof init.headers === 'object') {
+              Object.assign(fetchReqHeaders, init.headers);
+            }
+          }
           window.postMessage({
             from: 'blowsysun-debug-tools-page',
             action: 'INTERCEPTION_RECORD',
@@ -117,10 +136,10 @@ export class InterceptorManager {
               requestType: "fetch",
               filterType: matchedRule.filterType || "urlFilter",
               matchedRule: matchedRule.urlPattern,
-              // requestHeaders: init?.headers,
-              // requestBody: init?.body,
-              // responseBody: matchedRule.response?.body,
-              // responseHeaders: matchedRule.response?.headers,
+              requestHeaders: fetchReqHeaders,
+              requestBody: init?.body,
+              responseBody: matchedRule.response?.body,
+              responseHeaders: matchedRule.response?.headers,
               status: matchedRule.response?.status || 200,
               expanded: false
             }
@@ -218,6 +237,19 @@ export class InterceptorManager {
             // 修改响应
             self.modifyXHRResponse(this, matchedRule);
             // 发送拦截记录消息
+            const xhrReqHeaders: Record<string, string> = {};
+            const xhrRespHeaders: Record<string, string> = {};
+            try {
+              const allHeaders = this.getAllResponseHeaders();
+              if (allHeaders) {
+                allHeaders.split('\r\n').forEach((line: string) => {
+                  const idx = line.indexOf(': ');
+                  if (idx > 0) {
+                    xhrRespHeaders[line.substring(0, idx)] = line.substring(idx + 2);
+                  }
+                });
+              }
+            } catch {}
             window.postMessage({
               from: 'blowsysun-debug-tools-page',
               action: 'INTERCEPTION_RECORD',
@@ -229,6 +261,10 @@ export class InterceptorManager {
                 url: this?.responseURL,
                 filterType: matchedRule.filterType || "urlFilter",
                 matchedRule: matchedRule.urlPattern,
+                requestHeaders: xhrReqHeaders,
+                requestBody: data,
+                responseBody: matchedRule.response?.body,
+                responseHeaders: matchedRule.response?.headers,
                 status: matchedRule.response?.status || 200,
                 expanded: false
               }
@@ -257,23 +293,8 @@ export class InterceptorManager {
    * 查找匹配的规则
    */
   private findMatchingRule(url: string, method: string): RequestRule | null {
-    const enabledRules = this.requestRules.filter((rule) => rule.enabled);
-
-    // console.log(`[Interceptor] 开始匹配规则: ${url} (${method})`, {
-    //   enabledRulesCount: enabledRules.length,
-    //   totalRulesCount: this.requestRules.length,
-    //   enabledRules
-    // });
-
-    for (const rule of enabledRules) {
-      // console.log(`[Interceptor] 检查规则: ${rule.id} (${rule.ruleId})`, {
-      //   method: rule.method,
-      //   filterType: rule.filterType,
-      //   urlPattern: rule.urlPattern
-      // });
-
+    for (const rule of this.enabledRules) {
       if (rule.method !== "ALL" && rule.method !== method.toUpperCase()) {
-        // console.log(`[Interceptor] 方法不匹配: 规则要求 ${rule.method}, 实际 ${method.toUpperCase()}`);
         continue;
       }
 
@@ -282,19 +303,13 @@ export class InterceptorManager {
           return rule;
         }
       } else if (rule.filterType === "regexFilter") {
-        try {
-          const regex = new RegExp(rule.urlPattern!);
-          // console.log(`[Interceptor] 正则匹配结果: ${regex.test(url)}: ${url} 匹配 ${rule.urlPattern}`);
-          if (regex.test(url)) {
-            return rule;
-          }
-        } catch (error) {
-          console.error("正则表达式错误:", error);
+        const regex = this.regexCache.get(rule.urlPattern!);
+        if (regex && regex.test(url)) {
+          return rule;
         }
       }
     }
 
-    // console.log('[Interceptor] 未找到匹配的规则');
     return null;
   }
 
@@ -350,8 +365,8 @@ export class InterceptorManager {
       Object.assign(finalHeaders, rule.response.headers);
     }
 
-    // 构建修改后的状态码 - 仅在启用时应用
-    const finalStatus = rule.enableResponseHeaders && rule.response.status
+    // 构建修改后的状态码 - 使用独立的 enableStatusCode 开关
+    const finalStatus = rule.enableStatusCode && rule.response.status
       ? rule.response.status
       : response.status;
 
@@ -422,8 +437,8 @@ export class InterceptorManager {
       Object.assign(finalHeaders, rule.response.headers);
     }
 
-    // 构建状态码 - 仅在启用时应用
-    const finalStatus = rule.enableResponseHeaders && rule.response.status
+    // 构建状态码 - 使用独立的 enableStatusCode 开关
+    const finalStatus = rule.enableStatusCode && rule.response.status
       ? rule.response.status
       : 200;
 
@@ -487,21 +502,50 @@ export class InterceptorManager {
    * 修改XMLHttpRequest响应
    */
   private modifyXHRResponse(xhr: XMLHttpRequest, rule: RequestRule): void {
-    // console.log('[Interceptor] 开始修改XMLHttpRequest响应:', {
-    //   originalStatus: xhr.status,
-    //   originalResponseText: xhr.responseText?.substring(0, 200),
-    //   ruleStatus: rule.response.status,
-    //   ruleBodyType: rule.response.bodyType,
-    //   ruleResponseBody: rule?.response?.body,
-    //   ruleResponseStatus: rule?.response?.status,
-    //   ruleEnableResponseHeaders: rule.enableResponseHeaders,
-    //   ruleEnableResponseBody: rule.enableResponseBody
-    // });
-
-    // 修改状态码 - 仅在启用时应用
-    if (rule.enableResponseHeaders) {
+    // 修改状态码 - 使用独立的 enableStatusCode 开关
+    if (rule.enableStatusCode && rule.response.status) {
       Object.defineProperty(xhr, "status", {
         value: rule.response.status,
+        writable: true,
+      });
+    }
+
+    // 修改响应头 - 重写 getResponseHeader 和 getAllResponseHeaders
+    if (rule.enableResponseHeaders && rule.response.headers) {
+      const originalGetResponseHeader = xhr.getResponseHeader.bind(xhr);
+      const originalGetAllResponseHeaders = xhr.getAllResponseHeaders.bind(xhr);
+      const customHeaders = rule.response.headers;
+      const customHeadersLower: Record<string, string> = {};
+      Object.entries(customHeaders).forEach(([k, v]) => {
+        customHeadersLower[k.toLowerCase()] = v;
+      });
+
+      Object.defineProperty(xhr, "getResponseHeader", {
+        value: function (name: string): string | null {
+          const lower = name.toLowerCase();
+          if (lower in customHeadersLower) {
+            return customHeadersLower[lower];
+          }
+          return originalGetResponseHeader(name);
+        },
+        writable: true,
+      });
+
+      Object.defineProperty(xhr, "getAllResponseHeaders", {
+        value: function (): string {
+          const original = originalGetAllResponseHeaders();
+          const headerMap: Record<string, string> = {};
+          original.split('\r\n').forEach((line: string) => {
+            const idx = line.indexOf(': ');
+            if (idx > 0) {
+              headerMap[line.substring(0, idx).toLowerCase()] = line;
+            }
+          });
+          Object.entries(customHeadersLower).forEach(([k, v]) => {
+            headerMap[k] = `${k}: ${v}`;
+          });
+          return Object.values(headerMap).join('\r\n');
+        },
         writable: true,
       });
     }
@@ -509,21 +553,10 @@ export class InterceptorManager {
     // 修改响应体 - 仅在启用时应用
     if (rule.enableResponseBody) {
       if (rule.response.bodyType === "function") {
-        console.log('[Interceptor] 执行XMLHttpRequest JavaScript函数:', {
-          functionLength: rule.response.body.length,
-          functionPreview: rule.response.body.substring(0, 100) + '...'
-        });
-
         try {
           const func = new Function("xhr", "rule", rule.response.body);
           const result = func(xhr, rule);
 
-          // console.log('[Interceptor] XMLHttpRequest函数执行结果:', {
-          //   resultType: typeof result,
-          //   resultPreview: typeof result === "string" ? result.substring(0, 200) : JSON.stringify(result).substring(0, 200)
-          // });
-
-          // 修改响应数据
           Object.defineProperty(xhr, "responseText", {
             value: typeof result === "string" ? result : JSON.stringify(result),
             writable: true,
@@ -533,25 +566,17 @@ export class InterceptorManager {
             value: result,
             writable: true,
           });
-          // 修改状态码
-          Object.defineProperty(xhr, "status", {
-            value: rule.response.status,
-            writable: true,
-          });
-          console.log('[Interceptor] XMLHttpRequest响应修改完成:', {
-            newStatus: xhr.status,
-            newResponseTextLength: xhr.responseText?.length
-          });
+
+          if (rule.enableStatusCode && rule.response.status) {
+            Object.defineProperty(xhr, "status", {
+              value: rule.response.status,
+              writable: true,
+            });
+          }
         } catch (error) {
           console.error("执行XHR响应函数错误:", error);
         }
       } else {
-        // JSON响应体
-        // console.log('[Interceptor] 使用XMLHttpRequest JSON响应体:', {
-        //   bodyType: typeof rule.response.body,
-        //   bodyPreview: JSON.stringify(rule.response.body).substring(0, 200)
-        // });
-
         Object.defineProperty(xhr, "responseText", {
           value: JSON.stringify(rule.response.body),
           writable: true,
@@ -561,10 +586,13 @@ export class InterceptorManager {
           value: rule.response.body,
           writable: true,
         });
-        Object.defineProperty(xhr, "status", {
-          value: rule.response.status,
-          writable: true,
-        });
+
+        if (rule.enableStatusCode && rule.response.status) {
+          Object.defineProperty(xhr, "status", {
+            value: rule.response.status,
+            writable: true,
+          });
+        }
       }
     }
   }

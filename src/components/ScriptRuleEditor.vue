@@ -126,7 +126,13 @@
                       :min="100"
                       :max="599"
                       placeholder="请输入HTTP状态码"
-                      :disabled="!formData.enableResponseHeaders"
+                    />
+                  </t-form-item>
+                  <t-form-item label="">
+                    <t-switch
+                      v-model="formData.enableStatusCode"
+                      :label="['状态码生效', '状态码忽略']"
+                      size="small"
                     />
                   </t-form-item>
                 </div>
@@ -226,11 +232,12 @@ const formData = reactive({
   },
   responseHeadersJson: "{}",
   responseBodyJson: "{}",
-  // 新增：各部分拦截开关
+  // 各部分拦截开关
   enableRequestBody: false,
   enableRequestHeaders: false,
   enableResponseBody: true,
   enableResponseHeaders: false,
+  enableStatusCode: false,
 });
 
 // 表单验证规则
@@ -330,6 +337,7 @@ watch(
           formData.enableRequestHeaders = rule.enableRequestHeaders ?? false;
           formData.enableResponseBody = rule.enableResponseBody ?? true;
           formData.enableResponseHeaders = rule.enableResponseHeaders ?? false;
+          formData.enableStatusCode = rule.enableStatusCode ?? false;
         } else {
           // 添加模式：重置表单
           resetForm();
@@ -356,11 +364,12 @@ const resetForm = () => {
     },
     responseHeadersJson: "{}",
     responseBodyJson: "{}",
-    // 重置开关状态：默认只有返回体开启
+    // 重置开关状态
     enableRequestBody: false,
     enableRequestHeaders: false,
     enableResponseBody: true,
     enableResponseHeaders: false,
+    enableStatusCode: false,
   });
 };
 
@@ -402,17 +411,18 @@ const handleSubmit = async () => {
         requestHeaders,
         requestBody,
         response: {
-          status: formData.enableResponseHeaders ? formData.response.status : 0,
+          status: formData.response.status,
           headers: responseHeaders,
           body: responseBody,
           bodyType: formData.response.bodyType,
         },
         expanded: props.editingRule?.expanded ?? false,
-        // 新增：保存开关状态
+        // 保存开关状态
         enableRequestBody: formData.enableRequestBody,
         enableRequestHeaders: formData.enableRequestHeaders,
         enableResponseBody: formData.enableResponseBody,
         enableResponseHeaders: formData.enableResponseHeaders,
+        enableStatusCode: formData.enableStatusCode,
       };
 
       emit("save", rule);

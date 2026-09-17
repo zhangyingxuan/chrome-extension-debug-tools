@@ -69,6 +69,31 @@
             @blur="formatJson"
           />
         </t-form-item>
+        <t-form-item label="响应状态码">
+          <t-input-number
+            v-model="ruleData.response.status"
+            :min="100"
+            :max="599"
+            placeholder="200"
+            style="width: 200px"
+          />
+        </t-form-item>
+        <t-form-item label="响应头">
+          <t-textarea
+            v-model="responseHeadersJson"
+            placeholder='请输入JSON格式的响应头，如：{"Content-Type": "application/json"}'
+            :autosize="{ minRows: 3, maxRows: 6 }"
+            @blur="parseResponseHeaders"
+          />
+        </t-form-item>
+        <t-form-item label="请求头">
+          <t-textarea
+            v-model="requestHeadersJson"
+            placeholder='请输入JSON格式的请求头，如：{"Authorization": "Bearer token"}'
+            :autosize="{ minRows: 3, maxRows: 6 }"
+            @blur="parseRequestHeaders"
+          />
+        </t-form-item>
       </t-form>
     </div>
   </t-drawer>
@@ -108,6 +133,8 @@ const defaultRule = {
 const ruleData = reactive<RequestRule>(JSON.parse(JSON.stringify(defaultRule)));
 
 const responseType = ref<"json" | "text">("json");
+const responseHeadersJson = ref("{}");
+const requestHeadersJson = ref("{}");
 const formRef = ref();
 
 // 表单校验规则
@@ -182,6 +209,8 @@ const formRules = {
 const resetForm = () => {
   Object.assign(ruleData, defaultRule);
   responseType.value = "json";
+  responseHeadersJson.value = "{}";
+  requestHeadersJson.value = "{}";
 
   // 重置表单校验状态
   if (formRef.value) {
@@ -227,6 +256,18 @@ watch(
           2
         );
       }
+
+      // 加载响应头和请求头
+      responseHeadersJson.value = JSON.stringify(
+        newRule.response?.headers || {},
+        null,
+        2
+      );
+      requestHeadersJson.value = JSON.stringify(
+        newRule.requestHeaders || {},
+        null,
+        2
+      );
     } else {
       resetForm();
     }
@@ -271,6 +312,26 @@ const formatJson = () => {
   }
 };
 
+const parseResponseHeaders = () => {
+  try {
+    if (responseHeadersJson.value.trim()) {
+      JSON.parse(responseHeadersJson.value);
+    }
+  } catch {
+    console.warn("响应头JSON格式错误");
+  }
+};
+
+const parseRequestHeaders = () => {
+  try {
+    if (requestHeadersJson.value.trim()) {
+      JSON.parse(requestHeadersJson.value);
+    }
+  } catch {
+    console.warn("请求头JSON格式错误");
+  }
+};
+
 // 保存规则
 const saveRule = async () => {
   try {
@@ -297,12 +358,31 @@ const saveRule = async () => {
     }
 
     // 保存过滤类型信息
+    let responseHeaders = {};
+    try {
+      responseHeaders = responseHeadersJson.value.trim()
+        ? JSON.parse(responseHeadersJson.value)
+        : {};
+    } catch { /* keep empty */ }
+
+    let requestHeaders = {};
+    try {
+      requestHeaders = requestHeadersJson.value.trim()
+        ? JSON.parse(requestHeadersJson.value)
+        : {};
+    } catch { /* keep empty */ }
+
     const ruleToSave = {
       ...ruleData,
+      requestHeaders,
       response: {
         ...ruleData.response,
         body: responseBody,
+        headers: responseHeaders,
       },
+      enableResponseHeaders: Object.keys(responseHeaders).length > 0,
+      enableRequestHeaders: Object.keys(requestHeaders).length > 0,
+      enableStatusCode: true,
     };
 
     emit("save", ruleToSave);

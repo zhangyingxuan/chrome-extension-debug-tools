@@ -808,6 +808,7 @@ const exportRules = () => {
       enableRequestHeaders: rule.enableRequestHeaders,
       enableResponseBody: rule.enableResponseBody,
       enableResponseHeaders: rule.enableResponseHeaders,
+      enableStatusCode: rule.enableStatusCode,
     }));
 
     // 创建JSON文件
