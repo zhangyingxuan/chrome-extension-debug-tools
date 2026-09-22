@@ -1,12 +1,13 @@
 {
   "name": "chrome-extension-debug-tools",
   "private": true,
-  "version": "1.3.3",
+  "version": "1.3.5",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "watch": "vue-tsc --noEmit && vite build --watch",
+    "package": "pnpm build && powershell -NoProfile -Command \"Remove-Item -ErrorAction SilentlyContinue chrome-extension-debug-tools.zip; Compress-Archive -Path dist/* -DestinationPath chrome-extension-debug-tools.zip\"",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -1,45 +1,44 @@
-/**
- * 注入脚本到页面
- * @param {*} path
- * @param {*} root
- */
-function injectedScript(path, root = document.documentElement) {
-  const scriptNode = document.createElement("script");
-  scriptNode.src = chrome.runtime.getURL(path);
-  root.appendChild(scriptNode);
-  // s.onload = () => s.remove();
-  //  (document.head || document.documentElement).appendChild(s);
-  return scriptNode;
+const INTERCEPTOR_SRC = chrome.runtime.getURL("./interceptor.js");
+
+function isInterceptorInjected() {
+  return !!document.querySelector(`script[src="${INTERCEPTOR_SRC}"]`);
 }
 
-async function injectContent() {
+function sendRules() {
   const from = "blowsysun-debug-tools";
-  const pageScripts = injectedScript("./interceptor.js");
-  if (pageScripts) {
-    pageScripts.addEventListener("load", () => {
-      // 取出存储中的数据初始化拦截规则
-      chrome.storage.local.get(
-        ["scriptRequestRules", "scriptRequestRulesEnabled"],
-        (result) => {
-          // console.log("注入拦截脚本成功【初始化content.js】", result);
-          const { scriptRequestRulesEnabled = true, scriptRequestRules = [] } =
-            result;
-          if (scriptRequestRulesEnabled) {
-            window.postMessage({
-              from,
-              action: "OPEN_RULES_ENABLED",
-              value: scriptRequestRules,
-            });
-          } else {
-            window.postMessage({
-              from,
-              action: "CLOSE_RULES_ENABLED",
-            });
-          }
-        }
-      );
-    });
+  chrome.storage.local.get(
+    ["scriptRequestRulesEnabled", "scriptRequestRules"],
+    (result) => {
+      const { scriptRequestRulesEnabled = true, scriptRequestRules = [] } =
+        result;
+      if (scriptRequestRulesEnabled) {
+        window.postMessage({
+          from,
+          action: "OPEN_RULES_ENABLED",
+          value: scriptRequestRules,
+        });
+      } else {
+        window.postMessage({
+          from,
+          action: "CLOSE_RULES_ENABLED",
+        });
+      }
+    }
+  );
+}
+
+function injectContent() {
+  if (isInterceptorInjected()) {
+    if (window.__interceptorManager__) {
+      sendRules();
+    }
+    return;
   }
+
+  const scriptNode = document.createElement("script");
+  scriptNode.src = INTERCEPTOR_SRC;
+  scriptNode.addEventListener("load", sendRules, { once: true });
+  (document.documentElement || document.head).appendChild(scriptNode);
 }
 
 injectContent();
@@ -47,7 +46,6 @@ injectContent();
 // 1. 监听backgroud.js 传来的消息
 chrome.runtime.onMessage.addListener((data) => {
   const { from, action, value } = data;
-  // console.log("二次转发消息", from, action, value);
   if (data.from !== "blowsysun-debug-tools") return;
 
   window.postMessage({ from, action, value });
@@ -55,7 +53,6 @@ chrome.runtime.onMessage.addListener((data) => {
 
 // 2. 监听页面脚本，传来的消息
 window.addEventListener("message", (e) => {
-  // console.log("收到页面脚本消息", e);
   if (e.source !== window || !e.data.from) return;
   // 页面 -> devtools
   if (e.data.from === "blowsysun-debug-tools-page") {

@@ -14,7 +14,7 @@ export interface RequestRule {
     status: number;
     headers: Record<string, string>;
     body: any;
-    bodyType?: 'json' | 'function';
+    bodyType?: 'json';
   };
   expanded?: boolean;
   responseBody?: string;

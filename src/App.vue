@@ -104,7 +104,7 @@ const handleOpenRuleEditor = (ruleData: any) => {
 
     h3 {
       margin: 0;
-      font-size: 16px;
+      font-size: 13px;
       color: #333;
     }
 
@@ -125,7 +125,7 @@ const handleOpenRuleEditor = (ruleData: any) => {
       cursor: pointer;
       border-right: 2px solid transparent;
       transition: all 0.3s;
-      font-size: 14px;
+      font-size: 12px;
       color: #666;
 
       &:hover {

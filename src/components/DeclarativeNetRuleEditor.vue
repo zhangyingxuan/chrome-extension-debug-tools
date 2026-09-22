@@ -284,15 +284,18 @@ const fixJsonFormat = (jsonString: string): string => {
     JSON.parse(jsonString);
     return jsonString;
   } catch (error) {
-    // 如果解析失败，尝试修复格式
+    // 纯文本修复：去尾逗号、无引号key、单引号字符串，再重新 parse。
+    // 禁止 new Function/eval：扩展页 MV3 CSP 下会抛 EvalError，且触发
+    // Chrome Web Store「动态代码」政策审查。
     try {
-      // 使用eval来解析类似{test: 1}这样的JavaScript对象字面量
-      // 注意：这里使用Function构造函数来避免eval的安全问题
-      const fixedObject = new Function(`return ${jsonString}`)();
-      return JSON.stringify(fixedObject, null, 2);
-    } catch (evalError) {
-      // 如果修复失败，返回原始字符串
-      console.warn("JSON格式修复失败:", evalError);
+      const repaired = jsonString
+        .replace(/'([^']*)'/g, (_m, inner: string) => JSON.stringify(inner))
+        .replace(/([{,]\s*)([A-Za-z_$][\w$]*)(\s*:)/g, '$1"$2"$3')
+        .replace(/,\s*([}\]])/g, '$1');
+      return JSON.stringify(JSON.parse(repaired), null, 2);
+    } catch {
+      // 修复失败，返回原始字符串
+      console.warn("JSON格式修复失败:", error);
       return jsonString;
     }
   }

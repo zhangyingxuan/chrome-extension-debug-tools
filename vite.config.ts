@@ -17,8 +17,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: 'index.html',
-        interceptor: 'src/utils/interceptor.ts',
-        devtools: 'public/devtools.html'
+        interceptor: 'src/utils/interceptor.ts'
       },
       output: {
         entryFileNames: (chunkInfo) => {

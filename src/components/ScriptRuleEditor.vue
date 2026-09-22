@@ -85,22 +85,13 @@
                       :disabled="!formData.enableResponseBody"
                     >
                       <t-option key="json" label="JSON" value="json" />
-                      <t-option
-                        key="function"
-                        label="JavaScript"
-                        value="function"
-                      />
                     </t-select>
                   </t-form-item>
                 </div>
                 <t-form-item label="" name="response.body">
                   <t-textarea
                     v-model="formData.responseBodyJson"
-                    :placeholder="
-                      formData.response.bodyType === 'json'
-                        ? '请输入JSON格式的响应体'
-                        : '请输入JavaScript函数'
-                    "
+                    :placeholder="'请输入JSON格式的响应体'"
                     :autosize="{
                       minRows: 6,
                       maxRows: 12,
@@ -228,7 +219,7 @@ const formData = reactive({
     status: 200,
     headers: {},
     body: {},
-    bodyType: "json" as "json" | "function",
+    bodyType: "json" as "json",
   },
   responseHeadersJson: "{}",
   responseBodyJson: "{}",
