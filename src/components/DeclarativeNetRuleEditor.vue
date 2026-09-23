@@ -2,22 +2,17 @@
   <t-drawer
     :visible="visible"
     @close="closeDrawer"
-    :size="placement === 'bottom' ? '72%' : '560px'"
-    :placement="placement"
+    :size="wide ? '70%' : '560px'"
+    :placement="'right'"
     :show-in-attach-elements="false"
     :class="[
       'rule-editor-drawer',
-      placement === 'bottom' ? 'dock-bottom' : '',
+      wide ? 'dock-bottom' : '',
     ]"
   >
     <!-- 右停靠才显示 header；底部停靠紧凑无需 header -->
-    <template v-if="placement !== 'bottom'" #header>
+    <template #header>
       <div class="editor-header">
-        <span class="editor-title">{{ editingRule ? "编辑规则" : "添加规则" }}</span>
-      </div>
-    </template>
-    <template v-else #header>
-      <div class="editor-header docked">
         <span class="editor-title">{{ editingRule ? "编辑规则" : "添加规则" }}</span>
       </div>
     </template>
@@ -99,8 +94,8 @@
               v-model="ruleData.responseBody"
               class="code-textarea body-area"
               :autosize="{
-                minRows: placement === 'bottom' ? 4 : 9,
-                maxRows: placement === 'bottom' ? 12 : 40,
+                minRows: wide ? 4 : 9,
+                maxRows: wide ? 12 : 40,
               }"
               :placeholder="
                 responseType === 'json' ? 'JSON格式的响应体' : '文本响应体'
@@ -120,8 +115,8 @@
                 class="code-textarea head-area"
                 placeholder='如：{"Content-Type":"application/json"}'
                 :autosize="{
-                  minRows: placement === 'bottom' ? 3 : 4,
-                  maxRows: placement === 'bottom' ? 8 : 10,
+                  minRows: wide ? 3 : 4,
+                  maxRows: wide ? 8 : 10,
                 }"
                 @blur="parseResponseHeaders"
               />
@@ -132,8 +127,8 @@
                 class="code-textarea head-area"
                 placeholder='如：{"Authorization":"Bearer token"}'
                 :autosize="{
-                  minRows: placement === 'bottom' ? 3 : 4,
-                  maxRows: placement === 'bottom' ? 8 : 10,
+                  minRows: wide ? 3 : 4,
+                  maxRows: wide ? 8 : 10,
                 }"
                 @blur="parseRequestHeaders"
               />
@@ -161,13 +156,13 @@ import { generateId } from "@/utils/common";
 interface Props {
   visible: boolean;
   editingRule?: RequestRule | null;
-  placement?: "right" | "bottom";
+  wide?: boolean;
 }
 interface Emits {
   (e: "save", rule: RequestRule): void;
   (e: "close"): void;
 }
-const props = withDefaults(defineProps<Props>(), { placement: "right" });
+const props = withDefaults(defineProps<Props>(), { wide: false });
 const emit = defineEmits<Emits>();
 
 const defaultRule = {
@@ -666,7 +661,7 @@ const saveRule = async () => {
 
   &.dock-bottom {
     .t-drawer__header {
-      display: none;
+      padding: 8px 18px;
     }
     .t-drawer__body {
       padding: 12px 18px;

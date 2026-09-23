@@ -1,10 +1,10 @@
 <template>
   <t-drawer
     :visible="visible"
-    :size="placement === 'bottom' ? '72%' : '560px'"
-    :placement="placement"
+    :size="wide ? '70%' : '560px'"
+    :placement="'right'"
     @close="handleClose"
-    :class="['rule-editor-drawer', placement === 'bottom' ? 'dock-bottom' : '']"
+    :class="['rule-editor-drawer', wide ? 'dock-bottom' : '']"
   >
     <template #header>
       <div class="editor-header">
@@ -94,8 +94,8 @@
                     class="code-textarea body-area"
                     :placeholder="'请输入JSON格式的响应体'"
                     :autosize="{
-                      minRows: placement === 'bottom' ? 4 : 9,
-                      maxRows: placement === 'bottom' ? 12 : 40,
+                      minRows: wide ? 4 : 9,
+                      maxRows: wide ? 12 : 40,
                     }"
                     :disabled="!formData.enableResponseBody"
                   />
@@ -135,8 +135,8 @@
                     class="code-textarea body-area"
                     placeholder='如：{"Content-Type":"application/json","Cache-Control":"no-cache"}'
                     :autosize="{
-                      minRows: placement === 'bottom' ? 4 : 9,
-                      maxRows: placement === 'bottom' ? 12 : 40,
+                      minRows: wide ? 4 : 9,
+                      maxRows: wide ? 12 : 40,
                     }"
                     :disabled="!formData.enableResponseHeaders"
                   />
@@ -160,8 +160,8 @@
                     class="code-textarea body-area"
                     placeholder='如：{"Content-Type":"application/json","Authorization":"Bearer token"}'
                     :autosize="{
-                      minRows: placement === 'bottom' ? 4 : 9,
-                      maxRows: placement === 'bottom' ? 12 : 40,
+                      minRows: wide ? 4 : 9,
+                      maxRows: wide ? 12 : 40,
                     }"
                     :disabled="!formData.enableRequestHeaders"
                   />
@@ -186,8 +186,8 @@
                     class="code-textarea body-area"
                     placeholder='请输入JSON格式的请求体修改，如：{"userId":123,"status":"active"}'
                     :autosize="{
-                      minRows: placement === 'bottom' ? 4 : 9,
-                      maxRows: placement === 'bottom' ? 12 : 40,
+                      minRows: wide ? 4 : 9,
+                      maxRows: wide ? 12 : 40,
                     }"
                     :disabled="!formData.enableRequestBody"
                   />
@@ -218,7 +218,7 @@ import { RequestRule } from "@/types";
 interface Props {
   visible: boolean;
   editingRule?: RequestRule | null;
-  placement?: "right" | "bottom";
+  wide?: boolean;
 }
 
 interface Emits {
@@ -226,7 +226,7 @@ interface Emits {
   (e: "close"): void;
 }
 
-const props = withDefaults(defineProps<Props>(), { placement: "right" });
+const props = withDefaults(defineProps<Props>(), { wide: false });
 const emit = defineEmits<Emits>();
 
 const formRef = ref();
@@ -720,7 +720,7 @@ const handleClose = () => {
 
   &.dock-bottom {
     .t-drawer__header {
-      display: none;
+      padding: 8px 18px;
     }
     .t-drawer__body {
       padding: 12px 18px;

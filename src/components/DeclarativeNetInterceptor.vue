@@ -184,7 +184,7 @@
     <DeclarativeNetRuleEditor
       :visible="showAddRuleDialog"
       :editing-rule="editingRule"
-      :placement="editorPlacement"
+      :wide="isWide"
       @save="ruleManager.save"
       @close="showAddRuleDialog = false"
     />
@@ -229,13 +229,12 @@ const {
   filterKeyword,
 } = toRefs(reactiveData);
 
-// 根据 DevTools 窗口方向自动决定编辑器抽屉停靠方式：
-// 底部停靠(矮宽窗口 innerWidth>=innerHeight) → 抽屉全宽横向铺开；
+// 根据 DevTools 窗口方向自动决定编辑器抽屉宽度(始终右侧弹出)：
+// 底部停靠(矮宽窗口 innerWidth>=innerHeight) → 抽屉右侧 70% 宽；
 // 侧边停靠(高窄窗口) → 抽屉右侧 560px。监听 resize 实时更新。
-const editorPlacement = ref<"right" | "bottom">("right");
+const isWide = ref(false);
 const updatePlacement = () => {
-  editorPlacement.value =
-    window.innerWidth >= window.innerHeight ? "bottom" : "right";
+  isWide.value = window.innerWidth >= window.innerHeight;
 };
 onMounted(() => {
   updatePlacement();
