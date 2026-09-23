@@ -32,16 +32,6 @@
             </div>
           </h3>
           <div class="header-actions">
-            <t-tooltip
-              :content="editorPlacement === 'bottom' ? '切换到右侧停靠' : '切换到底部停靠'"
-            >
-              <t-switch
-                v-model="editorPlacement"
-                :custom-value="['bottom', 'right']"
-                size="small"
-                title="编辑器停靠位置"
-              />
-            </t-tooltip>
             <t-tooltip content="添加规则">
               <AddIcon @click="ruleManager.add()" size="16" />
             </t-tooltip>
@@ -203,7 +193,7 @@
 
 <script setup lang="ts">
 import { MessagePlugin } from "tdesign-vue-next";
-import { reactive, toRefs, ref, onMounted, toRaw, computed } from "vue";
+import { reactive, toRefs, ref, onMounted, onBeforeUnmount, toRaw, computed, watch } from "vue";
 import { RequestRule } from "@/types";
 import DeclarativeNetRuleEditor from "./DeclarativeNetRuleEditor.vue";
 import DeclarativeNetInterceptionHistory from "./DeclarativeNetInterceptionHistory.vue";
@@ -228,7 +218,6 @@ const reactiveData = reactive({
   editingRule: null as RequestRule | null,
   showHistoryDrawer: false,
   filterKeyword: "",
-  editorPlacement: "right" as "right" | "bottom",
 });
 
 // 解构响应式数据以便使用
@@ -238,8 +227,27 @@ const {
   editingRule,
   showHistoryDrawer,
   filterKeyword,
-  editorPlacement,
 } = toRefs(reactiveData);
+
+// 根据 DevTools 窗口方向自动决定编辑器抽屉停靠方式：
+// 底部停靠(矮宽窗口 innerWidth>=innerHeight) → 抽屉全宽横向铺开；
+// 侧边停靠(高窄窗口) → 抽屉右侧 560px。监听 resize 实时更新。
+const editorPlacement = ref<"right" | "bottom">("right");
+const updatePlacement = () => {
+  editorPlacement.value =
+    window.innerWidth >= window.innerHeight ? "bottom" : "right";
+};
+onMounted(() => {
+  updatePlacement();
+  window.addEventListener("resize", updatePlacement);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", updatePlacement);
+});
+// 打开抽屉时按当前窗口方向同步停靠方式
+watch(showAddRuleDialog, (v) => {
+  if (v) updatePlacement();
+});
 
 // 当前管理的规则
 const requestRules = ref<RequestRule[]>([]);

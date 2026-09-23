@@ -34,16 +34,6 @@
             </div>
           </h3>
           <div class="header-actions">
-            <t-tooltip
-              :content="editorPlacement === 'bottom' ? '切换到右侧停靠' : '切换到底部停靠'"
-            >
-              <t-switch
-                v-model="editorPlacement"
-                :custom-value="['bottom', 'right']"
-                size="small"
-                title="编辑器停靠位置"
-              />
-            </t-tooltip>
             <t-tooltip content="添加规则">
               <AddIcon @click="ruleManager.add()" size="16" />
             </t-tooltip>
@@ -278,15 +268,15 @@
       @close="importRulesData.showDuplicateRulesDialogVisible = false"
     >
       <template #header>slot header</template>
-      <template #body
-        >发现
+      <template #body>
+        发现
         {{ importRulesData.duplicateRules.length }}
         条规则与现有规则URL模式重复：{{
           importRulesData.duplicateRules
             .map((rule) => rule.urlPattern)
             .join(", ")
-        }}</template
-      >
+        }}
+      </template>
       <template #footer>
         <div class="btns-group">
           <t-button
@@ -321,7 +311,7 @@
 
 <script setup lang="ts">
 import { MessagePlugin, DialogPlugin } from "tdesign-vue-next";
-import { reactive, toRefs, ref, onMounted, toRaw, computed } from "vue";
+import { reactive, toRefs, ref, onMounted, onBeforeUnmount, toRaw, computed, watch } from "vue";
 import { RequestRule } from "@/types";
 import ScriptRuleEditor from "./ScriptRuleEditor.vue";
 import ScriptInterceptorHistory from "./ScriptInterceptorHistory.vue";
@@ -349,7 +339,6 @@ const reactiveData = reactive({
   editingRule: null as RequestRule | null,
   showHistoryDrawer: false,
   filterKeyword: "",
-  editorPlacement: "right" as "right" | "bottom",
 });
 
 const importRulesData = reactive({
@@ -366,8 +355,27 @@ const {
   editingRule,
   showHistoryDrawer,
   filterKeyword,
-  editorPlacement,
 } = toRefs(reactiveData);
+
+// 根据 DevTools 窗口方向自动决定编辑器抽屉停靠方式：
+// 底部停靠(矮宽窗口 innerWidth>=innerHeight) → 抽屉全宽横向铺开；
+// 侧边停靠(高窄窗口) → 抽屉右侧 560px。监听 resize 实时更新。
+const editorPlacement = ref<"right" | "bottom">("right");
+const updatePlacement = () => {
+  editorPlacement.value =
+    window.innerWidth >= window.innerHeight ? "bottom" : "right";
+};
+onMounted(() => {
+  updatePlacement();
+  window.addEventListener("resize", updatePlacement);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", updatePlacement);
+});
+// 打开抽屉时按当前窗口方向同步停靠方式
+watch(showAddRuleDialog, (v) => {
+  if (v) updatePlacement();
+});
 
 // 当前管理的规则
 const requestRules = ref<RequestRule[]>([]);
@@ -382,7 +390,7 @@ const filteredRules = computed(() => {
   }
   const keyword = filterKeyword.value.toLowerCase();
   return requestRules.value.filter((rule: any) =>
-    rule.urlPattern.toLowerCase().includes(keyword)
+    rule.urlPattern.toLowerCase().includes(keyword),
   );
 });
 
@@ -529,7 +537,7 @@ const ruleManager = {
   save: async (rule: RequestRule) => {
     if (editingRule.value?.id) {
       const index = requestRules.value.findIndex(
-        (r) => r.id === editingRule.value!.id
+        (r) => r.id === editingRule.value!.id,
       );
       if (index !== -1) {
         requestRules.value[index] = {
@@ -679,7 +687,7 @@ const importRules = () => {
 
       for (const importedRule of importedData) {
         const isDuplicate = existingRules.some(
-          (existingRule) => existingRule.urlPattern === importedRule.urlPattern
+          (existingRule) => existingRule.urlPattern === importedRule.urlPattern,
         );
 
         if (isDuplicate) {
@@ -727,8 +735,8 @@ const saveRulesCover = async () => {
   const updatedExistingRules = importRulesData.existingRules.filter(
     (existingRule) =>
       !importRulesData.duplicateRules.some(
-        (duplicateRule) => duplicateRule.urlPattern === existingRule.urlPattern
-      )
+        (duplicateRule) => duplicateRule.urlPattern === existingRule.urlPattern,
+      ),
   );
 
   const allRulesToImport = [
@@ -789,7 +797,7 @@ const processImport = async (rulesToImport: any[], existingRules: any[]) => {
     await cacheManager.save();
 
     MessagePlugin.success(
-      `成功导入 ${importedRules.length} 条规则，现有规则总数：${finalRules.length}`
+      `成功导入 ${importedRules.length} 条规则，现有规则总数：${finalRules.length}`,
     );
   } catch (error) {
     console.error("处理导入时发生错误:", error);
@@ -1151,8 +1159,9 @@ const exportRules = () => {
                   border-radius: 4px;
                   padding: 12px;
                   font-size: 11px;
-                  font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono",
-                    Consolas, "Courier New", monospace;
+                  font-family:
+                    "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas,
+                    "Courier New", monospace;
                   white-space: pre-wrap;
                   word-break: break-all;
                   max-height: 200px;
