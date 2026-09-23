@@ -8,15 +8,9 @@
   >
     <template #header>
       <div class="editor-header">
-        <span class="editor-title">{{ editingRule ? "编辑规则" : "添加规则" }}</span>
-        <div class="header-actions" v-if="wide">
-          <t-button variant="text" theme="default" @click="handleClose">
-            取消
-          </t-button>
-          <t-button theme="primary" @click="handleSubmit">
-            保存规则
-          </t-button>
-        </div>
+        <span class="editor-title">{{
+          editingRule ? "编辑规则" : "添加规则"
+        }}</span>
       </div>
     </template>
 
@@ -30,7 +24,12 @@
         <!-- 请求匹配 -->
         <section class="card">
           <h4 class="card-title">请求匹配</h4>
-          <t-form-item label="拦截规则" name="urlPattern" required class="field">
+          <t-form-item
+            label="拦截规则"
+            name="urlPattern"
+            required
+            class="field"
+          >
             <t-input
               v-model="formData.urlPattern"
               class="url-input"
@@ -83,6 +82,7 @@
                     <t-switch
                       v-model="formData.enableResponseBody"
                       :label="['启用', '禁用']"
+                      size="small"
                     />
                   </t-form-item>
                   <t-form-item label="" name="response.bodyType">
@@ -118,6 +118,7 @@
                     <t-switch
                       v-model="formData.enableResponseHeaders"
                       :label="['启用', '禁用']"
+                      size="small"
                     />
                   </t-form-item>
                   <t-form-item label="" name="response.status">
@@ -125,6 +126,7 @@
                       v-model="formData.response.status"
                       :min="100"
                       :max="599"
+                      size="small"
                       placeholder="HTTP 状态码"
                       class="status-input"
                     />
@@ -132,8 +134,8 @@
                   <t-form-item label="">
                     <t-switch
                       v-model="formData.enableStatusCode"
-                      :label="['状态码生效', '忽略状态码']"
                       size="small"
+                      :label="['状态码生效', '忽略状态码']"
                     />
                   </t-form-item>
                 </div>
@@ -158,6 +160,7 @@
                   <t-form-item label="">
                     <t-switch
                       v-model="formData.enableRequestHeaders"
+                      size="small"
                       :label="['启用', '禁用']"
                     />
                   </t-form-item>
@@ -185,6 +188,7 @@
                     <t-switch
                       v-model="formData.enableRequestBody"
                       :label="['启用', '禁用']"
+                      size="small"
                     />
                   </t-form-item>
                 </div>
@@ -212,13 +216,12 @@
         <t-button variant="text" theme="default" @click="handleClose">
           取消
         </t-button>
-        <t-button theme="primary" @click="handleSubmit">
-          保存规则
-        </t-button>
+        <t-button theme="primary" @click="handleSubmit"> 保存规则 </t-button>
       </div>
     </template>
   </t-drawer>
-</template><script setup lang="ts">
+</template>
+<script setup lang="ts">
 import { MessagePlugin } from "tdesign-vue-next";
 import { reactive, ref, watch, nextTick } from "vue";
 import { RequestRule } from "@/types";
@@ -329,18 +332,18 @@ watch(
           formData.requestHeadersJson = JSON.stringify(
             rule.requestHeaders || {},
             null,
-            2
+            2,
           );
           formData.requestBodyJson = JSON.stringify(
             rule.requestBody || {},
             null,
-            2
+            2,
           );
           formData.response.status = rule.response?.status || 200;
           formData.responseHeadersJson = JSON.stringify(
             rule.response?.headers || {},
             null,
-            2
+            2,
           );
           formData.response.bodyType = rule.response?.bodyType || "json";
 
@@ -367,7 +370,7 @@ watch(
         }
       });
     }
-  }
+  },
 );
 
 // 重置表单
@@ -450,7 +453,7 @@ const handleSubmit = async () => {
 
       emit("save", rule);
       MessagePlugin.success(
-        props.editingRule ? "规则更新成功" : "规则添加成功"
+        props.editingRule ? "规则更新成功" : "规则添加成功",
       );
     } catch (error) {
       MessagePlugin.error(error instanceof Error ? error.message : "保存失败");
@@ -472,7 +475,7 @@ const parseJson = (jsonStr: string, fieldName: string): any => {
     throw new Error(
       `${fieldName}格式错误：${
         error instanceof Error ? error.message : "未知错误"
-      }`
+      }`,
     );
   }
 };
@@ -483,7 +486,6 @@ const handleClose = () => {
 };
 </script>
 
-
 <style lang="less" scoped>
 @primary: #2f6fed;
 @bg: #f5f6f8;
@@ -491,34 +493,15 @@ const handleClose = () => {
 @border: #e4e7ec;
 @text: #1f2633;
 @subtext: #5b6472;
-@mono: "SFMono-Regular", "JetBrains Mono", Consolas, "Liberation Mono", Menlo, monospace;
+@mono: "SFMono-Regular", "JetBrains Mono", Consolas, "Liberation Mono", Menlo,
+  monospace;
 
 .rule-editor-drawer {
   .editor-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    gap: 8px;
-
     .editor-title {
       font-size: 13px;
       font-weight: 600;
       color: @text;
-    }
-
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-left: auto;
-
-      :deep(.t-button) {
-        height: 26px;
-        padding: 0 10px;
-        font-size: 12px;
-        border-radius: 6px;
-      }
     }
   }
 
@@ -654,10 +637,19 @@ const handleClose = () => {
     .form-row {
       display: flex;
       align-items: center;
-      gap: 16px;
+      flex-wrap: wrap;
+      gap: 12px 16px;
       margin-bottom: 10px;
+
       :deep(.t-form__item) {
         margin-bottom: 0;
+        // 空 label 不占位，避免控件垂直偏移
+        .t-form__label {
+          display: none;
+        }
+        .t-form__controls {
+          margin-left: 0;
+        }
       }
     }
     .editor-tabs {
@@ -772,7 +764,7 @@ const handleClose = () => {
       padding: 8px 12px;
     }
     .t-drawer__footer {
-      display: none;
+      padding: 4px 12px;
     }
   }
 }
