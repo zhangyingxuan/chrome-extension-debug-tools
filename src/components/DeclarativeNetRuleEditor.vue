@@ -1,111 +1,160 @@
 <template>
   <t-drawer
     :visible="visible"
-    :header="editingRule ? '编辑规则' : '添加规则'"
     @close="closeDrawer"
-    @confirm="saveRule"
-    :size="placement === 'bottom' ? '44%' : '70%'"
+    :size="placement === 'bottom' ? '72%' : '560px'"
     :placement="placement"
+    :show-in-attach-elements="false"
     :class="[
       'rule-editor-drawer',
       placement === 'bottom' ? 'dock-bottom' : '',
     ]"
   >
+    <!-- 右停靠才显示 header；底部停靠紧凑无需 header -->
+    <template v-if="placement !== 'bottom'" #header>
+      <div class="editor-header">
+        <span class="editor-title">{{ editingRule ? "编辑规则" : "添加规则" }}</span>
+      </div>
+    </template>
+    <template v-else #header>
+      <div class="editor-header docked">
+        <span class="editor-title">{{ editingRule ? "编辑规则" : "添加规则" }}</span>
+      </div>
+    </template>
+
     <div class="drawer-content">
       <t-form
         ref="formRef"
         :data="ruleData"
         :rules="formRules"
-        label-width="120px"
+        label-align="top"
       >
-        <t-form-item label="拦截规则" name="urlPattern" required class="full-col">
-          <t-input
-            v-model="ruleData.urlPattern"
-            :placeholder="
-              ruleData.filterType === 'urlFilter'
-                ? '例如: */api/users*'
-                : '例如: ^https://api\\.example\\.com/.*'
-            "
+        <!-- 请求匹配 -->
+        <section class="card">
+          <h4 class="card-title">请求匹配</h4>
+          <t-form-item
+            label="拦截规则"
+            name="urlPattern"
+            required
+            class="field url-field"
           >
-            <!-- :tips="
-              rule.filterType === 'urlFilter'
-                ? '支持通配符匹配，如: */api/*，不能包含中文等非ASCII字符'
-                : '支持正则表达式，如: ^https://api\\.example\\.com/.*'
-            " -->
-            <template #prefixIcon>
-              <t-select
-                v-model="ruleData.filterType"
-                class="filter-type-select"
-              >
-                <t-option key="urlFilter" label="URL匹配" value="urlFilter" />
-                <t-option
-                  key="regexFilter"
-                  label="Reg匹配"
-                  value="regexFilter"
-                />
-              </t-select>
-              <t-select v-model="ruleData.method" class="filter-method-select">
-                <t-option label="GET" value="GET" />
-                <t-option label="POST" value="POST" />
-                <t-option label="PUT" value="PUT" />
-                <t-option label="DELETE" value="DELETE" />
-                <t-option label="PATCH" value="PATCH" />
-                <t-option label="OPTIONS" value="OPTIONS" />
-                <t-option label="HEAD" value="HEAD" />
-              </t-select>
-            </template>
-          </t-input>
-        </t-form-item>
-        <t-form-item label="响应体类型" class="half-col">
-          <t-radio-group v-model="responseType">
-            <t-radio value="json">JSON</t-radio>
-            <t-radio value="text">文本</t-radio>
-          </t-radio-group>
-        </t-form-item>
-        <t-form-item label="响应状态码" class="half-col">
-          <t-input-number
-            v-model="ruleData.response.status"
-            :min="100"
-            :max="599"
-            placeholder="200"
-            style="width: 200px"
-          />
-        </t-form-item>
-        <t-form-item label="响应体" name="responseBody" class="full-col">
-          <t-textarea
-            v-model="ruleData.responseBody"
-            :autosize="{
-              minRows: 4,
-              maxRows: placement === 'bottom' ? 6 : 12,
-            }"
-            :placeholder="
-              responseType === 'json' ? 'JSON格式的响应体' : '文本响应体'
-            "
-            @blur="formatJson"
-          />
-        </t-form-item>
-        <t-form-item label="响应头" class="half-col">
-          <t-textarea
-            v-model="responseHeadersJson"
-            placeholder='请输入JSON格式的响应头，如：{"Content-Type": "application/json"}'
-            :autosize="placement === 'bottom' ? { minRows: 2, maxRows: 4 } : { minRows: 3, maxRows: 6 }"
-            @blur="parseResponseHeaders"
-          />
-        </t-form-item>
-        <t-form-item label="请求头" class="half-col">
-          <t-textarea
-            v-model="requestHeadersJson"
-            placeholder='请输入JSON格式的请求头，如：{"Authorization": "Bearer token"}'
-            :autosize="placement === 'bottom' ? { minRows: 2, maxRows: 4 } : { minRows: 3, maxRows: 6 }"
-            @blur="parseRequestHeaders"
-          />
-        </t-form-item>
+            <t-input
+              v-model="ruleData.urlPattern"
+              class="url-input"
+              :placeholder="
+                ruleData.filterType === 'urlFilter'
+                  ? '例如: */api/users*'
+                  : '例如: ^https://api\\.example\\.com/.*'
+              "
+            >
+              <template #prefixIcon>
+                <t-select
+                  v-model="ruleData.filterType"
+                  class="filter-type-select"
+                  size="small"
+                >
+                  <t-option key="urlFilter" label="URL匹配" value="urlFilter" />
+                  <t-option
+                    key="regexFilter"
+                    label="Reg匹配"
+                    value="regexFilter"
+                  />
+                </t-select>
+                <t-select v-model="ruleData.method" class="filter-method-select" size="small">
+                  <t-option label="GET" value="GET" />
+                  <t-option label="POST" value="POST" />
+                  <t-option label="PUT" value="PUT" />
+                  <t-option label="DELETE" value="DELETE" />
+                  <t-option label="PATCH" value="PATCH" />
+                  <t-option label="OPTIONS" value="OPTIONS" />
+                  <t-option label="HEAD" value="HEAD" />
+                </t-select>
+              </template>
+            </t-input>
+          </t-form-item>
+        </section>
+
+        <!-- 响应配置 -->
+        <section class="card">
+          <h4 class="card-title">响应配置</h4>
+          <div class="row-2col">
+            <t-form-item label="响应体类型" class="field">
+              <t-radio-group v-model="responseType" class="type-radio">
+                <t-radio value="json">JSON</t-radio>
+                <t-radio value="text">文本</t-radio>
+              </t-radio-group>
+            </t-form-item>
+            <t-form-item label="状态码" class="field">
+              <t-input-number
+                v-model="ruleData.response.status"
+                :min="100"
+                :max="599"
+                placeholder="200"
+                class="status-input"
+              />
+            </t-form-item>
+          </div>
+          <t-form-item label="响应体" name="responseBody" class="field grow">
+            <t-textarea
+              v-model="ruleData.responseBody"
+              class="code-textarea body-area"
+              :autosize="{
+                minRows: placement === 'bottom' ? 4 : 9,
+                maxRows: placement === 'bottom' ? 12 : 40,
+              }"
+              :placeholder="
+                responseType === 'json' ? 'JSON格式的响应体' : '文本响应体'
+              "
+              @blur="formatJson"
+            />
+          </t-form-item>
+        </section>
+
+        <!-- 请求 / 响应头 -->
+        <section class="card">
+          <h4 class="card-title">自定义头</h4>
+          <div class="row-2col">
+            <t-form-item label="响应头" class="field">
+              <t-textarea
+                v-model="responseHeadersJson"
+                class="code-textarea head-area"
+                placeholder='如：{"Content-Type":"application/json"}'
+                :autosize="{
+                  minRows: placement === 'bottom' ? 3 : 4,
+                  maxRows: placement === 'bottom' ? 8 : 10,
+                }"
+                @blur="parseResponseHeaders"
+              />
+            </t-form-item>
+            <t-form-item label="请求头" class="field">
+              <t-textarea
+                v-model="requestHeadersJson"
+                class="code-textarea head-area"
+                placeholder='如：{"Authorization":"Bearer token"}'
+                :autosize="{
+                  minRows: placement === 'bottom' ? 3 : 4,
+                  maxRows: placement === 'bottom' ? 8 : 10,
+                }"
+                @blur="parseRequestHeaders"
+              />
+            </t-form-item>
+          </div>
+        </section>
       </t-form>
     </div>
-  </t-drawer>
-</template>
 
-<script setup lang="ts">
+    <template #footer>
+      <div class="editor-footer">
+        <t-button variant="text" theme="default" @click="closeDrawer">
+          取消
+        </t-button>
+        <t-button theme="primary" @click="saveRule">
+          保存规则
+        </t-button>
+      </div>
+    </template>
+  </t-drawer>
+</template><script setup lang="ts">
 import { reactive, ref, watch } from "vue";
 import { RequestRule } from "@/types";
 import { generateId } from "@/utils/common";
@@ -403,79 +452,227 @@ const saveRule = async () => {
 };
 </script>
 
+
 <style lang="less" scoped>
+@primary: #2f6fed;
+@bg: #f5f6f8;
+@surface: #ffffff;
+@border: #e4e7ec;
+@text: #1f2633;
+@subtext: #5b6472;
+@mono: "SFMono-Regular", "JetBrains Mono", Consolas, "Liberation Mono", Menlo, monospace;
+
 .rule-editor-drawer {
+  .editor-header {
+    .editor-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: @text;
+    }
+  }
+
   .drawer-content {
     height: 100%;
     display: flex;
     flex-direction: column;
-    padding: 0;
 
     .t-form {
       flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
       overflow-y: auto;
-      padding: 20px;
+
+      // 白色分区卡
+      .card {
+        background: @surface;
+        border: 1px solid @border;
+        border-radius: 8px;
+        padding: 14px;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+
+        .card-title {
+          margin: 0 0 10px;
+          font-size: 12px;
+          font-weight: 600;
+          color: @text;
+          letter-spacing: 0.2px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          &::before {
+            content: "";
+            width: 3px;
+            height: 12px;
+            border-radius: 2px;
+            background: @primary;
+          }
+        }
+
+        .row-2col {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+
+        :deep(.t-form__label) {
+          font-size: 11.5px;
+          color: @subtext;
+          font-weight: 500;
+          margin-bottom: 4px;
+          line-height: 1.2;
+        }
+        :deep(.t-form__item) {
+          margin-bottom: 10px;
+          &:last-child {
+            margin-bottom: 0;
+          }
+        }
+
+        .grow {
+          margin-bottom: 0;
+          :deep(.t-form__controls) {
+            .t-form__controls-content {
+              display: block;
+            }
+          }
+        }
+      }
+    }
+
+    // 等宽代码输入
+    .url-input {
+      :deep(input) {
+        font-family: @mono;
+        font-size: 12px;
+      }
+    }
+    .code-textarea {
+      :deep(textarea) {
+        font-family: @mono;
+        font-size: 12px;
+        line-height: 1.55;
+        background: #fbfcfe;
+      }
+    }
+
+    .filter-type-select {
+      width: 88px;
+    }
+    .filter-method-select {
+      width: 80px;
+    }
+    .type-radio {
+      display: flex;
+    }
+    .status-input {
+      width: 100%;
+    }
+    .t-input--prefix {
+      padding: 0;
     }
   }
-  .filter-type-select {
-    width: 100px;
-  }
-  .filter-method-select {
-    width: 100px;
-  }
-  .t-input--prefix {
-    padding: 0;
+
+  .editor-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    width: 100%;
+
+    :deep(.t-button) {
+      border-radius: 6px;
+    }
   }
 
-  // 停靠底部（横向宽矮）时表单更紧凑：两列栅格布局，中间行吸收纵向留白
+  // 底部停靠：抽屉更高(72%)、砍掉 header、全宽多栏、footer 压缩
   &.dock-bottom {
-    :deep(.t-drawer__body) {
-      padding: 10px 16px;
-    }
-
     .drawer-content {
       .t-form {
-        padding: 0;
-        height: 100%;
         display: grid;
         grid-template-columns: 1fr 1fr;
-        grid-template-rows: auto auto 1fr auto;
-        gap: 2px 20px;
+        grid-template-rows: auto auto 1fr;
+        gap: 10px 18px;
         overflow: hidden;
 
-        .t-form-item.full-col {
-          grid-column: 1 / -1;
-          display: flex;
-          flex-direction: column;
-        }
+        // 卡片直接平铺进栅格：请求匹配占整行，其余分栏
+        .card {
+          padding: 12px;
+          box-shadow: none;
 
-        .t-form-item.half-col {
-          grid-column: span 1;
-          display: flex;
-          flex-direction: column;
-        }
-
-        .t-form-item {
-          margin-bottom: 0;
-
-          // 响应体占满 1fr 中间行，textarea 撑高以吸收留白
-          :deep(.t-form__controls) {
-            flex: 1;
+          &:nth-child(1) {
+            grid-column: 1 / -1;
+          }
+          &:nth-child(2) {
+            grid-column: span 1;
+          }
+          &:nth-child(3) {
+            grid-column: span 1;
             display: flex;
-            .t-form__controls-content {
+            flex-direction: column;
+            :deep(.t-form__controls) {
               flex: 1;
               display: flex;
-              .t-textarea {
+              .t-form__controls-content {
                 flex: 1;
+                display: flex;
+                .t-textarea {
+                  flex: 1;
+                }
               }
             }
           }
 
+          .card-title {
+            margin-bottom: 6px;
+            font-size: 11.5px;
+          }
           :deep(.t-form__item) {
-            margin-bottom: 0;
+            margin-bottom: 8px;
           }
         }
       }
+    }
+
+    .editor-footer {
+      :deep(.t-button) {
+        height: 30px;
+        padding: 0 12px;
+        font-size: 12px;
+      }
+    }
+  }
+}
+</style>
+
+<style lang="less">
+/* 非 scoped：TDesign Drawer 通过 Teleport 渲染到 body，
+   root 节点无 data-v 属性，scoped /deep/ 无法命中。 */
+.rule-editor-drawer {
+  .t-drawer__header {
+    padding: 12px 16px;
+    min-height: 0;
+    border-bottom: 1px solid #e4e7ec;
+  }
+  .t-drawer__body {
+    padding: 14px 16px;
+    background: #f5f6f8;
+  }
+  .t-drawer__footer {
+    padding: 8px 16px;
+    border-top: 1px solid #e4e7ec;
+    background: #ffffff;
+  }
+
+  &.dock-bottom {
+    .t-drawer__header {
+      display: none;
+    }
+    .t-drawer__body {
+      padding: 12px 18px;
+    }
+    .t-drawer__footer {
+      padding: 6px 18px;
     }
   }
 }

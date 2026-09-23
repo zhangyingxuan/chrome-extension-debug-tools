@@ -1,45 +1,42 @@
 <template>
   <t-drawer
     :visible="visible"
-    :size="placement === 'bottom' ? '44%' : '70%'"
+    :size="placement === 'bottom' ? '72%' : '560px'"
     :placement="placement"
     @close="handleClose"
-    @confirm="handleSubmit"
     :class="['rule-editor-drawer', placement === 'bottom' ? 'dock-bottom' : '']"
   >
-    <div class="rule-editor">
+    <template #header>
+      <div class="editor-header">
+        <span class="editor-title">{{ editingRule ? "编辑规则" : "添加规则" }}</span>
+      </div>
+    </template>
+
+    <div class="drawer-content">
       <t-form
         ref="formRef"
         :data="formData"
         :rules="formRules"
         label-align="top"
-        :label-width="50"
       >
-        <!-- 基础信息 -->
-        <div class="section">
-          <t-form-item
-            label="规则"
-            name="urlPattern"
-            required
-            labelAlign="left"
-          >
+        <!-- 请求匹配 -->
+        <section class="card">
+          <h4 class="card-title">请求匹配</h4>
+          <t-form-item label="拦截规则" name="urlPattern" required class="field">
             <t-input
               v-model="formData.urlPattern"
+              class="url-input"
               :placeholder="
                 formData.filterType === 'urlFilter'
                   ? '请输入URL关键词（如：api/user）'
                   : '请输入正则表达式（如：.*api.*）'
               "
             >
-              <!-- :tips="
-              rule.filterType === 'urlFilter'
-                ? '支持通配符匹配，如: */api/*，不能包含中文等非ASCII字符'
-                : '支持正则表达式，如: ^https://api\\.example\\.com/.*'
-            " -->
               <template #prefixIcon>
                 <t-select
                   v-model="formData.filterType"
                   class="filter-type-select"
+                  size="small"
                 >
                   <t-option key="urlFilter" label="URL匹配" value="urlFilter" />
                   <t-option
@@ -51,6 +48,7 @@
                 <t-select
                   v-model="formData.method"
                   class="filter-method-select"
+                  size="small"
                 >
                   <t-option label="所有方法" value="ALL" />
                   <t-option label="GET" value="GET" />
@@ -64,12 +62,12 @@
               </template>
             </t-input>
           </t-form-item>
-        </div>
+        </section>
 
-        <!-- 请求和响应修改 -->
-        <div class="section">
-          <t-tabs v-model="activeTab" theme="card">
-            <!-- 返回体 -->
+        <!-- 请求与响应修改 -->
+        <section class="card grow">
+          <h4 class="card-title">请求 / 响应修改</h4>
+          <t-tabs v-model="activeTab" class="editor-tabs">
             <t-tab-panel value="responseBody" label="返回体">
               <div class="tab-content">
                 <div class="form-row">
@@ -83,19 +81,21 @@
                     <t-select
                       v-model="formData.response.bodyType"
                       class="filter-type-select"
+                      size="small"
                       :disabled="!formData.enableResponseBody"
                     >
                       <t-option key="json" label="JSON" value="json" />
                     </t-select>
                   </t-form-item>
                 </div>
-                <t-form-item label="" name="response.body">
+                <t-form-item label="" name="response.body" class="tab-grow">
                   <t-textarea
                     v-model="formData.responseBodyJson"
+                    class="code-textarea body-area"
                     :placeholder="'请输入JSON格式的响应体'"
                     :autosize="{
-                      minRows: placement === 'bottom' ? 3 : 6,
-                      maxRows: placement === 'bottom' ? 6 : 12,
+                      minRows: placement === 'bottom' ? 4 : 9,
+                      maxRows: placement === 'bottom' ? 12 : 40,
                     }"
                     :disabled="!formData.enableResponseBody"
                   />
@@ -117,22 +117,27 @@
                       v-model="formData.response.status"
                       :min="100"
                       :max="599"
-                      placeholder="请输入HTTP状态码"
+                      placeholder="HTTP 状态码"
+                      class="status-input"
                     />
                   </t-form-item>
                   <t-form-item label="">
                     <t-switch
                       v-model="formData.enableStatusCode"
-                      :label="['状态码生效', '状态码忽略']"
+                      :label="['状态码生效', '忽略']"
                       size="small"
                     />
                   </t-form-item>
                 </div>
-                <t-form-item label="" name="response.headers">
+                <t-form-item label="" name="response.headers" class="tab-grow">
                   <t-textarea
                     v-model="formData.responseHeadersJson"
-                    placeholder='请输入JSON格式的响应头，如：{"Content-Type": "application/json", "Cache-Control": "no-cache"}'
-                    :autosize="placement === 'bottom' ? { minRows: 2, maxRows: 4 } : { minRows: 3, maxRows: 6 }"
+                    class="code-textarea body-area"
+                    placeholder='如：{"Content-Type":"application/json","Cache-Control":"no-cache"}'
+                    :autosize="{
+                      minRows: placement === 'bottom' ? 4 : 9,
+                      maxRows: placement === 'bottom' ? 12 : 40,
+                    }"
                     :disabled="!formData.enableResponseHeaders"
                   />
                 </t-form-item>
@@ -149,11 +154,15 @@
                     />
                   </t-form-item>
                 </div>
-                <t-form-item label="" name="requestHeaders">
+                <t-form-item label="" name="requestHeaders" class="tab-grow">
                   <t-textarea
                     v-model="formData.requestHeadersJson"
-                    placeholder='请输入JSON格式的请求头，如：{"Content-Type": "application/json", "Authorization": "Bearer token"}'
-                    :autosize="placement === 'bottom' ? { minRows: 2, maxRows: 5 } : { minRows: 8, maxRows: 12 }"
+                    class="code-textarea body-area"
+                    placeholder='如：{"Content-Type":"application/json","Authorization":"Bearer token"}'
+                    :autosize="{
+                      minRows: placement === 'bottom' ? 4 : 9,
+                      maxRows: placement === 'bottom' ? 12 : 40,
+                    }"
                     :disabled="!formData.enableRequestHeaders"
                   />
                 </t-form-item>
@@ -171,24 +180,37 @@
                     />
                   </t-form-item>
                 </div>
-                <t-form-item label="" name="requestBody">
+                <t-form-item label="" name="requestBody" class="tab-grow">
                   <t-textarea
                     v-model="formData.requestBodyJson"
-                    placeholder='请输入JSON格式的请求体修改，如：{"userId": 123, "status": "active"}'
-                    :autosize="placement === 'bottom' ? { minRows: 2, maxRows: 5 } : { minRows: 8, maxRows: 12 }"
+                    class="code-textarea body-area"
+                    placeholder='请输入JSON格式的请求体修改，如：{"userId":123,"status":"active"}'
+                    :autosize="{
+                      minRows: placement === 'bottom' ? 4 : 9,
+                      maxRows: placement === 'bottom' ? 12 : 40,
+                    }"
                     :disabled="!formData.enableRequestBody"
                   />
                 </t-form-item>
               </div>
             </t-tab-panel>
           </t-tabs>
-        </div>
+        </section>
       </t-form>
     </div>
-  </t-drawer>
-</template>
 
-<script setup lang="ts">
+    <template #footer>
+      <div class="editor-footer">
+        <t-button variant="text" theme="default" @click="handleClose">
+          取消
+        </t-button>
+        <t-button theme="primary" @click="handleSubmit">
+          保存规则
+        </t-button>
+      </div>
+    </template>
+  </t-drawer>
+</template><script setup lang="ts">
 import { MessagePlugin } from "tdesign-vue-next";
 import { reactive, ref, watch, nextTick } from "vue";
 import { RequestRule } from "@/types";
@@ -453,127 +475,258 @@ const handleClose = () => {
 };
 </script>
 
+
 <style lang="less" scoped>
-.rule-editor {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+@primary: #2f6fed;
+@bg: #f5f6f8;
+@surface: #ffffff;
+@border: #e4e7ec;
+@text: #1f2633;
+@subtext: #5b6472;
+@mono: "SFMono-Regular", "JetBrains Mono", Consolas, "Liberation Mono", Menlo, monospace;
 
-  .filter-type-select {
-    width: 100px;
-  }
-  .filter-method-select {
-    width: 100px;
-  }
-  .t-input--prefix {
-    padding: 0;
-  }
-
-  .section {
-    margin-bottom: 8px;
-    padding: 4px;
-    background: #fafafa;
-    border-radius: 6px;
-
-    .section-title {
-      font-size: 14px;
+.rule-editor-drawer {
+  .editor-header {
+    .editor-title {
+      font-size: 13px;
       font-weight: 600;
-      color: #333;
-      margin-bottom: 6px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid #e8e8e8;
-    }
-
-    .form-row {
-      padding: 0 6px;
-      margin-bottom: 6px;
-      display: flex;
-      // align-items: center;
-
-      &:last-child {
-        margin-bottom: 0;
-      }
-
-      .t-form-item {
-        margin-bottom: 0;
-
-        :deep(.t-form__label) {
-          font-weight: 500;
-          color: #333;
-        }
-      }
+      color: @text;
     }
   }
 
-  .action-buttons {
+  .drawer-content {
+    height: 100%;
     display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-    padding: 16px 0;
-    border-top: 1px solid #e8e8e8;
-    margin-top: 24px;
+    flex-direction: column;
 
-    .t-button {
-      min-width: 80px;
-    }
-  }
+    .t-form {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
 
-  .tab-content {
-    padding: 16px 0;
+      .card {
+        background: @surface;
+        border: 1px solid @border;
+        border-radius: 8px;
+        padding: 14px;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
 
-    .form-row {
-      margin-bottom: 6px;
+        &.grow {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          margin-bottom: 0;
+          :deep(.t-form__controls) {
+            flex: 1;
+            display: flex;
+            .t-form__controls-content {
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+              .editor-tabs {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+              }
+              :deep(.t-tabs__content) {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+              }
+              .tab-content {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                .tab-grow {
+                  flex: 1;
+                  display: flex;
+                  flex-direction: column;
+                  margin-bottom: 0;
+                  :deep(.t-form__controls) {
+                    flex: 1;
+                    display: flex;
+                    .t-form__controls-content {
+                      flex: 1;
+                      display: flex;
+                      .t-textarea {
+                        flex: 1;
+                        textarea {
+                          flex: 1;
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
 
-      &:last-child {
-        margin-bottom: 0;
-      }
-
-      .t-form-item {
-        margin-bottom: 0;
+        .card-title {
+          margin: 0 0 10px;
+          font-size: 12px;
+          font-weight: 600;
+          color: @text;
+          letter-spacing: 0.2px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          &::before {
+            content: "";
+            width: 3px;
+            height: 12px;
+            border-radius: 2px;
+            background: @primary;
+          }
+        }
 
         :deep(.t-form__label) {
+          font-size: 11.5px;
+          color: @subtext;
           font-weight: 500;
-          color: #333;
+          margin-bottom: 4px;
+          line-height: 1.2;
+        }
+        :deep(.t-form__item) {
+          margin-bottom: 10px;
+          &:last-child {
+            margin-bottom: 0;
+          }
         }
       }
     }
+
+    .url-input {
+      :deep(input) {
+        font-family: @mono;
+        font-size: 12px;
+      }
+    }
+    .code-textarea {
+      :deep(textarea) {
+        font-family: @mono;
+        font-size: 12px;
+        line-height: 1.55;
+        background: #fbfcfe;
+      }
+    }
+
+    .filter-type-select {
+      width: 88px;
+    }
+    .filter-method-select {
+      width: 84px;
+    }
+    .status-input {
+      width: 140px;
+    }
+    .form-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 10px;
+      :deep(.t-form__item) {
+        margin-bottom: 0;
+      }
+    }
+    .editor-tabs {
+      :deep(.t-tabs__nav-item) {
+        padding: 6px 12px;
+      }
+      :deep(.t-tabs__content) {
+        padding: 10px 0 0;
+      }
+    }
+    .t-input--prefix {
+      padding: 0;
+    }
   }
 
-  :deep(.t-tabs__content) {
-    padding: 0;
+  .editor-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    width: 100%;
+
+    :deep(.t-button) {
+      border-radius: 6px;
+    }
   }
 
-  :deep(.t-tabs__nav-item) {
-    padding: 8px 16px;
+  // 底部停靠：抽屉更高(72%)、砍掉 header、footer 压缩
+  &.dock-bottom {
+    .drawer-content {
+      .t-form {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto 1fr;
+        gap: 10px 18px;
+        overflow: hidden;
+
+        .card {
+          padding: 12px;
+          box-shadow: none;
+
+          &:first-child {
+            grid-column: 1 / -1;
+          }
+          &:nth-child(2) {
+            grid-column: 1 / -1;
+          }
+
+          .card-title {
+            margin-bottom: 6px;
+            font-size: 11.5px;
+          }
+          :deep(.t-form__item) {
+            margin-bottom: 8px;
+          }
+        }
+      }
+    }
+
+    .editor-footer {
+      :deep(.t-button) {
+        height: 30px;
+        padding: 0 12px;
+        font-size: 12px;
+      }
+    }
   }
 }
+</style>
 
-// 停靠底部（横向宽矮）时表单更紧凑
-.rule-editor-drawer.dock-bottom {
-  :deep(.t-drawer__body) {
-    padding: 10px 16px;
+<style lang="less">
+/* 非 scoped：TDesign Drawer 通过 Teleport 渲染到 body，
+   root 节点无 data-v 属性，scoped /deep/ 无法命中。 */
+.rule-editor-drawer {
+  .t-drawer__header {
+    padding: 12px 16px;
+    min-height: 0;
+    border-bottom: 1px solid #e4e7ec;
+  }
+  .t-drawer__body {
+    padding: 14px 16px;
+    background: #f5f6f8;
+  }
+  .t-drawer__footer {
+    padding: 8px 16px;
+    border-top: 1px solid #e4e7ec;
+    background: #ffffff;
   }
 
-  .rule-editor {
-    .section {
-      margin-bottom: 4px;
-      padding: 3px;
-
-      .form-row {
-        margin-bottom: 4px;
-      }
+  &.dock-bottom {
+    .t-drawer__header {
+      display: none;
     }
-
-    .tab-content {
-      padding: 6px 0;
-
-      .form-row {
-        margin-bottom: 4px;
-      }
+    .t-drawer__body {
+      padding: 12px 18px;
     }
-
-    :deep(.t-tabs__nav-item) {
-      padding: 5px 14px;
+    .t-drawer__footer {
+      padding: 6px 18px;
     }
   }
 }
