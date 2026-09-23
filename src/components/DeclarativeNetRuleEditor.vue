@@ -33,14 +33,13 @@
         ref="formRef"
         :data="ruleData"
         :rules="formRules"
-        label-align="top"
+        label-align="left"
       >
         <!-- 请求匹配 -->
         <section class="card">
           <h4 class="card-title">请求匹配</h4>
           <t-form-item
             label="拦截规则"
-            label-align="left"
             name="urlPattern"
             required
             class="field url-field"
@@ -625,20 +624,20 @@ const saveRule = async () => {
     .drawer-content {
       .t-form {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-columns: 1fr 1fr;
         grid-template-rows: auto minmax(min-content, 1fr);
         gap: 4px 8px;
         overflow-x: hidden;
         overflow-y: auto;
         min-height: 0;
 
-        // 卡片平铺进栅格：三列充分利用宽度展示更多数据
+        // 请求匹配占整行，响应配置与自定义头两列并排
         .card {
           padding: 6px 8px;
           box-shadow: none;
 
           &:nth-child(1) {
-            grid-column: span 1;
+            grid-column: 1 / -1;
           }
           &:nth-child(2) {
             grid-column: span 1;
