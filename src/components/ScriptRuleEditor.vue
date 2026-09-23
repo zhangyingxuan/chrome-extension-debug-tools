@@ -495,9 +495,9 @@ const handleClose = () => {
   }
 
   .drawer-content {
-    height: 100%;
     display: flex;
     flex-direction: column;
+    min-height: 0;
 
     .t-form {
       flex: 1;
@@ -505,6 +505,7 @@ const handleClose = () => {
       flex-direction: column;
       gap: 12px;
       overflow-y: auto;
+      min-height: 0;
 
       .card {
         background: @surface;
@@ -662,12 +663,14 @@ const handleClose = () => {
       .t-form {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        grid-template-rows: auto 1fr;
-        gap: 10px 18px;
-        overflow: hidden;
+        grid-template-rows: auto minmax(min-content, 1fr);
+        gap: 4px 8px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        min-height: 0;
 
         .card {
-          padding: 12px;
+          padding: 6px 8px;
           box-shadow: none;
 
           &:first-child {
@@ -678,11 +681,26 @@ const handleClose = () => {
           }
 
           .card-title {
-            margin-bottom: 6px;
-            font-size: 11.5px;
+            margin-bottom: 2px;
+            font-size: 10.5px;
+          }
+          :deep(.t-form__label) {
+            margin-bottom: 1px;
+            font-size: 10.5px;
           }
           :deep(.t-form__item) {
-            margin-bottom: 8px;
+            margin-bottom: 2px;
+          }
+          :deep(.t-tabs__nav-item) {
+            padding: 4px 10px;
+          }
+          :deep(.t-tabs__content) {
+            padding: 6px 0 0;
+          }
+          .tab-content {
+            .form-row {
+              margin-bottom: 4px;
+            }
           }
         }
       }
@@ -720,13 +738,13 @@ const handleClose = () => {
 
   &.dock-bottom {
     .t-drawer__header {
-      padding: 8px 18px;
+      padding: 6px 12px;
     }
     .t-drawer__body {
-      padding: 12px 18px;
+      padding: 8px 12px;
     }
     .t-drawer__footer {
-      padding: 6px 18px;
+      padding: 4px 12px;
     }
   }
 }

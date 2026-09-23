@@ -5,15 +5,14 @@
     :size="wide ? '70%' : '560px'"
     :placement="'right'"
     :show-in-attach-elements="false"
-    :class="[
-      'rule-editor-drawer',
-      wide ? 'dock-bottom' : '',
-    ]"
+    :class="['rule-editor-drawer', wide ? 'dock-bottom' : '']"
   >
     <!-- 右停靠才显示 header；底部停靠紧凑无需 header -->
     <template #header>
       <div class="editor-header">
-        <span class="editor-title">{{ editingRule ? "编辑规则" : "添加规则" }}</span>
+        <span class="editor-title">{{
+          editingRule ? "编辑规则" : "添加规则"
+        }}</span>
       </div>
     </template>
 
@@ -29,6 +28,7 @@
           <h4 class="card-title">请求匹配</h4>
           <t-form-item
             label="拦截规则"
+            label-align="left"
             name="urlPattern"
             required
             class="field url-field"
@@ -55,7 +55,11 @@
                     value="regexFilter"
                   />
                 </t-select>
-                <t-select v-model="ruleData.method" class="filter-method-select" size="small">
+                <t-select
+                  v-model="ruleData.method"
+                  class="filter-method-select"
+                  size="small"
+                >
                   <t-option label="GET" value="GET" />
                   <t-option label="POST" value="POST" />
                   <t-option label="PUT" value="PUT" />
@@ -143,13 +147,12 @@
         <t-button variant="text" theme="default" @click="closeDrawer">
           取消
         </t-button>
-        <t-button theme="primary" @click="saveRule">
-          保存规则
-        </t-button>
+        <t-button theme="primary" @click="saveRule"> 保存规则 </t-button>
       </div>
     </template>
   </t-drawer>
-</template><script setup lang="ts">
+</template>
+<script setup lang="ts">
 import { reactive, ref, watch } from "vue";
 import { RequestRule } from "@/types";
 import { generateId } from "@/utils/common";
@@ -304,7 +307,7 @@ watch(
         ruleData.responseBody = JSON.stringify(
           { message: "默认响应体" },
           null,
-          2
+          2,
         );
       }
 
@@ -312,18 +315,18 @@ watch(
       responseHeadersJson.value = JSON.stringify(
         newRule.response?.headers || {},
         null,
-        2
+        2,
       );
       requestHeadersJson.value = JSON.stringify(
         newRule.requestHeaders || {},
         null,
-        2
+        2,
       );
     } else {
       resetForm();
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 // 修复JSON格式，自动为key添加双引号
@@ -342,7 +345,7 @@ const fixJsonFormat = (jsonString: string): string => {
       const repaired = jsonString
         .replace(/'([^']*)'/g, (_m, inner: string) => JSON.stringify(inner))
         .replace(/([{,]\s*)([A-Za-z_$][\w$]*)(\s*:)/g, '$1"$2"$3')
-        .replace(/,\s*([}\]])/g, '$1');
+        .replace(/,\s*([}\]])/g, "$1");
       return JSON.stringify(JSON.parse(repaired), null, 2);
     } catch {
       // 修复失败，返回原始字符串
@@ -417,14 +420,18 @@ const saveRule = async () => {
       responseHeaders = responseHeadersJson.value.trim()
         ? JSON.parse(responseHeadersJson.value)
         : {};
-    } catch { /* keep empty */ }
+    } catch {
+      /* keep empty */
+    }
 
     let requestHeaders = {};
     try {
       requestHeaders = requestHeadersJson.value.trim()
         ? JSON.parse(requestHeadersJson.value)
         : {};
-    } catch { /* keep empty */ }
+    } catch {
+      /* keep empty */
+    }
 
     const ruleToSave = {
       ...ruleData,
@@ -447,7 +454,6 @@ const saveRule = async () => {
 };
 </script>
 
-
 <style lang="less" scoped>
 @primary: #2f6fed;
 @bg: #f5f6f8;
@@ -455,7 +461,8 @@ const saveRule = async () => {
 @border: #e4e7ec;
 @text: #1f2633;
 @subtext: #5b6472;
-@mono: "SFMono-Regular", "JetBrains Mono", Consolas, "Liberation Mono", Menlo, monospace;
+@mono: "SFMono-Regular", "JetBrains Mono", Consolas, "Liberation Mono", Menlo,
+  monospace;
 
 .rule-editor-drawer {
   .editor-header {
@@ -467,9 +474,9 @@ const saveRule = async () => {
   }
 
   .drawer-content {
-    height: 100%;
     display: flex;
     flex-direction: column;
+    min-height: 0;
 
     .t-form {
       flex: 1;
@@ -477,6 +484,7 @@ const saveRule = async () => {
       flex-direction: column;
       gap: 12px;
       overflow-y: auto;
+      min-height: 0;
 
       // 白色分区卡
       .card {
@@ -585,18 +593,20 @@ const saveRule = async () => {
     .drawer-content {
       .t-form {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        grid-template-rows: auto auto 1fr;
-        gap: 10px 18px;
-        overflow: hidden;
+        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-rows: auto minmax(min-content, 1fr);
+        gap: 4px 8px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        min-height: 0;
 
-        // 卡片直接平铺进栅格：请求匹配占整行，其余分栏
+        // 卡片平铺进栅格：三列充分利用宽度展示更多数据
         .card {
-          padding: 12px;
+          padding: 6px 8px;
           box-shadow: none;
 
           &:nth-child(1) {
-            grid-column: 1 / -1;
+            grid-column: span 1;
           }
           &:nth-child(2) {
             grid-column: span 1;
@@ -605,6 +615,11 @@ const saveRule = async () => {
             grid-column: span 1;
             display: flex;
             flex-direction: column;
+            .row-2col {
+              display: flex;
+              flex-direction: column;
+              gap: 2px;
+            }
             :deep(.t-form__controls) {
               flex: 1;
               display: flex;
@@ -619,11 +634,15 @@ const saveRule = async () => {
           }
 
           .card-title {
-            margin-bottom: 6px;
-            font-size: 11.5px;
+            margin-bottom: 2px;
+            font-size: 10.5px;
+          }
+          :deep(.t-form__label) {
+            margin-bottom: 1px;
+            font-size: 10.5px;
           }
           :deep(.t-form__item) {
-            margin-bottom: 8px;
+            margin-bottom: 2px;
           }
         }
       }
@@ -661,13 +680,13 @@ const saveRule = async () => {
 
   &.dock-bottom {
     .t-drawer__header {
-      padding: 8px 18px;
+      padding: 6px 12px;
     }
     .t-drawer__body {
-      padding: 12px 18px;
+      padding: 8px 12px;
     }
     .t-drawer__footer {
-      padding: 6px 18px;
+      padding: 4px 12px;
     }
   }
 }
