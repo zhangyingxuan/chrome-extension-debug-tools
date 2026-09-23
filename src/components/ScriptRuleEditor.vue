@@ -1,10 +1,11 @@
 <template>
   <t-drawer
     :visible="visible"
-    size="70%"
-    placement="right"
+    :size="placement === 'bottom' ? '44%' : '70%'"
+    :placement="placement"
     @close="handleClose"
     @confirm="handleSubmit"
+    :class="['rule-editor-drawer', placement === 'bottom' ? 'dock-bottom' : '']"
   >
     <div class="rule-editor">
       <t-form
@@ -93,8 +94,8 @@
                     v-model="formData.responseBodyJson"
                     :placeholder="'请输入JSON格式的响应体'"
                     :autosize="{
-                      minRows: 6,
-                      maxRows: 12,
+                      minRows: placement === 'bottom' ? 3 : 6,
+                      maxRows: placement === 'bottom' ? 6 : 12,
                     }"
                     :disabled="!formData.enableResponseBody"
                   />
@@ -131,7 +132,7 @@
                   <t-textarea
                     v-model="formData.responseHeadersJson"
                     placeholder='请输入JSON格式的响应头，如：{"Content-Type": "application/json", "Cache-Control": "no-cache"}'
-                    :autosize="{ minRows: 3, maxRows: 6 }"
+                    :autosize="placement === 'bottom' ? { minRows: 2, maxRows: 4 } : { minRows: 3, maxRows: 6 }"
                     :disabled="!formData.enableResponseHeaders"
                   />
                 </t-form-item>
@@ -152,7 +153,7 @@
                   <t-textarea
                     v-model="formData.requestHeadersJson"
                     placeholder='请输入JSON格式的请求头，如：{"Content-Type": "application/json", "Authorization": "Bearer token"}'
-                    :autosize="{ minRows: 8, maxRows: 12 }"
+                    :autosize="placement === 'bottom' ? { minRows: 2, maxRows: 5 } : { minRows: 8, maxRows: 12 }"
                     :disabled="!formData.enableRequestHeaders"
                   />
                 </t-form-item>
@@ -174,7 +175,7 @@
                   <t-textarea
                     v-model="formData.requestBodyJson"
                     placeholder='请输入JSON格式的请求体修改，如：{"userId": 123, "status": "active"}'
-                    :autosize="{ minRows: 8, maxRows: 12 }"
+                    :autosize="placement === 'bottom' ? { minRows: 2, maxRows: 5 } : { minRows: 8, maxRows: 12 }"
                     :disabled="!formData.enableRequestBody"
                   />
                 </t-form-item>
@@ -195,6 +196,7 @@ import { RequestRule } from "@/types";
 interface Props {
   visible: boolean;
   editingRule?: RequestRule | null;
+  placement?: "right" | "bottom";
 }
 
 interface Emits {
@@ -202,7 +204,7 @@ interface Emits {
   (e: "close"): void;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), { placement: "right" });
 const emit = defineEmits<Emits>();
 
 const formRef = ref();
@@ -543,6 +545,36 @@ const handleClose = () => {
 
   :deep(.t-tabs__nav-item) {
     padding: 8px 16px;
+  }
+}
+
+// 停靠底部（横向宽矮）时表单更紧凑
+.rule-editor-drawer.dock-bottom {
+  :deep(.t-drawer__body) {
+    padding: 10px 16px;
+  }
+
+  .rule-editor {
+    .section {
+      margin-bottom: 4px;
+      padding: 3px;
+
+      .form-row {
+        margin-bottom: 4px;
+      }
+    }
+
+    .tab-content {
+      padding: 6px 0;
+
+      .form-row {
+        margin-bottom: 4px;
+      }
+    }
+
+    :deep(.t-tabs__nav-item) {
+      padding: 5px 14px;
+    }
   }
 }
 </style>

@@ -32,6 +32,16 @@
             </div>
           </h3>
           <div class="header-actions">
+            <t-tooltip
+              :content="editorPlacement === 'bottom' ? '切换到右侧停靠' : '切换到底部停靠'"
+            >
+              <t-switch
+                v-model="editorPlacement"
+                :custom-value="['bottom', 'right']"
+                size="small"
+                title="编辑器停靠位置"
+              />
+            </t-tooltip>
             <t-tooltip content="添加规则">
               <AddIcon @click="ruleManager.add()" size="16" />
             </t-tooltip>
@@ -184,6 +194,7 @@
     <DeclarativeNetRuleEditor
       :visible="showAddRuleDialog"
       :editing-rule="editingRule"
+      :placement="editorPlacement"
       @save="ruleManager.save"
       @close="showAddRuleDialog = false"
     />
@@ -217,6 +228,7 @@ const reactiveData = reactive({
   editingRule: null as RequestRule | null,
   showHistoryDrawer: false,
   filterKeyword: "",
+  editorPlacement: "right" as "right" | "bottom",
 });
 
 // 解构响应式数据以便使用
@@ -226,6 +238,7 @@ const {
   editingRule,
   showHistoryDrawer,
   filterKeyword,
+  editorPlacement,
 } = toRefs(reactiveData);
 
 // 当前管理的规则

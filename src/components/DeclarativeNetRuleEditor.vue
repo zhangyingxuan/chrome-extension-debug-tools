@@ -4,9 +4,12 @@
     :header="editingRule ? '编辑规则' : '添加规则'"
     @close="closeDrawer"
     @confirm="saveRule"
-    size="70%"
-    placement="right"
-    class="rule-editor-drawer"
+    :size="placement === 'bottom' ? '44%' : '70%'"
+    :placement="placement"
+    :class="[
+      'rule-editor-drawer',
+      placement === 'bottom' ? 'dock-bottom' : '',
+    ]"
   >
     <div class="drawer-content">
       <t-form
@@ -15,7 +18,7 @@
         :rules="formRules"
         label-width="120px"
       >
-        <t-form-item label="拦截规则" name="urlPattern" required>
+        <t-form-item label="拦截规则" name="urlPattern" required class="full-col">
           <t-input
             v-model="ruleData.urlPattern"
             :placeholder="
@@ -53,23 +56,13 @@
             </template>
           </t-input>
         </t-form-item>
-        <t-form-item label="响应体类型">
+        <t-form-item label="响应体类型" class="half-col">
           <t-radio-group v-model="responseType">
             <t-radio value="json">JSON</t-radio>
             <t-radio value="text">文本</t-radio>
           </t-radio-group>
         </t-form-item>
-        <t-form-item label="响应体" name="responseBody">
-          <t-textarea
-            v-model="ruleData.responseBody"
-            :autosize="{ minRows: 6 }"
-            :placeholder="
-              responseType === 'json' ? 'JSON格式的响应体' : '文本响应体'
-            "
-            @blur="formatJson"
-          />
-        </t-form-item>
-        <t-form-item label="响应状态码">
+        <t-form-item label="响应状态码" class="half-col">
           <t-input-number
             v-model="ruleData.response.status"
             :min="100"
@@ -78,19 +71,32 @@
             style="width: 200px"
           />
         </t-form-item>
-        <t-form-item label="响应头">
+        <t-form-item label="响应体" name="responseBody" class="full-col">
+          <t-textarea
+            v-model="ruleData.responseBody"
+            :autosize="{
+              minRows: 4,
+              maxRows: placement === 'bottom' ? 6 : 12,
+            }"
+            :placeholder="
+              responseType === 'json' ? 'JSON格式的响应体' : '文本响应体'
+            "
+            @blur="formatJson"
+          />
+        </t-form-item>
+        <t-form-item label="响应头" class="half-col">
           <t-textarea
             v-model="responseHeadersJson"
             placeholder='请输入JSON格式的响应头，如：{"Content-Type": "application/json"}'
-            :autosize="{ minRows: 3, maxRows: 6 }"
+            :autosize="placement === 'bottom' ? { minRows: 2, maxRows: 4 } : { minRows: 3, maxRows: 6 }"
             @blur="parseResponseHeaders"
           />
         </t-form-item>
-        <t-form-item label="请求头">
+        <t-form-item label="请求头" class="half-col">
           <t-textarea
             v-model="requestHeadersJson"
             placeholder='请输入JSON格式的请求头，如：{"Authorization": "Bearer token"}'
-            :autosize="{ minRows: 3, maxRows: 6 }"
+            :autosize="placement === 'bottom' ? { minRows: 2, maxRows: 4 } : { minRows: 3, maxRows: 6 }"
             @blur="parseRequestHeaders"
           />
         </t-form-item>
@@ -106,12 +112,13 @@ import { generateId } from "@/utils/common";
 interface Props {
   visible: boolean;
   editingRule?: RequestRule | null;
+  placement?: "right" | "bottom";
 }
 interface Emits {
   (e: "save", rule: RequestRule): void;
   (e: "close"): void;
 }
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), { placement: "right" });
 const emit = defineEmits<Emits>();
 
 const defaultRule = {
@@ -418,6 +425,58 @@ const saveRule = async () => {
   }
   .t-input--prefix {
     padding: 0;
+  }
+
+  // 停靠底部（横向宽矮）时表单更紧凑：两列栅格布局，中间行吸收纵向留白
+  &.dock-bottom {
+    :deep(.t-drawer__body) {
+      padding: 10px 16px;
+    }
+
+    .drawer-content {
+      .t-form {
+        padding: 0;
+        height: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto 1fr auto;
+        gap: 2px 20px;
+        overflow: hidden;
+
+        .t-form-item.full-col {
+          grid-column: 1 / -1;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .t-form-item.half-col {
+          grid-column: span 1;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .t-form-item {
+          margin-bottom: 0;
+
+          // 响应体占满 1fr 中间行，textarea 撑高以吸收留白
+          :deep(.t-form__controls) {
+            flex: 1;
+            display: flex;
+            .t-form__controls-content {
+              flex: 1;
+              display: flex;
+              .t-textarea {
+                flex: 1;
+              }
+            }
+          }
+
+          :deep(.t-form__item) {
+            margin-bottom: 0;
+          }
+        }
+      }
+    }
   }
 }
 </style>
