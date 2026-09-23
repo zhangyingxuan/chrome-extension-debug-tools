@@ -9,6 +9,14 @@
     <template #header>
       <div class="editor-header">
         <span class="editor-title">{{ editingRule ? "编辑规则" : "添加规则" }}</span>
+        <div class="header-actions" v-if="wide">
+          <t-button variant="text" theme="default" @click="handleClose">
+            取消
+          </t-button>
+          <t-button theme="primary" @click="handleSubmit">
+            保存规则
+          </t-button>
+        </div>
       </div>
     </template>
 
@@ -124,7 +132,7 @@
                   <t-form-item label="">
                     <t-switch
                       v-model="formData.enableStatusCode"
-                      :label="['状态码生效', '忽略']"
+                      :label="['状态码生效', '忽略状态码']"
                       size="small"
                     />
                   </t-form-item>
@@ -487,10 +495,30 @@ const handleClose = () => {
 
 .rule-editor-drawer {
   .editor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 8px;
+
     .editor-title {
       font-size: 13px;
       font-weight: 600;
       color: @text;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+
+      :deep(.t-button) {
+        height: 26px;
+        padding: 0 10px;
+        font-size: 12px;
+        border-radius: 6px;
+      }
     }
   }
 
@@ -744,7 +772,7 @@ const handleClose = () => {
       padding: 8px 12px;
     }
     .t-drawer__footer {
-      padding: 4px 12px;
+      display: none;
     }
   }
 }
