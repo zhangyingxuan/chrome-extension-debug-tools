@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>脚本拦截面板</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; }
+  html,body{ width:1280px; height:800px; overflow:hidden; }
+  .win{ width:1280px; height:800px; background:#fff; display:flex; flex-direction:column; }
+
+  /* DevTools tab bar */
+  .devtabs{ display:flex; align-items:center; gap:4px; background:#f3f3f3; border-bottom:1px solid #e0e0e0; padding:0 8px; height:34px; }
+  .dtab{ font-size:12px; color:#555; padding:0 14px; height:34px; display:flex; align-items:center; cursor:default; border-top:2px solid transparent; }
+  .dtab.active{ background:#fff; border-top:2px solid #1a73e8; color:#1a73e8; font-weight:500; margin-top:-1px; }
+  .dtab.nlimit{ background:#fff; border-top:2px solid #1a73e8; color:#1a73e8; font-weight:600; }
+
+  /* Left rail: extension tab nav (App.vue vertical tabs) */
+  .body{ flex:1; display:flex; min-height:0; background:#fff; }
+  .rail{ width:56px; background:#fff; border-right:1px solid #e8e8e8; display:flex; flex-direction:column; align-items:stretch; padding-top:6px; }
+  .rail-item{ writing-mode:vertical-rl; text-align:center; padding:16px 6px; cursor:default; font-size:12px; color:#666; border-right:2px solid transparent; }
+  .rail-item.active{ color:#1890ff; border-right:2px solid #1890ff; font-weight:500; background:#f4f8ff; }
+
+  .main{ flex:1; min-width:0; display:flex; flex-direction:column; padding:16px 18px; }
+  .section-title{ font-size:14px; font-weight:600; color:#333; display:flex; align-items:center; gap:8px; }
+  .tooltip-dot{ width:14px; height:14px; border-radius:50%; border:1px solid #bbb; color:#bbb; font-size:10px; display:inline-flex; align-items:center; justify-content:center; }
+
+  /* header row */
+  .header{ display:flex; justify-content:space-between; align-items:center; margin-top:14px; }
+  .header-left{ display:flex; align-items:center; gap:12px; }
+  .switch{ width:44px; height:22px; border-radius:11px; background:#1890ff; position:relative; }
+  .switch::after{ content:""; position:absolute; top:2px; right:2px; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+  .filter{ position:relative; }
+  .filter input{ width:220px; height:30px; border:1px solid #d9d9d9; border-radius:4px; padding:0 30px 0 10px; font-size:12px; color:#666; background:#fff; }
+  .filter input::placeholder{ color:#bfbfbf; }
+  .filter .fic{ position:absolute; right:8px; top:50%; transform:translateY(-50%); color:#999; font-size:15px; }
+
+  .header-icons{ display:flex; gap:4px; align-items:center; }
+  .hic{ width:30px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:4px; color:#555; font-size:17px; }
+  .hic:hover{ background:#eef3fd; color:#1890ff; }
+  .hic.del:hover{ background:#fff1f0; color:#f5222d; }
+
+  /* table */
+  .table{ margin-top:14px; border:1px solid #eee; border-radius:6px; overflow:hidden; }
+  .thead,.trow{ display:grid; grid-template-columns:64px 96px 80px 1fr 120px; align-items:center; }
+  .thead{ background:#fafafa; font-size:12px; color:#555; padding:9px 12px; border-bottom:1px solid #eee; font-weight:500; }
+  .trow{ padding:8px 12px; border-bottom:1px solid #f5f5f5; font-size:12px; }
+  .trow:last-child{ border-bottom:none; }
+  .trow:hover{ background:#f7faff; }
+  .switch-sm{ width:36px; height:19px; border-radius:10px; background:#1890ff; position:relative; display:inline-block; }
+  .switch-sm::after{ content:""; position:absolute; top:2px; right:2px; width:15px; height:15px; border-radius:50%; background:#fff; }
+  .switch-sm.off{ background:#ccc; }
+  .switch-sm.off::after{ left:2px; right:auto; }
+  .ft-badge{ background:#e6f4ff; color:#1890ff; border:1px solid #91caff; font-size:11px; padding:1px 8px; border-radius:3px; font-weight:500; width:max-content; }
+  .method-badge{ background:#fff7e6; color:#fa8c16; border:1px solid #ffd591; font-size:11px; padding:1px 8px; border-radius:3px; font-weight:600; width:max-content; }
+  .url{ color:#333; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:Consolas,Menlo,monospace; font-size:12px; }
+  .url b{ color:#1890ff; font-weight:600; }
+  .actions{ display:flex; align-items:center; gap:4px; }
+  .aic{ width:26px; height:26px; display:flex; align-items:center; justify-content:center; border-radius:4px; color:#666; font-size:15px; }
+  .aic:hover{ background:#eef3fd; color:#1890ff; }
+  .expand{ margin-left:auto; color:#bbb; font-size:13px; }
+
+  .status-note{ margin-top:12px; font-size:12px; color:#999; }
+</style>
+</head>
+<body>
+  <div class="win">
+    <!-- DevTools tab bar -->
+    <div class="devtabs">
+      <div class="dtab">Elements</div>
+      <div class="dtab">Console</div>
+      <div class="dtab">Network</div>
+      <div class="dtab nlimit">NetLimit</div>
+    </div>
+    <div class="body">
+      <!-- left rail -->
+      <div class="rail">
+        <div class="rail-item active">脚本拦截</div>
+        <div class="rail-item">请求拦截</div>
+        <div class="rail-item">请求记录</div>
+      </div>
+      <!-- main -->
+      <div class="main">
+        <div class="section-title">脚本拦截规则 <span class="tooltip-dot">?</span>
+          <span style="font-size:12px;color:#999;font-weight:400">XMLHttpRequest、Fetch 拦截</span>
+        </div>
+
+        <div class="header">
+          <div class="header-left">
+            <span class="switch"></span>
+            <span style="font-size:12px;color:#666">已启用</span>
+            <div class="filter">
+              <input placeholder="输入URL关键词过滤规则">
+              <span class="fic">⌕</span>
+            </div>
+          </div>
+          <div class="header-icons">
+            <span class="hic" title="添加规则">＋</span>
+            <span class="hic" title="查看拦截历史">🕘</span>
+            <span class="hic" title="导入规则">⇪</span>
+            <span class="hic" title="导出规则">⇩</span>
+            <span class="hic del" title="清理所有规则">🗑</span>
+          </div>
+        </div>
+
+        <div class="table">
+          <div class="thead">
+            <span>状态</span><span>过滤类型</span><span>方法</span><span>URL路径</span><span>操作</span>
+          </div>
+          <div class="trow">
+            <span><span class="switch-sm"></span></span>
+            <span><span class="ft-badge">regexFilter</span></span>
+            <span><span class="method-badge">POST</span></span>
+            <span class="url">^https://api\.<b>example</b>\.com/v1/users/list.*</span>
+            <span class="actions"><span class="aic">✎</span><span class="aic">🗑</span><span class="expand">▸</span></span>
+          </div>
+          <div class="trow">
+            <span><span class="switch-sm"></span></span>
+            <span><span class="ft-badge">urlFilter</span></span>
+            <span><span class="method-badge">GET</span></span>
+            <span class="url">https://<b>gateway</b>.example.com/api/config/banner</span>
+            <span class="actions"><span class="aic">✎</span><span class="aic">🗑</span><span class="expand">▸</span></span>
+          </div>
+          <div class="trow">
+            <span><span class="switch-sm off"></span></span>
+            <span><span class="ft-badge">urlFilter</span></span>
+            <span><span class="method-badge">PUT</span></span>
+            <span class="url">https://api.example.com/v1/profile/<b>update</b></span>
+            <span class="actions"><span class="aic">✎</span><span class="aic">🗑</span><span class="expand">▸</span></span>
+          </div>
+          <div class="trow">
+            <span><span class="switch-sm"></span></span>
+            <span><span class="ft-badge">regexFilter</span></span>
+            <span><span class="method-badge">ALL</span></span>
+            <span class="url">^https://.*/v1/order/<b>submit</b>$</span>
+            <span class="actions"><span class="aic">✎</span><span class="aic">🗑</span><span class="expand">▸</span></span>
+          </div>
+          <div class="trow">
+            <span><span class="switch-sm off"></span></span>
+            <span><span class="ft-badge">urlFilter</span></span>
+            <span><span class="method-badge">DELETE</span></span>
+            <span class="url">https://api.example.com/v1/cart/items/1024</span>
+            <span class="actions"><span class="aic">✎</span><span class="aic">🗑</span><span class="expand">▸</span></span>
+          </div>
+          <div class="trow">
+            <span><span class="switch-sm"></span></span>
+            <span><span class="ft-badge">urlFilter</span></span>
+            <span><span class="method-badge">POST</span></span>
+            <span class="url">https://<b>gateway</b>.example.com/api/report/track</span>
+            <span class="actions"><span class="aic">✎</span><span class="aic">🗑</span><span class="expand">▸</span></span>
+          </div>
+        </div>
+
+        <div class="status-note">共 6 条规则 · 启用 4 条 · 脚本拦截基于 XMLHttpRequest / fetch API</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
