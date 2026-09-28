@@ -382,7 +382,7 @@ class InterceptorManager {
     });
 
     // 修改响应体 - 仅在启用时应用
-    if (rule.enableResponseBody) {
+    if (rule.enableResponseBody !== false) {
       // JSON响应体（不支持函数类型，Manifest V3 禁止动态代码执行）
       console.log('[Interceptor] 使用JSON响应体:', {
         bodyType: typeof rule.response.body,
@@ -417,7 +417,7 @@ class InterceptorManager {
       : 200;
 
     // 构建响应体 - 仅在启用时应用
-    if (rule.enableResponseBody) {
+    if (rule.enableResponseBody !== false) {
       // JSON响应体（不支持函数类型，Manifest V3 禁止动态代码执行）
       body = JSON.stringify(rule.response.body);
     } else {
@@ -515,7 +515,7 @@ class InterceptorManager {
     }
 
     // 修改响应体 - 仅在启用时应用
-    if (rule.enableResponseBody) {
+    if (rule.enableResponseBody !== false) {
       // JSON响应体（不支持函数类型，Manifest V3 禁止动态代码执行）
       Object.defineProperty(xhr, "responseText", {
         value: JSON.stringify(rule.response.body),

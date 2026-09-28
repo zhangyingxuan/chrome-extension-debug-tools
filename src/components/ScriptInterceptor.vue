@@ -648,6 +648,12 @@ defineExpose({
         bodyType: ruleData.response?.bodyType || "json",
       },
       expanded: false,
+      // 与 ScriptRuleEditor 默认开关一致：响应体拦截开启，其余关闭
+      enableRequestBody: false,
+      enableRequestHeaders: false,
+      enableResponseBody: true,
+      enableResponseHeaders: false,
+      enableStatusCode: false,
     };
 
     ruleManager.edit(newRule);

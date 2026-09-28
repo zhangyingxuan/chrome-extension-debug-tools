@@ -22,7 +22,7 @@ chrome.storage.onChanged.addListener((changes) => {
           chrome.tabs
             .sendMessage(tab.id, {
               from: "blowsysun-debug-tools",
-              action: "UPDATE_RULES",
+              action: "RULES_UPDATE",
               value: newRules,
             })
             .catch((error) => {
