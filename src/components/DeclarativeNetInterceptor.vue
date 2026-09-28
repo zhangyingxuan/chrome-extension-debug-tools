@@ -266,8 +266,11 @@ const filteredRules = computed(() => {
 });
 
 // 组件挂载时加载规则
-onMounted(() => {
-  loadRules();
+onMounted(async () => {
+  await loadRules();
+  // 缓存规则需同步安装到 declarativeNetRequest：扩展重载/更新会清空动态规则，
+  // 仅面板展示是「未安装」状态，导致拦截不生效（接口仍返回真实数据）
+  await dnrConverter.update();
 });
 
 // 缓存管理函数
@@ -450,13 +453,7 @@ const dnrConverter = {
   update: async () => {
     try {
       const enabledRules = requestRules.value.filter((rule) => rule.enabled);
-      const dnrRules: any[] = [];
       const allRuleIds: number[] = [];
-
-      enabledRules.forEach((rule) => {
-        const converted = dnrConverter.convert(rule, rule.ruleId);
-        dnrRules.push(...converted);
-      });
 
       // 收集所有需要删除的规则ID（包括附加的header规则）
       requestRules.value.forEach((rule) => {
@@ -465,10 +462,27 @@ const dnrConverter = {
         allRuleIds.push(rule.ruleId + 200000);
       });
 
+      // 先清空旧规则
       await chrome.declarativeNetRequest.updateDynamicRules({
         removeRuleIds: allRuleIds,
-        addRules: dnrRules,
+        addRules: [],
       });
+
+      // 逐条安装：DNR 校验为 all-or-nothing，单条非法规则不应拖垮全部生效
+      for (const rule of enabledRules) {
+        const converted = dnrConverter.convert(rule, rule.ruleId);
+        try {
+          await chrome.declarativeNetRequest.updateDynamicRules({
+            removeRuleIds: [],
+            addRules: converted,
+          });
+        } catch (error) {
+          console.error(
+            `[DNR] 跳过非法规则 ${rule.name || rule.ruleId}:`,
+            error
+          );
+        }
+      }
 
       await cacheManager.save();
     } catch (error) {
