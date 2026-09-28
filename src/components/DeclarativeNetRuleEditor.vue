@@ -283,6 +283,16 @@ const closeDrawer = () => {
   resetForm();
   emit("close");
 };
+// 新建规则：抽屉打开且非编辑时确保复位，响应体类型默认 JSON
+// （只依赖 editingRule 的 watch 会在上次文本body编辑后不触发，导致默认残留为“文本”）
+watch(
+  () => props.visible,
+  (visible) => {
+    if (visible && !props.editingRule) {
+      resetForm();
+    }
+  },
+);
 // 监听编辑规则变化
 watch(
   () => props.editingRule,
@@ -297,10 +307,26 @@ watch(
         ruleData.filterType = "urlFilter";
       }
 
-      // 处理响应体数据
+      // 处理响应体数据：字符串若是合法 JSON 则默认 JSON，否则文本
+      // （请求记录“拦截”快速建规则传的是 JSON.stringify 后的字符串，
+      //   旧逻辑一律按文本处理导致默认勾选文本且保存时双重编码）
       if (typeof newRule.response.body === "string") {
-        responseType.value = "text";
-        ruleData.responseBody = newRule.response.body;
+        const raw = newRule.response.body.trim();
+        let parsed: any = null;
+        if (raw) {
+          try {
+            parsed = JSON.parse(raw);
+          } catch {
+            parsed = null;
+          }
+        }
+        if (parsed !== null) {
+          responseType.value = "json";
+          ruleData.responseBody = JSON.stringify(parsed, null, 2);
+        } else {
+          responseType.value = "text";
+          ruleData.responseBody = newRule.response.body;
+        }
       } else if (
         newRule.response.body &&
         typeof newRule.response.body === "object" &&

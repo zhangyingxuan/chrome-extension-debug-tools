@@ -197,7 +197,7 @@ import { reactive, toRefs, ref, onMounted, onBeforeUnmount, toRaw, computed, wat
 import { RequestRule } from "@/types";
 import DeclarativeNetRuleEditor from "./DeclarativeNetRuleEditor.vue";
 import DeclarativeNetInterceptionHistory from "./DeclarativeNetInterceptionHistory.vue";
-import { generateId } from "@/utils/common";
+import { generateId, deepClone } from "@/utils/common";
 import {
   SearchIcon,
   FileSearchIcon,
@@ -298,6 +298,8 @@ const cacheManager = {
       ]);
       if (result.requestRules) {
         requestRules.value = result.requestRules;
+        // 恢复总开关状态，否则面板挂载后总开关恒显示"禁用"
+        isEnabled.value = result.requestRulesEnabled || false;
         return true;
       }
     } catch (error) {
@@ -318,6 +320,31 @@ const cacheManager = {
       console.error("清除缓存失败:", error);
     }
   },
+};
+
+// 修复历史规则中非法的 ruleId：DNR 要求规则 id >= 1 且唯一，
+// 旧版编辑器存过 ruleId:-1，会导致整条规则被 declarativeNetRequest 拒绝
+const repairInvalidRuleIds = async () => {
+  const rules = requestRules.value;
+  const used = new Set<number>();
+  let nextId = ourRuleIdPrefix;
+  let changed = false;
+  for (const r of rules) {
+    const id = Number(r.ruleId);
+    const valid = Number.isInteger(id) && id >= 1;
+    if (!valid || used.has(id)) {
+      // 非法或重复 id：分配新的合法唯一 id
+      while (used.has(nextId)) nextId++;
+      r.ruleId = nextId;
+      used.add(nextId);
+      changed = true;
+    } else {
+      used.add(id);
+    }
+  }
+  if (changed) {
+    await cacheManager.save();
+  }
 };
 
 // 加载规则
@@ -375,6 +402,9 @@ const loadRules = async () => {
       requestRules.value = [];
     }
   }
+
+  // 修复历史规则中非法的 ruleId（旧编辑器产出 ruleId:-1）
+  await repairInvalidRuleIds();
 };
 
 // DNR规则转换器
@@ -384,7 +414,8 @@ const dnrConverter = {
     const condition = {
       urlFilter: rule.urlPattern,
       regexFilter: rule.urlPattern,
-      resourceTypes: ["xmlhttprequest", "fetch"],
+      // Chrome DNR ResourceType 无 fetch 类型(那是 Firefox)；页面 fetch()/XHR 均归 xmlhttprequest
+      resourceTypes: ["xmlhttprequest"],
       requestMethods: [rule.method.toLowerCase()],
     };
     if (rule.filterType === "urlFilter") {
@@ -412,10 +443,11 @@ const dnrConverter = {
 
     // 附加规则：修改响应头（如果有配置）
     if (rule.enableResponseHeaders && rule.response.headers && Object.keys(rule.response.headers).length > 0) {
-      const responseHeaders = Object.entries(rule.response.headers).map(([header, operation]) => ({
+      // DNR modifyHeaders 的 value 必须是字符串；对象等强转为字符串，否则整条规则被拒
+      const responseHeaders = Object.entries(rule.response.headers).map(([header, v]) => ({
         header,
         operation: "set" as const,
-        value: operation,
+        value: typeof v === "string" ? v : (JSON.stringify(v) ?? ""),
       }));
       dnrRules.push({
         id: ruleId + 100000,
@@ -430,10 +462,10 @@ const dnrConverter = {
 
     // 附加规则：修改请求头（如果有配置）
     if (rule.enableRequestHeaders && rule.requestHeaders && Object.keys(rule.requestHeaders).length > 0) {
-      const requestHeaders = Object.entries(rule.requestHeaders).map(([header, value]) => ({
+      const requestHeaders = Object.entries(rule.requestHeaders).map(([header, v]) => ({
         header,
         operation: "set" as const,
-        value,
+        value: typeof v === "string" ? v : (JSON.stringify(v) ?? ""),
       }));
       dnrRules.push({
         id: ruleId + 200000,
@@ -534,24 +566,34 @@ const ruleManager = {
   update: async (rule: RequestRule) => {
     const index = requestRules.value.findIndex((r) => r.id === rule.id);
     if (index !== -1) {
-      requestRules.value[index] = { ...rule };
+      // deepClone 剥离响应式 Proxy，避免嵌套字段(如 response.body)以 Proxy 存入
+      // chrome.storage 被序列化清空(与脚本拦截同源问题)
+      requestRules.value[index] = deepClone(rule);
       await dnrConverter.update();
     }
   },
 
   // 保存规则
   save: async (rule: RequestRule) => {
+    // deepClone 剥离响应式 Proxy，避免嵌套字段以 Proxy 存入 storage 被清空
+    const clean = deepClone(rule);
     if (editingRule.value?.id) {
       const index = requestRules.value.findIndex(
         (r) => r.id === editingRule.value!.id
       );
       if (index !== -1) {
-        requestRules.value[index] = { ...rule };
+        requestRules.value[index] = clean;
       }
     } else {
+      // DNR 要求规则 id >= 1；编辑器产出的新规则 ruleId 为 -1，必须分配真实 id
+      const maxRuleId =
+        requestRules.value.length > 0
+          ? Math.max(...requestRules.value.map((r) => r.ruleId)) + 1
+          : ourRuleIdPrefix;
       requestRules.value.unshift({
-        ...rule,
+        ...clean,
         id: generateId("rule"),
+        ruleId: maxRuleId,
       });
     }
 
