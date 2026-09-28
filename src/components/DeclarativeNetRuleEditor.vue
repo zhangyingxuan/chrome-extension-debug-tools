@@ -14,16 +14,10 @@
           editingRule ? "编辑规则" : "添加规则"
         }}</span>
         <div class="header-actions" v-if="wide">
-          <t-button
-            variant="text"
-            theme="default"
-            @click="closeDrawer"
-          >
+          <t-button variant="text" theme="default" @click="closeDrawer">
             取消
           </t-button>
-          <t-button theme="primary" @click="saveRule">
-            保存规则
-          </t-button>
+          <t-button theme="primary" @click="saveRule"> 保存规则 </t-button>
         </div>
       </div>
     </template>
@@ -34,6 +28,8 @@
         :data="ruleData"
         :rules="formRules"
         label-align="left"
+        labelWidth="80px"
+        labelWrap
       >
         <!-- 请求匹配 -->
         <section class="card">
@@ -89,9 +85,9 @@
           <h4 class="card-title">响应配置</h4>
           <div class="row-2col">
             <t-form-item label="响应体类型" class="field">
-              <t-radio-group v-model="responseType" class="type-radio">
-                <t-radio value="json">JSON</t-radio>
-                <t-radio value="text">文本</t-radio>
+              <t-radio-group v-model="responseType" size="small">
+                <t-radio value="json" size="small">JSON</t-radio>
+                <t-radio value="text" size="small">文本</t-radio>
               </t-radio-group>
             </t-form-item>
             <t-form-item label="状态码" class="field">
@@ -100,7 +96,7 @@
                 :min="100"
                 :max="599"
                 placeholder="200"
-                class="status-input"
+                size="small"
               />
             </t-form-item>
           </div>
@@ -508,6 +504,7 @@ const saveRule = async () => {
     display: flex;
     flex-direction: column;
     min-height: 0;
+    height: 100%;
 
     .t-form {
       flex: 1;
@@ -595,12 +592,6 @@ const saveRule = async () => {
     }
     .filter-method-select {
       width: 80px;
-    }
-    .type-radio {
-      display: flex;
-    }
-    .status-input {
-      width: 100%;
     }
     .t-input--prefix {
       padding: 0;

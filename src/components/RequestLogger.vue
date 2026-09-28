@@ -279,7 +279,7 @@ const startRecording = () => {
 
   if (requestFinishedListener) {
     chrome.devtools.network.onRequestFinished.removeListener(
-      requestFinishedListener
+      requestFinishedListener,
     );
   }
 
@@ -288,7 +288,7 @@ const startRecording = () => {
   };
 
   chrome.devtools.network.onRequestFinished.addListener(
-    requestFinishedListener
+    requestFinishedListener,
   );
 };
 
@@ -296,7 +296,7 @@ const startRecording = () => {
 const stopRecording = () => {
   if (requestFinishedListener && chrome.devtools?.network) {
     chrome.devtools.network.onRequestFinished.removeListener(
-      requestFinishedListener
+      requestFinishedListener,
     );
     requestFinishedListener = null;
   }
@@ -468,7 +468,7 @@ const formatBody = (body: any): string => {
 // 判断内容类型
 const getContentType = (
   body: any,
-  headers: Record<string, string> = {}
+  headers: Record<string, string> = {},
 ): string => {
   if (!body) return "text";
 
@@ -657,8 +657,8 @@ onUnmounted(() => {
   flex-direction: column;
 
   .control-section {
-    background: #fff;
-    padding: 8px;
+    padding: 4px;
+    background: #fafafa;
     border-bottom: 1px solid #e8e8e8;
 
     .control-header {
@@ -713,7 +713,8 @@ onUnmounted(() => {
     flex: 1;
     overflow: auto;
     background: #fff;
-    font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas,
+    font-family:
+      "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas,
       "Courier New", monospace;
     font-size: 12px;
 
@@ -952,8 +953,9 @@ onUnmounted(() => {
                     flex: 1;
                     color: #323130;
                     word-break: break-all;
-                    font-family: "SF Mono", Monaco, "Cascadia Code",
-                      "Roboto Mono", Consolas, "Courier New", monospace;
+                    font-family:
+                      "SF Mono", Monaco, "Cascadia Code", "Roboto Mono",
+                      Consolas, "Courier New", monospace;
                   }
                 }
               }
@@ -967,8 +969,9 @@ onUnmounted(() => {
               border-radius: 4px;
               padding: 12px;
               font-size: 11px;
-              font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono",
-                Consolas, "Courier New", monospace;
+              font-family:
+                "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas,
+                "Courier New", monospace;
               white-space: pre-wrap;
               word-break: break-all;
               max-height: 400px;

@@ -146,7 +146,7 @@ const handleOpenRuleEditor = (ruleData: any) => {
     overflow: auto;
 
     .panel {
-      background: #fff;
+      background: #fafafa;
       height: 100%;
       overflow: hidden;
 

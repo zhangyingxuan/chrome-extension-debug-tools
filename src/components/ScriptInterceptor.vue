@@ -315,7 +315,7 @@ import { reactive, toRefs, ref, onMounted, onBeforeUnmount, toRaw, computed, wat
 import { RequestRule } from "@/types";
 import ScriptRuleEditor from "./ScriptRuleEditor.vue";
 import ScriptInterceptorHistory from "./ScriptInterceptorHistory.vue";
-import { generateId } from "@/utils/common";
+import { generateId, deepClone } from "@/utils/common";
 import {
   SearchIcon,
   FileSearchIcon,
@@ -527,7 +527,10 @@ const ruleManager = {
   update: async (rule: RequestRule) => {
     const index = requestRules.value.findIndex((r) => r.id === rule.id);
     if (index !== -1) {
-      requestRules.value[index] = { ...rule };
+      // 深拷贝剥离响应式 Proxy：浅拷贝时 response/body 等嵌套字段仍是
+      // Vue reactive Proxy，跨 chrome.storage 序列化边界会被清空成空对象，
+      // 导致刷新后 mock 返回畸形数据（如页面 Q.some is not a function）
+      requestRules.value[index] = deepClone(rule);
       await cacheManager.save();
     }
   },

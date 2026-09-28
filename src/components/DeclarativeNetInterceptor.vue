@@ -582,9 +582,13 @@ const handleQuickAddRule = (ruleData: any) => {
     response: {
       status: ruleData.response?.status || 200,
       headers: ruleData.response?.headers || {},
-      body: ruleData.responseBody || {},
+      body: ruleData.response?.body || {},
     },
     expanded: false,
+    // 与 DeclarativeNetRuleEditor 默认开关一致
+    enableRequestHeaders: Object.keys(ruleData.requestHeaders || {}).length > 0,
+    enableResponseHeaders: Object.keys(ruleData.response?.headers || {}).length > 0,
+    enableStatusCode: true,
   };
 
   ruleManager.edit(newRule);
